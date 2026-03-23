@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:roccoplay/modules/homePages/mainHomepage.dart';
 import '../../app/theme/app_colors.dart';
 import '../../utils/app_session.dart';
+import 'auth_controller.dart';
 
 class OtpPage extends StatefulWidget {
   final String phoneNumber;
@@ -15,10 +17,11 @@ class OtpPage extends StatefulWidget {
 }
 
 class _OtpPageState extends State<OtpPage> {
+  final AuthController authController = Get.find<AuthController>();
   final List<TextEditingController> controllers =
-      List.generate(4, (index) => TextEditingController());
+      List.generate(6, (index) => TextEditingController());
 
-  final List<FocusNode> focusNodes = List.generate(4, (index) => FocusNode());
+  final List<FocusNode> focusNodes = List.generate(6, (index) => FocusNode());
 
   bool _isResendButtonDisabled = false;
   int _countdown = 30;
@@ -57,35 +60,30 @@ class _OtpPageState extends State<OtpPage> {
   void verifyOtp() async {
     String otp = controllers.map((e) => e.text).join();
 
-    if (otp.length < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter complete OTP")),
-      );
+    if (otp.length < 6) {
+      Get.snackbar('Error', 'Please enter 6-digit OTP');
       return;
     }
 
-    // Save login locally
-    await AppSession.setLogin(true);
+    final response = await authController.verifyOtp(widget.phoneNumber, otp);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Login Successfully"),
-        duration: Duration(seconds: 1),
-      ),
-    );
+    if (response != null && response.success) {
+      // Print response to console as requested
+      print("-----------------------------------------");
+      print("VERIFY OTP RESPONSE: ${response.message}");
+      print("IS NEW USER: ${response.isNewUser}");
+      print("-----------------------------------------");
 
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const MainHomePage(),
-          ),
-              (route) => false,
-        );
+      await AppSession.setLogin(true);
+      // You can also save the phone or token if available in response
+      
+      if (response.isNewUser) {
+        // Navigate to complete profile if needed, or home for now
+        Get.offAll(() => const MainHomePage());
+      } else {
+        Get.offAll(() => const MainHomePage());
       }
     }
-    );
   }
 
   @override
@@ -97,20 +95,17 @@ class _OtpPageState extends State<OtpPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Get.back(),
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(
-            left: 20,
-            right: 20,
-          ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 60),
               const Text(
                 "Verify OTP",
                 style: TextStyle(
@@ -122,6 +117,7 @@ class _OtpPageState extends State<OtpPage> {
               const SizedBox(height: 10),
               Text(
                 "Enter the OTP sent to ${widget.phoneNumber}",
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: AppColors.white,
                   fontSize: 14,
@@ -129,14 +125,14 @@ class _OtpPageState extends State<OtpPage> {
               ),
               const SizedBox(height: 40),
 
-              /// OTP Boxes
+              /// OTP Boxes (6 digits)
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: List.generate(
-                  4,
+                  6,
                   (index) => SizedBox(
-                    width: 60,
-                    height: 60,
+                    width: 45,
+                    height: 55,
                     child: TextField(
                       controller: controllers[index],
                       focusNode: focusNodes[index],
@@ -154,19 +150,24 @@ class _OtpPageState extends State<OtpPage> {
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: AppColors.grey,
+                        contentPadding: EdgeInsets.zero,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
                         ),
                       ),
                       onChanged: (value) {
-                        if (value.isNotEmpty && index < 3) {
+                        if (value.isNotEmpty && index < 5) {
                           FocusScope.of(context)
                               .requestFocus(focusNodes[index + 1]);
                         }
                         if (value.isEmpty && index > 0) {
                           FocusScope.of(context)
                               .requestFocus(focusNodes[index - 1]);
+                        }
+                        if (value.length == 1 && index == 5) {
+                           FocusScope.of(context).unfocus();
+                           verifyOtp();
                         }
                       },
                     ),
@@ -179,36 +180,36 @@ class _OtpPageState extends State<OtpPage> {
               /// Verify Button
               SizedBox(
                 width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
+                height: 55,
+                child: Obx(() => ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.buttonColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: verifyOtp,
-                  child: const Text(
-                    "Verify",
-                    style: TextStyle(fontSize: 16, color: AppColors.white),
-                  ),
-                ),
+                  onPressed: authController.isLoading.value ? null : verifyOtp,
+                  child: authController.isLoading.value
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Verify",
+                          style: TextStyle(fontSize: 16, color: AppColors.white),
+                        ),
+                )),
               ),
 
               const SizedBox(height: 20),
 
               /// Resend OTP
               Center(
-                child: TextButton(
-                  onPressed: _isResendButtonDisabled
+                child: Obx(() => TextButton(
+                  onPressed: (_isResendButtonDisabled || authController.isLoading.value)
                       ? null
-                      : () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text("OTP sent successfully")),
-                          );
-                          _startTimer();
-                          print("Resend OTP clicked");
+                      : () async {
+                          bool success = await authController.sendOtp(widget.phoneNumber);
+                          if (success) {
+                            _startTimer();
+                          }
                         },
                   child: Text(
                     _isResendButtonDisabled
@@ -219,7 +220,7 @@ class _OtpPageState extends State<OtpPage> {
                             ? Colors.grey
                             : AppColors.buttonColor),
                   ),
-                ),
+                )),
               ),
             ],
           ),
