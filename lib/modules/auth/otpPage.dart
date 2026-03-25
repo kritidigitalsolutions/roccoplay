@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:roccoplay/modules/homePages/mainHomepage.dart';
 import '../../app/theme/app_colors.dart';
 import '../../utils/app_session.dart';
+import '../profile/create_profile_page.dart';
 import 'auth_controller.dart';
 
 class OtpPage extends StatefulWidget {
@@ -78,8 +79,7 @@ class _OtpPageState extends State<OtpPage> {
       // You can also save the phone or token if available in response
       
       if (response.isNewUser) {
-        // Navigate to complete profile if needed, or home for now
-        Get.offAll(() => const MainHomePage());
+        Get.offAll(() => CreateProfilePage(phone: widget.phoneNumber));
       } else {
         Get.offAll(() => const MainHomePage());
       }

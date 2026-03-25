@@ -1,9 +1,37 @@
 import 'package:flutter/material.dart';
-
+import 'package:roccoplay/data/providers/privacy_provider.dart';
 import '../../app/theme/app_colors.dart';
 
-class HelpSupportPage extends StatelessWidget {
+class HelpSupportPage extends StatefulWidget {
   const HelpSupportPage({super.key});
+
+  @override
+  State<HelpSupportPage> createState() => _HelpSupportPageState();
+}
+
+class _HelpSupportPageState extends State<HelpSupportPage> {
+
+  List helpList = [];
+  bool isLoading = true;
+
+  /// track which item is open
+  int? openIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchHelp();
+  }
+
+  void fetchHelp() async {
+    final data = await PrivacyService.getHelpData();
+    print("FINAL DATA: $data");
+
+    setState(() {
+      helpList = data;
+      isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +48,9 @@ class HelpSupportPage extends StatelessWidget {
         iconTheme: const IconThemeData(color: AppColors.white),
       ),
 
-      body: ListView(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
         padding: const EdgeInsets.all(16),
         children: [
 
@@ -35,48 +65,73 @@ class HelpSupportPage extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          /// Cancel Subscription
-          _helpItem(
-            icon: Icons.cancel_outlined,
-            title: "Cancel Subscription",
-            subtitle: "Manage or cancel your subscription",
-            onTap: () {},
-          ),
+          /// 🔥 Dynamic List
+          ...List.generate(helpList.length, (index) {
+            final item = helpList[index];
+            final isOpen = openIndex == index;
 
-          /// Contact Support
-          _helpItem(
-            icon: Icons.support_agent,
-            title: "Contact Support Team",
-            subtitle: "Chat or email our support team",
-            onTap: () {},
-          ),
+            return Column(
+              children: [
 
-          /// Account Help
-          _helpItem(
-            icon: Icons.person,
-            title: "Account Help",
-            subtitle: "Issues with login or account",
-            onTap: () {},
-          ),
+                /// TOP TILE (same UI)
+                _helpItem(
+                  icon: Icons.help_outline,
+                  title: item['category'] ?? "",
+                  subtitle: "Tap to view details",
+                  isOpen: isOpen,
+                  onTap: () {
+                    setState(() {
+                      openIndex = isOpen ? null : index;
+                    });
+                  },
+                ),
 
-          /// Report Problem
-          _helpItem(
-            icon: Icons.bug_report,
-            title: "Report a Problem",
-            subtitle: "Video not playing or app issue",
-            onTap: () {},
-          ),
+                /// 🔥 SLIDE OPEN PART
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  height: isOpen ? null : 0,
+                  curve: Curves.easeInOut,
+                  child: isOpen
+                      ? Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[850],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
 
-          /// FAQ
-          _helpItem(
-            icon: Icons.help_outline,
-            title: "Frequently Asked Questions",
-            subtitle: "Find quick answers",
-            onTap: () {},
-          ),
+                        /// QUESTION
+                        Text(
+                          item['question'] ?? "",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        /// ANSWER
+                        Text(
+                          item['answer'] ?? "",
+                          style: const TextStyle(
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                      : const SizedBox(),
+                ),
+              ],
+            );
+          }),
 
           const SizedBox(height: 30),
-
           const Divider(color: Colors.white24),
 
           const SizedBox(height: 20),
@@ -86,7 +141,6 @@ class HelpSupportPage extends StatelessWidget {
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
-              fontWeight: FontWeight.w500,
             ),
           ),
 
@@ -111,40 +165,45 @@ class HelpSupportPage extends StatelessWidget {
               "© 2026 RoccoPlay",
               style: TextStyle(color: Colors.white38),
             ),
-          )
+          ),
         ],
       ),
     );
   }
 
-  /// HELP ITEM TILE
+  /// SAME UI TILE
   Widget _helpItem({
     required IconData icon,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    required bool isOpen,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: Colors.grey[900],
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
         leading: Icon(icon, color: AppColors.buttonColor),
+
+        /// 🔥 CATEGORY SHOW
         title: Text(
           title,
           style: const TextStyle(color: AppColors.white),
         ),
+
         subtitle: Text(
           subtitle,
-          style: const TextStyle(color: AppColors.white),
+          style: TextStyle(color: AppColors.white),
         ),
-        trailing: const Icon(
-          Icons.arrow_forward_ios,
-          size: 16,
+
+        trailing: Icon(
+          isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
           color: AppColors.white,
         ),
+
         onTap: onTap,
       ),
     );

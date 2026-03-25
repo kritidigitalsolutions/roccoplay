@@ -1,13 +1,46 @@
 import 'package:flutter/material.dart';
 
-class RefundPolicyPage extends StatelessWidget {
+import '../../data/providers/privacy_provider.dart';
+
+class RefundPolicyPage extends StatefulWidget {
   const RefundPolicyPage({super.key});
+
+  @override
+  State<RefundPolicyPage> createState() => _RefundPolicyPageState();
+}
+
+class _RefundPolicyPageState extends State<RefundPolicyPage> {
+
+  String title = "";
+  String content = "";
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchRefund();
+  }
+
+  void fetchRefund() async {
+    final data = await PrivacyService.getRefundPolicy();
+
+    if (data != null) {
+      setState(() {
+        title = data['document']['title'] ?? "";
+        content = data['document']['content'] ?? "";
+        isLoading = false;
+      });
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
@@ -18,104 +51,41 @@ class RefundPolicyPage extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
 
-      body: SingleChildScrollView(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
 
             Text(
-              "Refund Policy",
-              style: TextStyle(
+              title,
+              style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
 
-            SizedBox(height: 15),
+            const SizedBox(height: 20),
 
             Text(
-              "This refund policy outlines the conditions under which refunds may be issued for RoccoPlay subscriptions.",
-              style: TextStyle(color: Colors.white70),
+              content,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
             ),
 
-            SizedBox(height: 20),
+            const SizedBox(height: 40),
 
-            Text(
-              "1. Subscription Payments",
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            ),
-
-            SizedBox(height: 8),
-
-            Text(
-              "All subscription payments made on RoccoPlay are generally non-refundable unless required by law.",
-              style: TextStyle(color: Colors.white70),
-            ),
-
-            SizedBox(height: 20),
-
-            Text(
-              "2. Technical Issues",
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            ),
-
-            SizedBox(height: 8),
-
-            Text(
-              "If you experience technical issues that prevent access to the service, please contact our support team for assistance.",
-              style: TextStyle(color: Colors.white70),
-            ),
-
-            SizedBox(height: 20),
-
-            Text(
-              "3. Refund Requests",
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            ),
-
-            SizedBox(height: 8),
-
-            Text(
-              "Refund requests must be submitted within 7 days of purchase. Each request will be reviewed individually.",
-              style: TextStyle(color: Colors.white70),
-            ),
-
-            SizedBox(height: 20),
-
-            Text(
-              "4. Cancellation",
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            ),
-
-            SizedBox(height: 8),
-
-            Text(
-              "You can cancel your subscription anytime, but the remaining subscription period will continue until the billing cycle ends.",
-              style: TextStyle(color: Colors.white70),
-            ),
-
-            SizedBox(height: 40),
-
-            Center(
+            const Center(
               child: Text(
                 "© 2026 RoccoPlay",
                 style: TextStyle(color: Colors.white54),
               ),
-            ),
+            )
           ],
         ),
       ),

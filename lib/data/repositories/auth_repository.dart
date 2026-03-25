@@ -1,3 +1,5 @@
+import 'package:get/get_connect/http/src/response/response.dart';
+
 import '../providers/api_provider.dart';
 import '../models/response_model/send_otp_response.dart';
 import '../models/response_model/verify_otp_response.dart';
@@ -29,4 +31,18 @@ class AuthRepository {
       return (false, null);
     }
   }
+  Future<Response> createProfile({
+    required String phone,
+    required String name,
+    required String email,
+    // required String imagePath,
+  }) async {
+    return await apiProvider.createProfile(
+      phone: phone,
+      name: name,
+      email: email,
+      // imagePath: imagePath,
+    );
+  }
+
 }

@@ -1,21 +1,40 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../app/theme/app_colors.dart';
+import '../auth/auth_controller.dart';
 
 class CreateProfilePage extends StatefulWidget {
-  const CreateProfilePage({super.key});
+  final String phone; // 👈 phone pass karna padega
+
+  const CreateProfilePage({super.key, required this.phone});
 
   @override
   State<CreateProfilePage> createState() =>
       _CreateProfilePageState();
 }
 
-class _CreateProfilePageState
-    extends State<CreateProfilePage> {
-  final TextEditingController nameController =
-  TextEditingController();
+class _CreateProfilePageState extends State<CreateProfilePage> {
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
 
-  bool isChildren = false;
+  final controller = Get.find<AuthController>();
+
+  File? selectedImage;
+
+  /// Image Picker
+  Future<void> pickImage() async {
+    final pickedFile =
+    await ImagePicker().pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        selectedImage = File(pickedFile.path);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,23 +48,28 @@ class _CreateProfilePageState
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-
             const SizedBox(height: 30),
 
             /// Profile Image
-            const CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.grey,
-              child: Icon(Icons.person,
-                  size: 50, color: Colors.white),
+            GestureDetector(
+              onTap: pickImage,
+              child: CircleAvatar(
+                radius: 50,
+                backgroundColor: Colors.grey,
+                backgroundImage:
+                selectedImage != null ? FileImage(selectedImage!) : null,
+                child: selectedImage == null
+                    ? const Icon(Icons.person,
+                    size: 50, color: Colors.white)
+                    : null,
+              ),
             ),
 
             TextButton(
-              onPressed: () {},
+              onPressed: pickImage,
               child: const Text(
                 "Change Avatar",
-                style: TextStyle(
-                    color: AppColors.buttonColor),
+                style: TextStyle(color: AppColors.buttonColor),
               ),
             ),
 
@@ -54,12 +78,10 @@ class _CreateProfilePageState
             /// Name Field
             TextField(
               controller: nameController,
-              style:
-              const TextStyle(color: AppColors.white),
+              style: const TextStyle(color: AppColors.white),
               decoration: InputDecoration(
                 hintText: "Name",
-                hintStyle:
-                const TextStyle(color: Colors.grey),
+                hintStyle: const TextStyle(color: Colors.grey),
                 filled: true,
                 fillColor: Colors.grey[900],
               ),
@@ -67,67 +89,45 @@ class _CreateProfilePageState
 
             const SizedBox(height: 15),
 
-            /// Children Toggle
-            Row(
-              mainAxisAlignment:
-              MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Children",
-                  style: TextStyle(
-                      color: AppColors.white),
-                ),
-                Switch(
-                  value: isChildren,
-                  onChanged: (value) {
-                    setState(() {
-                      isChildren = value;
-                    });
-                  },
-                )
-              ],
+            /// Email Field ✅
+            TextField(
+              controller: emailController,
+              style: const TextStyle(color: AppColors.white),
+              decoration: InputDecoration(
+                hintText: "Email",
+                hintStyle: const TextStyle(color: Colors.grey),
+                filled: true,
+                fillColor: Colors.grey[900],
+              ),
             ),
 
-            // const Spacer(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
 
-            /// Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.grey),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text(
-                        "Cancel",
-                      style: TextStyle(
-                      color: AppColors.white,
-                    ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                        AppColors.buttonColor),
-                    onPressed: () {
-                      Navigator.pop(
-                          context, nameController.text);
-                    },
-                    child: const Text(
-                      "Save",
-                    style: TextStyle(
-                      color: AppColors.white,
-                    ),
-                    ),
-                  ),
-                ),
-              ],
+            /// Save Button
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.buttonColor),
+              onPressed: () async {
+                if (nameController.text.isEmpty ||
+                    emailController.text.isEmpty ||
+                    selectedImage == null) {
+                  Get.snackbar("Error", "All fields are required");
+                  return;
+                }
+
+                await controller.updateAndSaveProfile(
+                  name: nameController.text,
+                  email: emailController.text,
+                  phone: widget.phone,
+                  imagePath: selectedImage!.path,
+                );
+
+                Get.offAllNamed('/home'); // 👈 change route as per app
+              },
+              child: const Text(
+                "Save",
+                style: TextStyle(color: AppColors.white),
+              ),
             )
           ],
         ),
