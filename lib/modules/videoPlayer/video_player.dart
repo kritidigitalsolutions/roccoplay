@@ -1,7 +1,3 @@
-/// video plyer working with back button but first show in landscape
-
-
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -9,396 +5,331 @@ import 'package:volume_controller/volume_controller.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../app/theme/app_colors.dart';
-
-class PremiumVideoPlayerPage extends StatefulWidget {
-  final String videoUrl;
+class AdvancedVideoPlayer extends StatefulWidget {
+  final String url;
   final String title;
 
-  const PremiumVideoPlayerPage({
+  const AdvancedVideoPlayer({
     super.key,
-    required this.videoUrl,
+    required this.url,
     required this.title,
   });
 
   @override
-  State<PremiumVideoPlayerPage> createState() =>
-      _PremiumVideoPlayerPageState();
+  State<AdvancedVideoPlayer> createState() =>
+      _AdvancedVideoPlayerState();
 }
 
-class _PremiumVideoPlayerPageState extends State<PremiumVideoPlayerPage> {
-  late VideoPlayerController _controller;
+class _AdvancedVideoPlayerState
+    extends State<AdvancedVideoPlayer> {
+  late VideoPlayerController controller;
 
-  bool _showControls = true;
-  bool _isLocked = false;
-  Timer? _hideTimer;
+  double volume = 0.5;
+  double brightness = 0.5;
 
-  double _brightness = 0.5;
-  double _volume = 0.5;
+  bool showControls = true;
+  bool isPlaying = true;
+  bool isLocked = false;
 
-  double _playbackSpeed = 1.0;
-  String _selectedSubtitle = "Off";
-  String _selectedQuality = "720p";
+  double speed = 1.0;
+  String quality = "Auto";
 
   @override
   void initState() {
     super.initState();
+
+    controller =
+    VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize().then((_) {
+        setState(() {});
+        controller.play();
+      });
+
+    /// 🔥 FULLSCREEN LANDSCAPE
+    SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.immersive);
 
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
 
-    _controller = VideoPlayerController.asset(widget.videoUrl);
-    _controller.initialize().then((_) {
-      setState(() {});
-      _controller.play();
-      _startHideTimer();
-    });
-
-    VolumeController().showSystemUI = false;
+    VolumeController().getVolume().then((v) => volume = v);
+    ScreenBrightness().current.then((b) => brightness = b);
   }
 
-  void _startHideTimer() {
-    _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (!_isLocked) {
-        setState(() => _showControls = false);
-      }
-    });
-  }
+  /// 🔥 EXIT PLAYER (MAIN FIX)
+  void _exitPlayer() {
+    /// Restore UI
+    SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.edgeToEdge);
 
-  void _toggleControls() {
-    if (_isLocked) return;
-    setState(() => _showControls = !_showControls);
-    if (_showControls) _startHideTimer();
-  }
-
-  void _handleVerticalDrag(DragUpdateDetails details) async {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final dx = details.globalPosition.dx;
-
-    if (dx < screenWidth / 2) {
-      _brightness -= details.delta.dy * 0.005;
-      _brightness = _brightness.clamp(0.0, 1.0);
-      await ScreenBrightness().setScreenBrightness(_brightness);
-    } else {
-      _volume -= details.delta.dy * 0.005;
-      _volume = _volume.clamp(0.0, 1.0);
-      VolumeController().setVolume(_volume);
-    }
-  }
-
-  void _shareVideo() {
-    Share.share(widget.videoUrl);
-  }
-
-  void _changeSpeed() async {
-    final result = await showModalBottomSheet<double>(
-      context: context,
-      backgroundColor: Colors.black,
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [0.5, 1.0, 1.5, 2.0]
-            .map((speed) => ListTile(
-          title: Text("${speed}x",
-              style: const TextStyle(color: Colors.white)),
-          onTap: () => Navigator.pop(context, speed),
-        ))
-            .toList(),
-      ),
-    );
-
-    if (result != null) {
-      setState(() => _playbackSpeed = result);
-      _controller.setPlaybackSpeed(result);
-    }
-  }
-
-  void _changeSubtitle() async {
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.black,
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: ["Off", "English"]
-            .map((lang) => ListTile(
-          title: Text(lang,
-              style: const TextStyle(color: Colors.white)),
-          onTap: () => Navigator.pop(context, lang),
-        ))
-            .toList(),
-      ),
-    );
-
-    if (result != null) {
-      setState(() => _selectedSubtitle = result);
-    }
-  }
-
-  void _changeQuality() async {
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.black,
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: ["360p", "720p", "1080p"]
-            .map((q) => ListTile(
-          title: Text(q,
-              style: const TextStyle(color: Colors.white)),
-          onTap: () => Navigator.pop(context, q),
-        ))
-            .toList(),
-      ),
-    );
-
-    if (result != null) {
-      setState(() => _selectedQuality = result);
-    }
-  }
-
-  @override
-  void dispose() {
-    _hideTimer?.cancel();
-    _controller.dispose();
-
+    /// Back to portrait
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);
 
+    Navigator.pop(context);
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
     super.dispose();
   }
 
-  String _format(Duration d) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    return "${two(d.inMinutes.remainder(60))}:${two(d.inSeconds.remainder(60))}";
+  /// 🎮 Gesture Control
+  void _onVerticalDrag(DragUpdateDetails details) async {
+    if (isLocked) return;
+
+    double delta = details.primaryDelta! / 300;
+
+    if (details.globalPosition.dx <
+        MediaQuery.of(context).size.width / 2) {
+      brightness -= delta;
+      brightness = brightness.clamp(0.0, 1.0);
+      await ScreenBrightness().setScreenBrightness(brightness);
+    } else {
+      volume -= delta;
+      volume = volume.clamp(0.0, 1.0);
+      // await VolumeController().setVolume(volume);
+    }
+  }
+
+  /// ⏩ Seek
+  void _onHorizontalDrag(DragUpdateDetails details) {
+    if (isLocked) return;
+
+    final position = controller.value.position;
+    final duration = controller.value.duration;
+
+    Duration seekTo =
+        position + Duration(seconds: (details.primaryDelta! ~/ 5));
+
+    if (seekTo < Duration.zero) seekTo = Duration.zero;
+    if (seekTo > duration) seekTo = duration;
+
+    controller.seekTo(seekTo);
+  }
+
+  /// ▶️ Play/Pause
+  void _togglePlay() {
+    if (isLocked) return;
+
+    setState(() {
+      if (controller.value.isPlaying) {
+        controller.pause();
+        isPlaying = false;
+      } else {
+        controller.play();
+        isPlaying = true;
+      }
+    });
+  }
+
+  /// ⏱ Format Time
+  String format(Duration d) {
+    String two(int n) => n.toString().padLeft(2, "0");
+    return "${two(d.inMinutes)}:${two(d.inSeconds % 60)}";
+  }
+
+  /// ⚡ Speed Dialog
+  void _showSpeedDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => SimpleDialog(
+        title: const Text("Speed"),
+        children: [0.5, 1, 1.5, 2].map((e) {
+          return SimpleDialogOption(
+            onPressed: () {
+              setState(() => speed = e.toDouble());
+              controller.setPlaybackSpeed(speed);
+              Navigator.pop(context);
+            },
+            child: Text("${e}x"),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  /// ⚙ Quality Dialog
+  void _showQualityDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => SimpleDialog(
+        title: const Text("Quality"),
+        children: ["Auto", "1080p", "720p", "480p"].map((q) {
+          return SimpleDialogOption(
+            onPressed: () {
+              setState(() => quality = q);
+              Navigator.pop(context);
+            },
+            child: Text(q),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  /// 🔒 Lock toggle
+  void _toggleLock() {
+    setState(() {
+      isLocked = !isLocked;
+      showControls = !isLocked;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!controller.value.isInitialized) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return PopScope(
-        canPop: true,
-        onPopInvoked: (didPop) async {
-
-          if (didPop) return;
-
-          await SystemChrome.setPreferredOrientations([
-            DeviceOrientation.portraitUp,
-          ]);
-
-          await Future.delayed(const Duration(milliseconds: 200));
-
-          if (mounted) {
-            Navigator.pop(context);
-          }
-        },
-        child:  Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-
-          /// VIDEO
-          Center(
-            child: _controller.value.isInitialized
-                ? AspectRatio(
-              aspectRatio: _controller.value.aspectRatio,
-              child: VideoPlayer(_controller),
-            )
-                : const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.buttonColor,
-              ),
-            ),
-          ),
-
-          /// TAP + GESTURE LAYER
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTap: _toggleControls,
-              onVerticalDragUpdate: _handleVerticalDrag,
-            ),
-          ),
-
-          if (_showControls) ...[
-
-            /// TOP BAR
-            Positioned(
-              top: 20,
-              left: 20,
-              right: 20,
-              child: Row(
-                mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    onPressed: () async {
-
-                      /// first change orientation
-                      await SystemChrome.setPreferredOrientations([
-                        DeviceOrientation.portraitUp,
-                      ]);
-
-                      /// small delay so UI rebuilds correctly
-                      await Future.delayed(const Duration(milliseconds: 200));
-
-                      /// then go back
-                      if (mounted) {
-                        Navigator.pop(context);
-                      }
-                    },
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                    ),
-                  ),
-
-                  Text(widget.title,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18)),
-                  Row(
-                    children: [
-                      IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _isLocked = !_isLocked;
-                            });
-                          },
-                          icon: Icon(
-                              _isLocked
-                                  ? Icons.lock
-                                  : Icons.lock_open,
-                              color: Colors.white)),
-                      IconButton(
-                          onPressed: _shareVideo,
-                          icon: const Icon(Icons.share,
-                              color: Colors.white)),
-                    ],
-                  )
-                ],
-              ),
-            ),
-
-            /// CENTER CONTROLS
-            if (!_isLocked)
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        _exitPlayer(); // 🔥 system back fix
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: GestureDetector(
+          onTap: () {
+            if (!isLocked) {
+              setState(() => showControls = !showControls);
+            }
+          },
+          onVerticalDragUpdate: _onVerticalDrag,
+          onHorizontalDragUpdate: _onHorizontalDrag,
+          child: Stack(
+            children: [
+              /// 🎬 VIDEO
               Center(
-                child: Row(
-                  mainAxisAlignment:
-                  MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      iconSize: 40,
-                      onPressed: () {
-                        _controller.seekTo(
-                            _controller.value.position -
-                                const Duration(seconds: 10));
-                      },
-                      icon: const Icon(Icons.replay_10,
-                          color: Colors.white),
-                    ),
-                    const SizedBox(width: 20),
-                    IconButton(
-                      iconSize: 60,
-                      onPressed: () {
-                        setState(() {
-                          _controller.value.isPlaying
-                              ? _controller.pause()
-                              : _controller.play();
-                        });
-                        _startHideTimer();
-                      },
-                      icon: Icon(
-                        _controller.value.isPlaying
-                            ? Icons.pause_circle
-                            : Icons.play_circle,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    IconButton(
-                      iconSize: 40,
-                      onPressed: () {
-                        _controller.seekTo(
-                            _controller.value.position +
-                                const Duration(seconds: 10));
-                      },
-                      icon: const Icon(Icons.forward_10,
-                          color: Colors.white),
-                    ),
-                  ],
+                child: AspectRatio(
+                  aspectRatio: controller.value.aspectRatio,
+                  child: VideoPlayer(controller),
                 ),
               ),
 
-            /// BOTTOM CONTROLS
-            if (!_isLocked)
+              /// 🔒 LOCK BUTTON
               Positioned(
-                bottom: 20,
-                left: 20,
-                right: 20,
-                child: Column(
+                left: 10,
+                top: MediaQuery.of(context).size.height / 2,
+                child: IconButton(
+                  icon: Icon(
+                    isLocked ? Icons.lock : Icons.lock_open,
+                    color: Colors.white,
+                  ),
+                  onPressed: _toggleLock,
+                ),
+              ),
+
+              /// 🎮 CONTROLS
+              if (showControls && !isLocked)
+                Column(
                   children: [
-                    VideoProgressIndicator(
-                      _controller,
-                      allowScrubbing: true,
-                      colors:
-                      const VideoProgressColors(
-                        playedColor: Colors.red,
-                        bufferedColor: Colors.grey,
-                        backgroundColor:
-                        Colors.white24,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
+                    /// 🔝 TOP BAR
                     Row(
-                      mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween,
                       children: [
-                        ValueListenableBuilder(
-                          valueListenable: _controller,
-                          builder: (context,
-                              VideoPlayerValue value,
-                              child) {
-                            return Text(
-                              "${_format(value.position)} / ${_format(value.duration)}",
-                              style: const TextStyle(
-                                  color:
-                                  Colors.white),
-                            );
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back,
+                              color: Colors.white),
+                          onPressed: _exitPlayer, // 🔥 FIXED
+                        ),
+                        Expanded(
+                          child: Text(
+                            widget.title,
+                            style: const TextStyle(
+                                color: Colors.white),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.share,
+                              color: Colors.white),
+                          onPressed: () {
+                            Share.share(widget.url);
                           },
                         ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                  Icons.closed_caption,
-                                  color: Colors.white),
-                              onPressed: _changeSubtitle,
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.speed,
-                                  color: Colors.white),
-                              onPressed: _changeSpeed,
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                  Icons.high_quality,
-                                  color: Colors.white),
-                              onPressed: _changeQuality,
-                            ),
-                          ],
-                        )
                       ],
+                    ),
+
+                    /// ▶️ CENTER PLAY
+                    Expanded(
+                      child: Center(
+                        child: IconButton(
+                          iconSize: 70,
+                          icon: Icon(
+                            isPlaying
+                                ? Icons.pause
+                                : Icons.play_arrow,
+                            color: Colors.white,
+                          ),
+                          onPressed: _togglePlay,
+                        ),
+                      ),
+                    ),
+
+                    /// ⬇ BOTTOM
+                    Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        children: [
+                          /// SEEK BAR
+                          VideoProgressIndicator(
+                            controller,
+                            allowScrubbing: true,
+                            colors: const VideoProgressColors(
+                              playedColor: Colors.red,
+                            ),
+                          ),
+
+                          const SizedBox(height: 5),
+
+                          /// TIME + OPTIONS
+                          Row(
+                            mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "${format(controller.value.position)} / ${format(controller.value.duration)}",
+                                style: const TextStyle(
+                                    color: Colors.white),
+                              ),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.subtitles,
+                                        color: Colors.white),
+                                    onPressed: () {},
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.speed,
+                                        color: Colors.white),
+                                    onPressed: _showSpeedDialog,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.hd,
+                                        color: Colors.white),
+                                    onPressed:
+                                    _showQualityDialog,
+                                  ),
+                                ],
+                              )
+                            ],
+                          )
+                        ],
+                      ),
                     )
                   ],
                 ),
-              ),
-          ],
-        ],
-      ),
+            ],
+          ),
         ),
+      ),
     );
   }
 }
-
-

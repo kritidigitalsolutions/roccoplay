@@ -1,154 +1,92 @@
 import 'package:flutter/material.dart';
-
+import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
+import '../../view_model/profile/review_controller.dart';
 
-class ReviewPage extends StatefulWidget {
+class ReviewPage extends StatelessWidget {
   const ReviewPage({super.key});
 
   @override
-  State<ReviewPage> createState() => _ReviewPageState();
-}
-
-class _ReviewPageState extends State<ReviewPage> {
-  int rating = 0;
-  final TextEditingController reviewController = TextEditingController();
-
-  Widget buildStar(int index) {
-    return IconButton(
-      icon: Icon(
-        index < rating ? Icons.star : Icons.star_border,
-        color: Colors.amber,
-        size: 32,
-      ),
-      onPressed: () {
-        setState(() {
-          rating = index + 1;
-        });
-      },
-    );
-  }
-
-  void submitReview() {
-    String reviewText = reviewController.text;
-
-    print("Rating: $rating");
-    print("Review: $reviewText");
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Review Submitted")),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final ReviewController controller = Get.put(ReviewController());
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-        ),
+        backgroundColor: AppColors.background,
         elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          "Rate Our App",
-          style: TextStyle(color: AppColors.white),
+        title: const Text("Rate Our App", style: TextStyle(color: Colors.white)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Get.back(),
         ),
       ),
-
-      /// rate your experience
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            const SizedBox(height: 20),
             const Text(
-              "Rate Your Experience",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.white,
-              ),
+              "Enjoying RoccoPlay?",
+              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
             ),
-
-            const SizedBox(height: 15),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (index) => buildStar(index)),
-            ),
-
-            const SizedBox(height: 25),
-
-            /// input field
-            const Text(
-              "Write Your Review",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.white,
-              ),
-            ),
-
             const SizedBox(height: 10),
-
+            const Text(
+              "Your feedback helps us improve!",
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 30),
+            
+            // Rating Stars
+            Obx(() => Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) {
+                return IconButton(
+                  icon: Icon(
+                    index < controller.rating.value ? Icons.star : Icons.star_border,
+                    color: Colors.amber,
+                    size: 40,
+                  ),
+                  onPressed: () => controller.updateRating(index + 1),
+                );
+              }),
+            )),
+            
+            const SizedBox(height: 30),
+            
+            // Comment Box
             TextField(
-              controller: reviewController,
+              onChanged: controller.updateComment,
               maxLines: 4,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: "Write something about the product...",
-                hintStyle: const TextStyle(color: AppColors.white),
+                hintText: "Write your review here...",
+                hintStyle: const TextStyle(color: Colors.grey),
                 filled: true,
                 fillColor: Colors.grey[900],
-
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                    color: AppColors.buttonColor,
-                    width: 1.5,
-                  ),
-                ),
-
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                    color: AppColors.buttonColor,
-                    width: 2,
-                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
               ),
             ),
-
-            const SizedBox(height: 30),
-
-            /// submit button
-
+            
+            const SizedBox(height: 40),
+            
+            // Submit Button
             SizedBox(
               width: double.infinity,
+              height: 50,
               child: ElevatedButton(
-                onPressed: submitReview,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.buttonColor,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text(
-                  "Submit Review",
-                  style: TextStyle(
-                    color: AppColors.buttonTextColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                onPressed: controller.submitReview,
+                child: const Text("Submit Review", style: TextStyle(color: Colors.white, fontSize: 16)),
               ),
-            )
+            ),
           ],
         ),
       ),

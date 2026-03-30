@@ -1,175 +1,91 @@
 import 'package:flutter/material.dart';
-
+import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
+import '../../view_model/profile/settings_controller.dart';
 
-class SettingsPage extends StatefulWidget {
+class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
-}
-
-class _SettingsPageState extends State<SettingsPage> {
-
-  bool downloadWifiOnly = true;
-  bool notificationsEnabled = false;
-
-  String selectedQuality = "Auto";
-
-  final List<String> qualityOptions = [
-    "Auto",
-    "High",
-    "Standard",
-    "Basic",
-    "Low",
-    "Minimum",
-  ];
-
-  @override
   Widget build(BuildContext context) {
+    final SettingsController controller = Get.put(SettingsController());
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: AppColors.background,
+        elevation: 0,
         title: const Text(
           "Settings",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppColors.white),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.white),
+          onPressed: () => Get.back(),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         children: [
-
-          /// ================= VIDEO QUALITY =================
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: _boxDecoration(),
-            child: ExpansionTile(
-              collapsedIconColor: Colors.white,
-              iconColor: Colors.white,
-              title: const Text(
-                "Video Quality",
-                style: TextStyle(color: Colors.white),
-              ),
-              children: qualityOptions.map((quality) {
-                return RadioListTile(
-                  activeColor: Colors.red,
-                  title: Text(
-                    quality,
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  value: quality,
-                  groupValue: selectedQuality,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedQuality = value!;
-                    });
-                  },
-                );
-              }).toList(),
-            ),
-          ),
-
-          const SizedBox(height: 15),
-
-          /// ================= DOWNLOAD OVER WIFI =================
-          Container(
-            decoration: _boxDecoration(),
-            child: SwitchListTile(
-              activeColor: AppColors.buttonColor,
-              title: const Text(
-                "Download Over WiFi Only",
-                style: TextStyle(color: AppColors.white),
-              ),
-              value: downloadWifiOnly,
-              onChanged: (value) {
-                setState(() {
-                  downloadWifiOnly = value;
-                });
-              },
-            ),
-          ),
-
-          const SizedBox(height: 15),
-
-          /// ================= NOTIFICATIONS =================
-          Container(
-            decoration: _boxDecoration(),
-            child: SwitchListTile(
-              activeColor: AppColors.buttonColor,
-              title: const Text(
-                "Notifications",
-                style: TextStyle(color: AppColors.white),
-              ),
-              value: notificationsEnabled,
-              onChanged: (value) {
-                if (value == true) {
-                  _showNotificationPopup();
-                } else {
-                  setState(() {
-                    notificationsEnabled = false;
-                  });
-                }
-              },
-            ),
-          ),
-
+          _buildSectionHeader("Notifications"),
+          Obx(() => _buildSwitchTile(
+                "Push Notifications",
+                controller.isPushNotificationsEnabled.value,
+                controller.togglePushNotifications,
+              )),
+          const SizedBox(height: 20),
+          _buildSectionHeader("Playback"),
+          Obx(() => _buildSwitchTile(
+                "Auto Play",
+                controller.isAutoPlayEnabled.value,
+                controller.toggleAutoPlay,
+              )),
+          Obx(() => _buildSwitchTile(
+                "WiFi Only",
+                controller.isWiFiOnlyEnabled.value,
+                controller.toggleWiFiOnly,
+              )),
+          const SizedBox(height: 20),
+          _buildSectionHeader("Account"),
+          _buildActionTile("Language", "English", () {}),
+          _buildActionTile("App Version", "1.0.0", null),
         ],
       ),
     );
   }
 
-  /// ================= POPUP =================
-  void _showNotificationPopup() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppColors.grey,
-          title: const Text(
-            "Allow Notifications?",
-            style: TextStyle(color: AppColors.white),
-          ),
-          content: const Text(
-            "Enable notifications to stay updated with new releases and offers.",
-            style: TextStyle(color: AppColors.white),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text(
-                "Cancel",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.buttonColor,
-              ),
-              onPressed: () {
-                setState(() {
-                  notificationsEnabled = true;
-                });
-                Navigator.pop(context);
-              },
-              child: const Text("Proceed",
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        );
-      },
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.pinkAccent,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 
-  /// ================= COMMON BOX DECORATION =================
-  BoxDecoration _boxDecoration() {
-    return BoxDecoration(
-      color: Colors.grey[900],
-      borderRadius: BorderRadius.circular(12),
+  Widget _buildSwitchTile(String title, bool value, Function(bool) onChanged) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 16)),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeColor: Colors.pinkAccent,
+      ),
+    );
+  }
+
+  Widget _buildActionTile(String title, String trailing, VoidCallback? onTap) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      onTap: onTap,
+      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 16)),
+      trailing: Text(trailing, style: const TextStyle(color: Colors.grey, fontSize: 14)),
     );
   }
 }

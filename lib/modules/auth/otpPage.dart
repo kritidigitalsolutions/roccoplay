@@ -1,93 +1,51 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:roccoplay/modules/homePages/mainHomepage.dart';
 import '../../app/theme/app_colors.dart';
-import '../../utils/app_session.dart';
+import '../../view_model/home_controller/home_controller.dart';
 import '../profile/create_profile_page.dart';
-import 'auth_controller.dart';
+import '../../view_model/auth_controller/auth_controller.dart';
+import '../../view_model/auth_controller/otp_controller.dart';
+import '../../app/routes/app_routes.dart';
 
-class OtpPage extends StatefulWidget {
+class OtpPage extends StatelessWidget {
   final String phoneNumber;
 
   const OtpPage({super.key, required this.phoneNumber});
 
   @override
-  State<OtpPage> createState() => _OtpPageState();
-}
+  Widget build(BuildContext context) {
+    final AuthController authController = Get.find<AuthController>();
+    final OtpController otpController = Get.put(OtpController());
 
-class _OtpPageState extends State<OtpPage> {
-  final AuthController authController = Get.find<AuthController>();
-  final List<TextEditingController> controllers =
-      List.generate(6, (index) => TextEditingController());
+    void verifyOtp() async {
+      String otp = otpController.controllers.map((e) => e.text).join();
 
-  final List<FocusNode> focusNodes = List.generate(6, (index) => FocusNode());
+      if (otp.length < 6) {
+        Get.snackbar('Error', 'Please enter 6-digit OTP');
+        return;
+      }
 
-  bool _isResendButtonDisabled = false;
-  int _countdown = 30;
-  Timer? _timer;
+      final response = await authController.verifyOtp(phoneNumber, otp);
 
-  @override
-  void dispose() {
-    for (var controller in controllers) {
-      controller.dispose();
-    }
-    for (var node in focusNodes) {
-      node.dispose();
-    }
-    _timer?.cancel();
-    super.dispose();
-  }
+      if (response != null && response.success) {
+        // 1. तुरंत लॉगिन स्टेटस अपडेट करें (यह सबसे ज़रूरी है)
+        authController.setLoginStatus(true);
 
-  void _startTimer() {
-    setState(() {
-      _isResendButtonDisabled = true;
-    });
+        bool isNew = response.isNewUser;
+        bool isProfileIncomplete = response.user != null && response.user!['profileComplete'] == false;
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        if (_countdown > 0) {
-          _countdown--;
+        if (isNew || isProfileIncomplete) {
+          Get.offAll(() => CreateProfilePage(phone: phoneNumber));
         } else {
-          _timer?.cancel();
-          _isResendButtonDisabled = false;
-          _countdown = 30;
+          // 2. होम पेज पर जाते समय पक्का करें कि हम पहले टैब (Home) पर जाएँ
+          if (Get.isRegistered<HomeController>()) {
+            Get.find<HomeController>().selectedIndex.value = 0;
+          }
+          Get.offAllNamed(AppRoutes.home);
         }
-      });
-    });
-  }
-
-  void verifyOtp() async {
-    String otp = controllers.map((e) => e.text).join();
-
-    if (otp.length < 6) {
-      Get.snackbar('Error', 'Please enter 6-digit OTP');
-      return;
-    }
-
-    final response = await authController.verifyOtp(widget.phoneNumber, otp);
-
-    if (response != null && response.success) {
-      // Print response to console as requested
-      print("-----------------------------------------");
-      print("VERIFY OTP RESPONSE: ${response.message}");
-      print("IS NEW USER: ${response.isNewUser}");
-      print("-----------------------------------------");
-
-      await AppSession.setLogin(true);
-      // You can also save the phone or token if available in response
-      
-      if (response.isNewUser) {
-        Get.offAll(() => CreateProfilePage(phone: widget.phoneNumber));
-      } else {
-        Get.offAll(() => const MainHomePage());
       }
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -116,7 +74,7 @@ class _OtpPageState extends State<OtpPage> {
               ),
               const SizedBox(height: 10),
               Text(
-                "Enter the OTP sent to ${widget.phoneNumber}",
+                "Enter the OTP sent to $phoneNumber",
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: AppColors.white,
@@ -134,8 +92,8 @@ class _OtpPageState extends State<OtpPage> {
                     width: 45,
                     height: 55,
                     child: TextField(
-                      controller: controllers[index],
-                      focusNode: focusNodes[index],
+                      controller: otpController.controllers[index],
+                      focusNode: otpController.focusNodes[index],
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
@@ -159,11 +117,11 @@ class _OtpPageState extends State<OtpPage> {
                       onChanged: (value) {
                         if (value.isNotEmpty && index < 5) {
                           FocusScope.of(context)
-                              .requestFocus(focusNodes[index + 1]);
+                              .requestFocus(otpController.focusNodes[index + 1]);
                         }
                         if (value.isEmpty && index > 0) {
                           FocusScope.of(context)
-                              .requestFocus(focusNodes[index - 1]);
+                              .requestFocus(otpController.focusNodes[index - 1]);
                         }
                         if (value.length == 1 && index == 5) {
                            FocusScope.of(context).unfocus();
@@ -203,20 +161,20 @@ class _OtpPageState extends State<OtpPage> {
               /// Resend OTP
               Center(
                 child: Obx(() => TextButton(
-                  onPressed: (_isResendButtonDisabled || authController.isLoading.value)
+                  onPressed: (otpController.isResendButtonDisabled.value || authController.isLoading.value)
                       ? null
                       : () async {
-                          bool success = await authController.sendOtp(widget.phoneNumber);
+                          bool success = await authController.sendOtp(phoneNumber);
                           if (success) {
-                            _startTimer();
+                            otpController.startTimer();
                           }
                         },
                   child: Text(
-                    _isResendButtonDisabled
-                        ? 'Resend OTP in $_countdown\s'
+                    otpController.isResendButtonDisabled.value
+                        ? 'Resend OTP in ${otpController.countdown.value}\s'
                         : 'Resend OTP',
                     style: TextStyle(
-                        color: _isResendButtonDisabled
+                        color: otpController.isResendButtonDisabled.value
                             ? Colors.grey
                             : AppColors.buttonColor),
                   ),

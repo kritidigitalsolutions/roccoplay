@@ -3,28 +3,23 @@ import 'package:get/get.dart';
 import 'package:roccoplay/modules/auth/otpPage.dart';
 import '../../app/theme/app_colors.dart';
 import '../homePages/mainHomepage.dart';
-import 'auth_controller.dart';
+import '../../view_model/auth_controller/auth_controller.dart';
 
-class SignInPage extends StatefulWidget {
+class SignInPage extends StatelessWidget {
   const SignInPage({super.key});
 
   @override
-  State<SignInPage> createState() => _SignInPageState();
-}
-
-class _SignInPageState extends State<SignInPage> {
-  final _formKey = GlobalKey<FormState>();
-  final AuthController authController = Get.put(AuthController());
-
-  bool isAgeConfirmed = false;
-
-  final TextEditingController phoneController = TextEditingController();
-  final TextEditingController codeController = TextEditingController();
-
-  bool showCodeField = false;
-
-  @override
   Widget build(BuildContext context) {
+    final _formKey = GlobalKey<FormState>();
+    final AuthController authController = Get.put(AuthController());
+
+    // Rx variables to avoid setState
+    final isAgeConfirmed = false.obs;
+    final showCodeField = false.obs;
+
+    final TextEditingController phoneController = TextEditingController();
+    final TextEditingController codeController = TextEditingController();
+
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
     return GestureDetector(
@@ -36,10 +31,7 @@ class _SignInPageState extends State<SignInPage> {
           backgroundColor: Colors.black,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios,
-              color: AppColors.white,
-            ),
+            icon: const Icon(Icons.arrow_back_ios, color: AppColors.white),
             onPressed: () {
               Get.offAll(() => const MainHomePage());
             },
@@ -99,11 +91,12 @@ class _SignInPageState extends State<SignInPage> {
                                 }
 
                                 bool isEmail = RegExp(
-                                        r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$')
-                                    .hasMatch(value);
+                                  r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$',
+                                ).hasMatch(value);
 
-                                bool isPhone =
-                                    RegExp(r'^[6-9][0-9]{9}$').hasMatch(value);
+                                bool isPhone = RegExp(
+                                  r'^[6-9][0-9]{9}$',
+                                ).hasMatch(value);
 
                                 if (!isEmail && !isPhone) {
                                   return "Enter valid phone number or email";
@@ -111,13 +104,17 @@ class _SignInPageState extends State<SignInPage> {
                                 return null;
                               },
                               decoration: InputDecoration(
-                                hintText: "Phone Number or Email",
-                                hintStyle:
-                                    const TextStyle(color: Colors.white54),
+                                prefixText: "+91 ",
+                                prefixStyle: const TextStyle(color: Colors.white),
+                                hintText: "Phone Number",
+                                hintStyle: const TextStyle(
+                                  color: Colors.white54,
+                                ),
                                 filled: true,
                                 fillColor: Colors.grey[900],
-                                errorStyle:
-                                    const TextStyle(color: Colors.redAccent),
+                                errorStyle: const TextStyle(
+                                  color: Colors.redAccent,
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
@@ -140,9 +137,7 @@ class _SignInPageState extends State<SignInPage> {
                           ),
                           GestureDetector(
                             onTap: () {
-                              setState(() {
-                                showCodeField = !showCodeField;
-                              });
+                              showCodeField.toggle();
                             },
                             child: const Text(
                               "Enter Code",
@@ -157,69 +152,71 @@ class _SignInPageState extends State<SignInPage> {
 
                       const SizedBox(height: 10),
 
-                      if (showCodeField)
-                        TextField(
-                          controller: codeController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: "Enter Sign Up Code",
-                            hintStyle: const TextStyle(color: Colors.white54),
-                            filled: true,
-                            fillColor: Colors.grey[900],
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
+                      Obx(
+                        () => showCodeField.value
+                            ? TextField(
+                                controller: codeController,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  hintText: "Enter Sign Up Code",
+                                  hintStyle: const TextStyle(
+                                    color: Colors.white54,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.grey[900],
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
 
                       const SizedBox(height: 20),
 
                       /// AGE CONFIRMATION CHECKBOX
                       Row(
                         children: [
-                          Checkbox(
-                            value: isAgeConfirmed,
-                            activeColor: Colors.pinkAccent,
-                            onChanged: (value) {
-                              if (!isAgeConfirmed) {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    backgroundColor: Colors.black,
-                                    title: const Text(
-                                      "Age Restriction",
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    content: const Text(
-                                      "You must be 18 years or older to use RoccoPlay.",
-                                      style: TextStyle(color: Colors.white70),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                        },
-                                        child: const Text("Cancel"),
+                          Obx(
+                            () => Checkbox(
+                              value: isAgeConfirmed.value,
+                              activeColor: Colors.pinkAccent,
+                              onChanged: (value) {
+                                if (!isAgeConfirmed.value) {
+                                  Get.dialog(
+                                    AlertDialog(
+                                      backgroundColor: Colors.black,
+                                      title: const Text(
+                                        "Age Restriction",
+                                        style: TextStyle(color: Colors.white),
                                       ),
-                                      TextButton(
-                                        onPressed: () {
-                                          setState(() {
-                                            isAgeConfirmed = true;
-                                          });
-                                          Navigator.pop(context);
-                                        },
-                                        child: const Text("Confirm"),
+                                      content: const Text(
+                                        "You must be 18 years or older to use RoccoPlay.",
+                                        style: TextStyle(color: Colors.white70),
                                       ),
-                                    ],
-                                  ),
-                                );
-                              } else {
-                                setState(() {
-                                  isAgeConfirmed = false;
-                                });
-                              }
-                            },
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () {
+                                            Get.back();
+                                          },
+                                          child: const Text("Cancel"),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            isAgeConfirmed.value = true;
+                                            Get.back();
+                                          },
+                                          child: const Text("Confirm"),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                } else {
+                                  isAgeConfirmed.value = false;
+                                }
+                              },
+                            ),
                           ),
                           const Expanded(
                             child: Text(
@@ -239,41 +236,47 @@ class _SignInPageState extends State<SignInPage> {
                       SizedBox(
                         width: double.infinity,
                         height: 55,
-                        child: Obx(() => ElevatedButton(
-                              onPressed: (isAgeConfirmed && !authController.isLoading.value)
-                                  ? () async {
-                                      if (_formKey.currentState!.validate()) {
-                                        FocusScope.of(context).unfocus();
-                                        String valueToSend =
-                                            phoneController.text;
+                        child: Obx(
+                          () => ElevatedButton(
+                            onPressed:
+                                (isAgeConfirmed.value &&
+                                    !authController.isLoading.value)
+                                ? () async {
+                                    if (_formKey.currentState!.validate()) {
+                                      FocusScope.of(context).unfocus();
+                                      String valueToSend = "+91${phoneController.text}";
 
-                                        bool success = await authController
-                                            .sendOtp(valueToSend);
-                                        if (success) {
-                                          Get.to(() => OtpPage(
-                                              phoneNumber: valueToSend));
-                                        }
+                                      bool success = await authController
+                                          .sendOtp(valueToSend);
+                                      if (success) {
+                                        Get.to(
+                                          () =>
+                                              OtpPage(phoneNumber: valueToSend),
+                                        );
                                       }
                                     }
-                                  : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.buttonColor,
-                                disabledBackgroundColor: Colors.grey,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.buttonColor,
+                              disabledBackgroundColor: Colors.grey,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              child: authController.isLoading.value
-                                  ? const CircularProgressIndicator(
-                                      color: Colors.white)
-                                  : const Text(
-                                      "Get OTP",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.white,
-                                      ),
+                            ),
+                            child: authController.isLoading.value
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                : const Text(
+                                    "Get OTP",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
                                     ),
-                            )),
+                                  ),
+                          ),
+                        ),
                       ),
 
                       const SizedBox(height: 40),

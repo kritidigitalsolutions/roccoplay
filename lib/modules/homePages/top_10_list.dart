@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:roccoplay/modules/dramaDetails/dramaDetailsPage.dart';
-
+import '../../data/models/response_model/content_response_model/content_model.dart';
 import '../../app/theme/app_colors.dart';
 import '../../widgets/catagory_widget.dart';
 
 class Top10List extends StatelessWidget {
-  final List<String> images;
+  final List<ContentModel> content;
+  final bool isSignedIn;
 
-  const Top10List({super.key, required this.images});
+  const Top10List({super.key, required this.content, required this.isSignedIn});
 
   @override
   Widget build(BuildContext context) {
+    if (content.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -19,37 +23,15 @@ class Top10List extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: InkWell(
             onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context)=>CategoryGridPage(
-                title: "Top 10",
-                  items: [
-                {
-                  "image": "assets/images/sahid_teri_bato.jpg",
-                  "title": "Movie 1"
-                },
-                {
-                  "image": "assets/images/sahid_teri_bato.jpg",
-                  "title": "Movie 2"
-                },
-                {
-                  "image": "assets/images/sahid_teri_bato.jpg",
-                  "title": "Movie 3"
-                },
-                {
-                  "image": "assets/images/asur.webp",
-                  "title": "Movie 4"
-                },
-                {
-                  "image": "assets/images/asur.webp",
-                  "title": "Movie 5"
-                },
-              ],
-              ),
-              ),
-              );
+              // Get.to(() => CategoryGridPage(
+              //   title: "Top 10",
+              //   content: content,
+              //   isSignedIn: isSignedIn, items: [],
+              // ));
             },
-            child: Row(
+            child: const Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Text(
                   "Top 10",
                   style: TextStyle(
@@ -72,22 +54,16 @@ class Top10List extends StatelessWidget {
           height: 170,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: images.length > 10 ? 10 : images.length,
+            itemCount: content.length > 10 ? 10 : content.length,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemBuilder: (context, index) {
+              final item = content[index];
               return GestureDetector(
                 onTap: () {
-                  print("Clicked index: $index");
-
-                  // Example: Navigate to details page
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DramaDetailsPage(
-                       isSignedIn: true,
-                      ),
-                    ),
-                  );
+                  Get.to(() => DramaDetailsPage(
+                    isSignedIn: isSignedIn,
+                    content: item,
+                  ));
                 },
                 child: Container(
                   width: 130,
@@ -117,11 +93,17 @@ class Top10List extends StatelessWidget {
                         top: 10,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.asset(
-                            images[index],
+                          child: Image.network(
+                            item.poster,
                             width: 95,
                             height: 140,
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Image.asset(
+                              "assets/images/farzi.jpg",
+                              width: 95,
+                              height: 140,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ),
@@ -132,7 +114,6 @@ class Top10List extends StatelessWidget {
             },
           ),
         ),
-
       ],
     );
   }

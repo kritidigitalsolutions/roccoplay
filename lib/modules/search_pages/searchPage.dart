@@ -99,15 +99,15 @@ class _SearchPageState extends State<SearchPage> {
             padding: const EdgeInsets.symmetric(horizontal: 15),
             child: InkWell(
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CategoryGridPage(
-                      title: "Top Series",
-                      items: trandSearch,
-                    ),
-                  ),
-                );
+                // Navigator.push(
+                //   context,
+                //   MaterialPageRoute(
+                //     builder: (context) => CategoryGridPage(
+                //       title: "Top Series",
+                //       items: trandSearch, content: [], isSignedIn: null,
+                //     ),
+                //   ),
+                // );
               },
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -144,13 +144,13 @@ class _SearchPageState extends State<SearchPage> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(5),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              DramaDetailsPage(isSignedIn: true),
-                        ),
-                      );
+                      // Navigator.push(
+                      //   context,
+                      //   MaterialPageRoute(
+                      //     builder: (context) =>
+                      //         DramaDetailsPage(isSignedIn: true),
+                      //   ),
+                      // );
                     },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(5),

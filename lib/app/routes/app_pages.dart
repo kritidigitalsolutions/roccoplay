@@ -10,7 +10,7 @@ class AppPages {
     GetPage(name: AppRoutes.home, page: () => const MainHomePage()),
     GetPage(name: AppRoutes.splash, page: () => SplashScreen()),
     GetPage(name: AppRoutes.signIn, page: () => const SignInPage()),
-    GetPage(name: AppRoutes.otpPage, page: () => const OtpPage(phoneNumber: '')), // Note: OTP page usually needs phone number
+    GetPage(name: AppRoutes.otpPage, page: () => const OtpPage(phoneNumber: '')),
     // GetPage(name: AppRoutes.dramaDetails, page: () => SplashScreen()),
     // ... other routes
   ];

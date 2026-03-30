@@ -1,38 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:roccoplay/modules/dramaDetails/dramaDetailsPage.dart';
-
+import '../data/models/response_model/content_response_model/content_model.dart';
 import 'catagory_widget.dart';
 
 class HomeSliderSection extends StatelessWidget {
   final String title;
-  final List<Map<String, String>> items;
+  final List<ContentModel> content;
+  final bool isSignedIn;
 
   const HomeSliderSection({
     super.key,
     required this.title,
-    required this.items,
+    required this.content,
+    required this.isSignedIn,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (content.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
         /// 🔥 CLICKABLE TITLE
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: InkWell(
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CategoryGridPage(
+              Get.to(() => CategoryGridPage(
                     title: title,
-                    items: items,
-                  ),
-                ),
-              );
+                    content: content,
+                    isSignedIn: isSignedIn,
+                  ));
             },
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -61,26 +61,29 @@ class HomeSliderSection extends StatelessWidget {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: items.length,
+            itemCount: content.length,
             itemBuilder: (context, index) {
+              final item = content[index];
               return Container(
                 width: 150,
                 margin: const EdgeInsets.only(right: 12),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DramaDetailsPage(isSignedIn: true)
-                      ),
-                    );
+                    Get.to(() => DramaDetailsPage(
+                          isSignedIn: isSignedIn,
+                          content: item,
+                        ));
                   },
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      items[index]["image"]!,
+                    child: Image.network(
+                      item.poster,
                       fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                        "assets/images/farzi.jpg",
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ),

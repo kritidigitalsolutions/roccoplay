@@ -12,15 +12,20 @@ class ApiProvider extends GetConnect {
 
   Future<Response> sendOtp(String phoneNumber) {
     return post(AppConstants.sendOtp, {
-      'phone': phoneNumber,
+      'identifier': phoneNumber,
+      'type': 'phone',
     });
   }
 
   Future<Response> verifyOtp(String phoneNumber, String otp) async {
+    // Body: {"identifier": "...", "otp": "...", "type": "phone"}
     final res = await post(AppConstants.verifyOtp, {
-      'phone': phoneNumber,
+      'identifier': phoneNumber,
       'otp': otp,
+      'type': 'phone',
     });
+
+    print("FULL VERIFY RESPONSE => ${res.body}");
     return res;
   }
 
@@ -29,28 +34,26 @@ class ApiProvider extends GetConnect {
     required String phone,
     required String name,
     required String email,
-    // required String imagePath,
+    String? imagePath,
   }) async {
     try {
-      // final file = File(imagePath);
-      // if (!file.existsSync()) {
-      //   return const Response(statusCode: 400, statusText: "Image file not found");
-      // }
-
-      final formData = FormData({
+      final Map<String, dynamic> body = {
         "phone": phone,
         "name": name,
         "email": email,
-        // "profileImage": MultipartFile(
-        //   file.readAsBytesSync(),
-        //   filename: imagePath.split('/').last,
-        // ),
-      });
+      };
 
-      print("📤 SENDING CREATE PROFILE DATA...");
-      print("Fields: phone=$phone, name=$name, email=$email");
-      // print("Image Path: $imagePath");
+      if (imagePath != null) {
+        final file = File(imagePath);
+        if (file.existsSync()) {
+          body["profileImage"] = MultipartFile(
+            file.readAsBytesSync(),
+            filename: imagePath.split('/').last,
+          );
+        }
+      }
 
+      final formData = FormData(body);
       final response = await post(
         AppConstants.createProfile,
         formData,

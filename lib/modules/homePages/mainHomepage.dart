@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
+import '../../view_model/content_controller/content_controller.dart';
 import '../navbar/bottomNavbar.dart';
 import '../dramaDetails/dramaDetailsPage.dart';
-import '../../utils/app_session.dart';
 import 'auto_slider.dart';
 import 'coming_soon.dart';
 import '../navbar/downloads.dart';
@@ -12,101 +13,68 @@ import 'top_10_list.dart';
 import '../auth/signInPage.dart';
 import '../premium/goPremium.dart';
 import '../profile/profilePage.dart';
+import '../../view_model/home_controller/home_controller.dart';
+import '../../view_model/auth_controller/auth_controller.dart';
 
-class MainHomePage extends StatefulWidget {
+class MainHomePage extends StatelessWidget {
   const MainHomePage({super.key});
 
   @override
-  State<MainHomePage> createState() => _MainHomePageState();
-}
-
-class _MainHomePageState extends State<MainHomePage> {
-  int _selectedIndex = 0;
-  bool isLoggedIn = false;
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  final List<String> webSeriesImages = [
-    "assets/images/taskaree.jpg",
-    "assets/images/sahid_teri_bato.jpg",
-    "assets/images/farzi.jpg",
-    "assets/images/khaki.webp",
-    "assets/images/kota_factory.jpg",
-    "assets/images/asur.webp",
-    "assets/images/asur2.jpeg",
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    checkLoginStatus();
-  }
-
-  void checkLoginStatus() async {
-    bool login = await AppSession.getLogin();
-    setState(() {
-      isLoggedIn = login;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final ContentController contentController = Get.put(ContentController());
+    final HomeController controller = Get.put(HomeController());
+    final AuthController authController = Get.find<AuthController>();
+
     return Scaffold(
       backgroundColor: AppColors.black,
       body: Stack(
         children: [
           /// PAGE CONTENT
           SafeArea(
-            child: IndexedStack(
-              index: _selectedIndex,
+            child: Obx(() => IndexedStack(
+              index: controller.selectedIndex.value,
               children: [
-                _buildHomeContent(),
+                _buildHomeContent(context, controller, authController, contentController),
                 const SearchPage(),
-                GoPremiumPage(),
+                const GoPremiumPage(),
                 DownloadsPage(),
-                isLoggedIn
+                authController.isLoggedIn.value
                     ? ProfilePage(
                         onLogout: () {
-                          setState(() {
-                            isLoggedIn = false;
-                            _selectedIndex = 0;
-                          });
+                          controller.logout();
+                          authController.setLoginStatus(false);
                         },
                       )
-                    : SignInPage(
-                        // onLoginSuccess: () {
-                        //   setState(() {
-                        //     isLoggedIn = true;
-                        //     _selectedIndex = 4; // go to Profile
-                        //   });
-                        // },
-                      ),
+                    : const SignInPage(),
               ],
-            ),
+            )),
           ),
 
-          if (_selectedIndex != 2 && !(_selectedIndex == 4 && !isLoggedIn))
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: CustomBottomNavbar(
-                selectedIndex: _selectedIndex,
-                onItemTapped: _onItemTapped,
-                isLoggedIn: isLoggedIn,
-              ),
-            ),
+          Obx(() {
+            int selectedIndex = controller.selectedIndex.value;
+            bool isLoggedIn = authController.isLoggedIn.value;
+            
+            if (selectedIndex != 2 && !(selectedIndex == 4 && !isLoggedIn)) {
+              return Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: CustomBottomNavbar(
+                  selectedIndex: selectedIndex,
+                  onItemTapped: controller.onItemTapped,
+                  isLoggedIn: isLoggedIn,
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }),
         ],
       ),
     );
   }
 
   /// 🔹 HOME CONTENT
-  Widget _buildHomeContent() {
+  Widget _buildHomeContent(BuildContext context, HomeController controller, AuthController authController, ContentController contentController) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -127,10 +95,7 @@ class _MainHomePageState extends State<MainHomePage> {
                 height: 22,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => GoPremiumPage()),
-                    );
+                    Get.to(() => const GoPremiumPage());
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.buttonColor,
@@ -142,19 +107,6 @@ class _MainHomePageState extends State<MainHomePage> {
                   ),
                 ),
               ),
-              // InkWell(
-              //   onTap: () {
-              //     Navigator.push(
-              //       context,
-              //       MaterialPageRoute(builder: (context) => LanguagePage()),
-              //     );
-              //   },
-              //   child: const Icon(
-              //     Icons.language,
-              //     color: Colors.white,
-              //     size: 28,
-              //   ),
-              // ),
             ],
           ),
         ),
@@ -167,18 +119,10 @@ class _MainHomePageState extends State<MainHomePage> {
               children: [
                 const SizedBox(height: 15),
 
-                AutoSlider(
-                  images: [
-                    "assets/images/sahid_teri_bato.jpg",
-                    "assets/images/farzi.jpg",
-                    "assets/images/khaki.webp",
-                    "assets/images/kota_factory.jpg",
-                    "assets/images/taskaree.jpg",
-                    "assets/images/asur.webp",
-                    "assets/images/asur2.jpeg",
-                  ],
-                  isSignedIn: isLoggedIn,
-                ),
+                Obx(() => AutoSlider(
+                  content: contentController.trendingContent,
+                  isSignedIn: authController.isLoggedIn.value,
+                )),
 
                 const SizedBox(height: 25),
 
@@ -196,65 +140,60 @@ class _MainHomePageState extends State<MainHomePage> {
 
                 const SizedBox(height: 15),
 
-                SizedBox(
+                Obx(() => SizedBox(
                   height: 170,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount: webSeriesImages.length,
+                    itemCount: contentController.allContent.where((c) => c.contentType == 'series').length,
                     itemBuilder: (context, index) {
+                      final item = contentController.allContent.where((c) => c.contentType == 'series').toList()[index];
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: GestureDetector(
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    DramaDetailsPage(isSignedIn: isLoggedIn),
-                              ),
-                            );
+                            Get.to(() => DramaDetailsPage(
+                              isSignedIn: authController.isLoggedIn.value,
+                              content: item,
+                            ));
                           },
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(15),
-                            child: Image.asset(
-                              webSeriesImages[index],
+                            child: Image.network(
+                              item.poster,
                               width: 130,
                               fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Image.asset(
+                                "assets/images/farzi.jpg",
+                                width: 130,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
                         ),
                       );
                     },
                   ),
-                ),
+                )),
 
                 const SizedBox(height: 10),
-                Top10List(
-                  images: [
-                    "assets/images/sahid_teri_bato.jpg",
-                    "assets/images/farzi.jpg",
-                    "assets/images/khaki.webp",
-                    "assets/images/kota_factory.jpg",
-                    "assets/images/taskaree.jpg",
-                    "assets/images/asur.webp",
-                    "assets/images/asur2.jpeg",
-                  ],
-                ),
+                
+                Obx(() => Top10List(
+                  content: contentController.allContent.where((c) => c.category.contains('top10')).toList(),
+                  isSignedIn: authController.isLoggedIn.value,
+                )),
+
                 const SizedBox(height: 10),
-                HomeSliderSection(
-                  title: "Mela",
-                  items: [
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                  ],
-                ),
+                
+                Obx(() => HomeSliderSection(
+                  title: "Movies",
+                  content: contentController.allContent.where((c) => c.contentType == 'movie').toList(),
+                  isSignedIn: authController.isLoggedIn.value,
+                )),
+
                 const SizedBox(height: 10),
 
                 ComingSoonSection(
-                  items: [
+                  items: const [
                     {"image": "assets/images/asur.webp", "date": "1 March"},
                     {"image": "assets/images/sahid_teri_bato.jpg", "date": "15 march"},
                     {"image": "assets/images/sahid_teri_bato.jpg", "date": "10 April"},
@@ -269,118 +208,118 @@ class _MainHomePageState extends State<MainHomePage> {
                     },
                   ],
                 ),
-                const SizedBox(height: 10),
-                HomeSliderSection(
-                  title: "tranding Now",
-                  items: [
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                  ],
-                ),
-
-                const SizedBox(height: 10),
-                HomeSliderSection(
-                  title: "New in RoccoPlay",
-                  items: [
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                  ],
-                ),
-
-                const SizedBox(height: 10),
-                HomeSliderSection(
-                  title: "RoccoPlay Orginal",
-                  items: [
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                  ],
-                ),
-                const SizedBox(height: 10),
-                HomeSliderSection(
-                  title: "RoccoPlay Orginal",
-                  items: [
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                  ],
-                ),
-                const SizedBox(height: 10),
-                HomeSliderSection(
-                  title: "RoccoPlay Orginal",
-                  items: [
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                  ],
-                ),
-                const SizedBox(height: 10),
-                HomeSliderSection(
-                  title: "RoccoPlay Orginal",
-                  items: [
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                  ],
-                ),
-                const SizedBox(height: 10),
-                HomeSliderSection(
-                  title: "RoccoPlay Orginal",
-                  items: [
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                  ],
-                ),
-                const SizedBox(height: 10),
-                HomeSliderSection(
-                  title: "RoccoPlay Orginal",
-                  items: [
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                  ],
-                ),
-                const SizedBox(height: 10),
-                HomeSliderSection(
-                  title: "RoccoPlay Orginal",
-                  items: [
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                  ],
-                ),
-                const SizedBox(height: 10),
-                HomeSliderSection(
-                  title: "RoccoPlay Orginal",
-                  items: [
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                    {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                  ],
-                ),
+                // const SizedBox(height: 10),
+                // HomeSliderSection(
+                //   title: "tranding Now",
+                //   items: [
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
+                //   ],
+                // ),
+                //
+                // const SizedBox(height: 10),
+                // HomeSliderSection(
+                //   title: "New in RoccoPlay",
+                //   items: [
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
+                //   ],
+                // ),
+                //
+                // const SizedBox(height: 10),
+                // HomeSliderSection(
+                //   title: "RoccoPlay Orginal",
+                //   items: [
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
+                //   ],
+                // ),
+                // const SizedBox(height: 10),
+                // HomeSliderSection(
+                //   title: "RoccoPlay Orginal",
+                //   items: [
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
+                //   ],
+                // ),
+                // const SizedBox(height: 10),
+                // HomeSliderSection(
+                //   title: "RoccoPlay Orginal",
+                //   items: [
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
+                //   ],
+                // ),
+                // const SizedBox(height: 10),
+                // HomeSliderSection(
+                //   title: "RoccoPlay Orginal",
+                //   items: [
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
+                //   ],
+                // ),
+                // const SizedBox(height: 10),
+                // HomeSliderSection(
+                //   title: "RoccoPlay Orginal",
+                //   items: [
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
+                //   ],
+                // ),
+                // const SizedBox(height: 10),
+                // HomeSliderSection(
+                //   title: "RoccoPlay Orginal",
+                //   items: [
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
+                //   ],
+                // ),
+                // const SizedBox(height: 10),
+                // HomeSliderSection(
+                //   title: "RoccoPlay Orginal",
+                //   items: [
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
+                //   ],
+                // ),
+                // const SizedBox(height: 10),
+                // HomeSliderSection(
+                //   title: "RoccoPlay Orginal",
+                //   items: [
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
+                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
+                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
+                //   ],
+                // ),
 
                 const SizedBox(height: 50),
 

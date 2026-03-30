@@ -5,7 +5,7 @@ import 'package:roccoplay/modules/profile/setting_page.dart';
 import 'package:roccoplay/modules/profile/terms_condition_page.dart';
 import 'package:roccoplay/modules/profile/watchlist.dart';
 import '../../app/theme/app_colors.dart';
-import '../auth/auth_controller.dart';
+import '../../view_model/auth_controller/auth_controller.dart';
 import '../premium/goPremium.dart';
 import 'account_setting.dart';
 import 'Rate_your_app.dart';
@@ -23,8 +23,8 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AuthController authController = Get.find<AuthController>();
+    print("🔍 UI User Data: ${authController.userData.value}");
 
-    // Profile fetch karein jab page load ho
     WidgetsBinding.instance.addPostFrameCallback((_) {
       authController.getProfile();
     });
