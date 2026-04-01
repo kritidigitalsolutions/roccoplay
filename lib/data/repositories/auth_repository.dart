@@ -4,7 +4,7 @@ import '../network/base_api_service.dart';
 import '../../utils/constants.dart';
 
 class AuthRepository {
-  final BaseApiService apiProvider; // Renamed back to apiProvider to fix AuthController error
+  final BaseApiService apiProvider;
 
   AuthRepository(this.apiProvider);
 

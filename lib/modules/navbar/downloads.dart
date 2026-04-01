@@ -1,34 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:roccoplay/modules/auth/signInPage.dart';
-import '../homePages/mainHomepage.dart';
-import '../../utils/app_session.dart';
+import '../../view_model/auth_controller/auth_controller.dart';
+import '../../view_model/home_controller/home_controller.dart';
 
-class DownloadsPage extends StatefulWidget {
-  @override
-  _DownloadsPageState createState() => _DownloadsPageState();
-}
-
-class _DownloadsPageState extends State<DownloadsPage> {
-
-  // final isLoggedIn = AppSession.getLogin;
-
-  bool isLoggedIn = false;
-
-  @override
-  void initState() {
-    super.initState();
-    loadSession();
-  }
-
-  void loadSession() async {
-    await AppSession.getLogin();
-    setState(() async {
-      isLoggedIn = await AppSession.getLogin();
-    });
-  }
+class DownloadsPage extends StatelessWidget {
+  const DownloadsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final AuthController authController = Get.find<AuthController>();
+    final HomeController homeController = Get.find<HomeController>();
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -44,11 +27,13 @@ class _DownloadsPageState extends State<DownloadsPage> {
           ),
         ),
       ),
-      body: _buildSignInView(), // Always same layout
+      body: Obx(() => _buildDownloadsView(authController, homeController)),
     );
   }
 
-  Widget _buildSignInView() {
+  Widget _buildDownloadsView(AuthController authController, HomeController homeController) {
+    bool isLoggedIn = authController.isLoggedIn.value;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 30),
@@ -97,19 +82,10 @@ class _DownloadsPageState extends State<DownloadsPage> {
               ),
               onPressed: () {
                 if (isLoggedIn) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MainHomePage(),
-                    ),
-                  );
+                  // Go to Home tab
+                  homeController.selectedIndex.value = 0;
                 } else {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SignInPage(),
-                    ),
-                  );
+                  Get.to(() => const SignInPage());
                 }
               },
               child: Text(

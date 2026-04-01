@@ -129,7 +129,7 @@ class ProfilePage extends StatelessWidget {
             const SizedBox(height: 10),
 
             buildMenuItem(context, Icons.person_outline, "My Account", const AccountSettingsPage()),
-            buildMenuItem(context, Icons.bookmark_border, "Watchlist", const WatchlistPage()),
+            buildMenuItem(context, Icons.bookmark_border, "Watchlist",  WatchlistPage()),
             buildMenuItem(context, Icons.settings_outlined, "Settings", const SettingsPage()),
             buildMenuItem(context, Icons.rate_review, "Rate Our App", const ReviewPage()),
             buildMenuItem(context, Icons.info_outline, "Terms & Conditions", const TermsAndConditionsPage()),

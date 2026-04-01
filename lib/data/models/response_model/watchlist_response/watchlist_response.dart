@@ -1,16 +1,18 @@
 class WatchlistResponseModel {
   final String message;
-  final WatchlistData data;
+  final WatchlistData? data; // 👈 nullable
 
   WatchlistResponseModel({
     required this.message,
-    required this.data,
+    this.data,
   });
 
   factory WatchlistResponseModel.fromJson(Map<String, dynamic> json) {
     return WatchlistResponseModel(
-      message: json['message'],
-      data: WatchlistData.fromJson(json['data']),
+      message: json['message'] ?? '',
+      data: json['data'] != null
+          ? WatchlistData.fromJson(json['data'])
+          : null,
     );
   }
 }

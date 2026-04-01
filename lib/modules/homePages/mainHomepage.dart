@@ -37,7 +37,7 @@ class MainHomePage extends StatelessWidget {
                 _buildHomeContent(context, controller, authController, contentController),
                 const SearchPage(),
                 const GoPremiumPage(),
-                DownloadsPage(),
+                const DownloadsPage(),
                 authController.isLoggedIn.value
                     ? ProfilePage(
                         onLogout: () {
@@ -120,7 +120,7 @@ class MainHomePage extends StatelessWidget {
                 const SizedBox(height: 15),
 
                 Obx(() => AutoSlider(
-                  content: contentController.trendingContent,
+                  content: contentController.allContent.where((c) => c.category.contains('trending') && c.isComingSoon == false).toList(),
                   isSignedIn: authController.isLoggedIn.value,
                 )),
 
@@ -144,9 +144,9 @@ class MainHomePage extends StatelessWidget {
                   height: 170,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount: contentController.allContent.where((c) => c.contentType == 'series').length,
+                    itemCount: contentController.allContent.where((c) => c.contentType == 'series' && c.isComingSoon == false).length,
                     itemBuilder: (context, index) {
-                      final item = contentController.allContent.where((c) => c.contentType == 'series').toList()[index];
+                      final item = contentController.allContent.where((c) => c.contentType == 'series' && c.isComingSoon == false).toList()[index];
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: GestureDetector(
@@ -178,7 +178,7 @@ class MainHomePage extends StatelessWidget {
                 const SizedBox(height: 10),
                 
                 Obx(() => Top10List(
-                  content: contentController.allContent.where((c) => c.category.contains('top10')).toList(),
+                  content: contentController.allContent.where((c) => c.category.contains('top10') && c.isComingSoon == false).toList(),
                   isSignedIn: authController.isLoggedIn.value,
                 )),
 
@@ -186,140 +186,16 @@ class MainHomePage extends StatelessWidget {
                 
                 Obx(() => HomeSliderSection(
                   title: "Movies",
-                  content: contentController.allContent.where((c) => c.contentType == 'movie').toList(),
+                  content: contentController.allContent.where((c) => c.contentType == 'movie' && c.isComingSoon == false).toList(),
                   isSignedIn: authController.isLoggedIn.value,
                 )),
 
                 const SizedBox(height: 10),
 
-                ComingSoonSection(
-                  items: const [
-                    {"image": "assets/images/asur.webp", "date": "1 March"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "date": "15 march"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "date": "10 April"},
-                    {"image": "assets/images/sahid_teri_bato.jpg", "date": "15 march"},
-                    {
-                      "image": "assets/images/sahid_teri_bato.jpg",
-                      "date": "Coming Soon",
-                    },
-                    {
-                      "image": "assets/images/sahid_teri_bato.jpg",
-                      "date": "Coming Soon",
-                    },
-                  ],
-                ),
-                // const SizedBox(height: 10),
-                // HomeSliderSection(
-                //   title: "tranding Now",
-                //   items: [
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                //   ],
-                // ),
-                //
-                // const SizedBox(height: 10),
-                // HomeSliderSection(
-                //   title: "New in RoccoPlay",
-                //   items: [
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                //   ],
-                // ),
-                //
-                // const SizedBox(height: 10),
-                // HomeSliderSection(
-                //   title: "RoccoPlay Orginal",
-                //   items: [
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                //   ],
-                // ),
-                // const SizedBox(height: 10),
-                // HomeSliderSection(
-                //   title: "RoccoPlay Orginal",
-                //   items: [
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                //   ],
-                // ),
-                // const SizedBox(height: 10),
-                // HomeSliderSection(
-                //   title: "RoccoPlay Orginal",
-                //   items: [
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                //   ],
-                // ),
-                // const SizedBox(height: 10),
-                // HomeSliderSection(
-                //   title: "RoccoPlay Orginal",
-                //   items: [
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                //   ],
-                // ),
-                // const SizedBox(height: 10),
-                // HomeSliderSection(
-                //   title: "RoccoPlay Orginal",
-                //   items: [
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                //   ],
-                // ),
-                // const SizedBox(height: 10),
-                // HomeSliderSection(
-                //   title: "RoccoPlay Orginal",
-                //   items: [
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                //   ],
-                // ),
-                // const SizedBox(height: 10),
-                // HomeSliderSection(
-                //   title: "RoccoPlay Orginal",
-                //   items: [
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                //   ],
-                // ),
-                // const SizedBox(height: 10),
-                // HomeSliderSection(
-                //   title: "RoccoPlay Orginal",
-                //   items: [
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 1"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 2"},
-                //     {"image": "assets/images/sahid_teri_bato.jpg", "title": "Movie 3"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 4"},
-                //     {"image": "assets/images/asur.webp", "title": "Movie 5"},
-                //   ],
-                // ),
+                Obx(() => ComingSoonSection(
+                  content: contentController.allContent.where((c) => c.isComingSoon == true).toList(),
+                  isSignedIn: authController.isLoggedIn.value,
+                )),
 
                 const SizedBox(height: 50),
 

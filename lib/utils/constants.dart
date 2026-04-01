@@ -21,4 +21,12 @@ class AppConstants {
   /// watchlist
   static const String addWatchlist = '$baseUrl/user/watchlist';
   static const String getWatchlist = '$baseUrl/user/watchlist';
+  static const String removeWatchlist = '$baseUrl/user/watchlist';
+
+  /// interaction
+  static const String toggleInteraction = '$baseUrl/interaction/toggle';
+
+  /// review
+  static const String rateApp = '$baseUrl/rating/rate';
+
 }

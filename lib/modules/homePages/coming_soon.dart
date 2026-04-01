@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:roccoplay/app/theme/app_colors.dart';
+import 'package:roccoplay/data/models/response_model/content_response_model/content_model.dart';
+import 'package:roccoplay/modules/dramaDetails/dramaDetailsPage.dart';
 
 class ComingSoonSection extends StatelessWidget {
-  final List<Map<String, String>> items;
+  final List<ContentModel> content;
+  final bool isSignedIn;
 
   const ComingSoonSection({
     super.key,
-    required this.items,
+    required this.content,
+    required this.isSignedIn,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (content.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -19,15 +26,11 @@ class ComingSoonSection extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: InkWell(
             onTap: () {
-              // Navigator.push(
-              //   context, MaterialPageRoute(builder:
-              //     (context)=> detail_comingsoonPage()
-              // ),
-              // );
+              // Get.to(() => MoreComingSoonPage());
             },
-            child: Row(
+            child: const Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Text(
                   "Coming Soon",
                   style: TextStyle(
@@ -55,35 +58,33 @@ class ComingSoonSection extends StatelessWidget {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: items.length,
+            itemCount: content.length,
             itemBuilder: (context, index) {
+              final item = content[index];
               return Container(
                 width: 170,
                 margin: const EdgeInsets.only(right: 16),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(15),
                   onTap: () {
-                    print("image is Clicked");
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //     builder: (context) => ComingSoonDetailsPage(
-                    //       image: items[index]["image"]!,
-                    //       date: items[index]["date"]!,
-                    //     ),
-                    //   ),
-                    // );
+                    Get.to(() => DramaDetailsPage(isSignedIn: isSignedIn, content: item));
                   },
                   child: Stack(
                     children: [
                       /// Poster Image
                       ClipRRect(
                         borderRadius: BorderRadius.circular(15),
-                        child: Image.asset(
-                          items[index]["image"]!,
+                        child: Image.network(
+                          item.poster,
                           height: 250,
                           width: 170,
                           fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Image.asset(
+                            "assets/images/asur.webp",
+                            height: 250,
+                            width: 170,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
 
@@ -93,18 +94,17 @@ class ComingSoonSection extends StatelessWidget {
                         left: 0,
                         right: 0,
                         child: Container(
-                          padding:
-                          const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: const BoxDecoration(
                             color: AppColors.white,
-                            borderRadius: const BorderRadius.only(
+                            borderRadius: BorderRadius.only(
                               bottomLeft: Radius.circular(15),
                               bottomRight: Radius.circular(15),
                             ),
                           ),
                           child: Center(
                             child: Text(
-                              items[index]["date"]!,
+                              _formatDate(item.releaseDate),
                               style: const TextStyle(
                                 color: Colors.black,
                                 fontSize: 14,
@@ -123,5 +123,17 @@ class ComingSoonSection extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return "Coming Soon";
+    try {
+      final date = DateTime.parse(dateStr);
+      // Simple formatting: 31 March
+      final months = ["Jan", "Feb", "March", "April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
+      return "${date.day} ${months[date.month - 1]}";
+    } catch (e) {
+      return "Coming Soon";
+    }
   }
 }

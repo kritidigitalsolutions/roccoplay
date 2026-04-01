@@ -6,6 +6,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../data/models/response_model/content_response_model/content_model.dart';
+import '../../view_model/content_controller/content_controller.dart';
+import '../../view_model/like_dislike_controller/like_dislike_controller.dart';
 import '../../view_model/watchlist_controller/watchlist_controller.dart';
 import '../popUp/age_popup.dart';
 import 'cast_crewPage.dart';
@@ -22,6 +24,26 @@ class DramaDetailsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final DramaDetailsController controller = Get.put(DramaDetailsController());
     final WatchlistController watchlistController = Get.find<WatchlistController>();
+    final ContentController contentController = Get.find<ContentController>();
+    final InteractionController interactionController =
+    Get.find<InteractionController>();
+
+    final List<ContentModel> relatedContent =
+    contentController.allContent.where((item) {
+      /// ❌ Skip same item
+      if (item.id == content.id) return false;
+
+      /// ✅ Same content type (movie / series)
+      if (item.contentType != content.contentType) return false;
+
+      /// ✅ Category match (at least one common category)
+      bool isSameCategory = item.category.any(
+            (cat) => content.category.contains(cat),
+      );
+
+      return isSameCategory;
+    }).toList();
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SingleChildScrollView(
@@ -193,44 +215,52 @@ class DramaDetailsPage extends StatelessWidget {
                   Column(
                     children: [
                       GestureDetector(
-                        onTap: () {
-
-                          watchlistController.toggleWatchlist(content.id.toString());
+                        onTap: watchlistController.isLoading.value
+                            ? null
+                            : () {
+                          watchlistController
+                              .toggleWatchlist(content.id.toString());
                         },
-                        child: Obx(() => Icon(
-                          watchlistController.isInWatchlist.value
+                        child: Icon(
+                          watchlistController.isInWatchlist(content.id.toString())
                               ? Icons.bookmark
                               : Icons.bookmark_border,
                           color: Colors.white,
                           size: 30,
-                        )),
+                        ),
                       ),
                       const SizedBox(height: 5),
-                      const Text("Watchlist", style: TextStyle(color: Colors.white, fontSize: 12)),
+                      const Text(
+                        "Watchlist",
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
                     ],
                   ),
-                  // Obx(() => _actionButton(
-                  //   icon: watchlistController.isInWatchlist.value
-                  //       ? Icons.bookmark
-                  //       : Icons.bookmark_border,
-                  //   label: "Watchlist",
-                  //   onTap: () =>
-                  //       watchlistController.toggleWatchlist(content.id),
-                  // )
-                  // ),
 
                   _actionButton(
-                    icon: controller.isLiked.value ? Icons.thumb_up : Icons.thumb_up_outlined,
+                    icon: interactionController.isLiked.value
+                        ? Icons.thumb_up
+                        : Icons.thumb_up_outlined,
                     label: "Like",
-                    onTap: controller.toggleLike,
+                    onTap: () {
+                      interactionController.toggleLike(
+                        contentId: content.id,
+                        contentType: content.contentType,
+                      );
+                    },
                   ),
 
                   _actionButton(
-                    icon: controller.isDisliked.value
+                    icon: interactionController.isDisliked.value
                         ? Icons.thumb_down
                         : Icons.thumb_down_outlined,
                     label: "Dislike",
-                    onTap: controller.toggleDislike,
+                    onTap: () {
+                      interactionController.toggleDislike(
+                        contentId: content.id,
+                        contentType: content.contentType,
+                      );
+                    },
                   ),
 
                   _actionButton(
@@ -307,40 +337,56 @@ class DramaDetailsPage extends StatelessWidget {
             const SizedBox(height: 25),
 
             /// ❤️ You May Also Like
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                "You May Also Like",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+            if (relatedContent.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  "You May Also Like",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 10),
+              const SizedBox(height: 10),
 
-            SizedBox(
-              height: 160,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: 8,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.only(left: 16),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.asset(
-                        "assets/images/asur.webp",
-                        width: 110,
-                        fit: BoxFit.cover,
+              SizedBox(
+                height: 160,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: relatedContent.length,
+                  itemBuilder: (context, index) {
+                    final item = relatedContent[index];
+                    return GestureDetector(
+                      onTap: () {
+                        Get.to(() => DramaDetailsPage(
+                          isSignedIn: isSignedIn,
+                          content: item,
+                        ), preventDuplicates: false);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 16),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            item.poster,
+                            width: 110,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Image.asset(
+                              "assets/images/asur.webp",
+                              width: 110,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
+            ],
 
             const SizedBox(height: 30),
           ],

@@ -1,48 +1,50 @@
-import 'dart:convert';
-
-import 'package:get_storage/get_storage.dart';
-
+import '../network/base_api_service.dart';
 import '../../utils/constants.dart';
-import '../models/response_model/watchlist_response/watchlist_response.dart';
-import '../providers/api_provider.dart';
 
 class WatchlistRepo {
-  final ApiProvider apiProvider;
+  final BaseApiService apiProvider;
 
   WatchlistRepo({required this.apiProvider});
 
-  Future<WatchlistResponseModel?> addToWatchlist(String movieId) async {
+  /// 📥 GET WATCHLIST
+  Future<dynamic> getWatchlist() async {
     try {
-      final storage = GetStorage();
-      String? token = storage.read('token');
+      final response = await apiProvider.getApi(
+        AppConstants.getWatchlist,
+      );
+      return response;
+    } catch (e) {
+      print("❌ Get Watchlist Error: $e");
+      rethrow;
+    }
+  }
 
-      if (token == null || token.isEmpty) {
-        throw Exception("User not logged in");
-      }
-
-      final response = await apiProvider.post(
+  /// ➕ ADD TO WATCHLIST
+  Future<dynamic> addToWatchlist(String contentId) async {
+    try {
+      final response = await apiProvider.postApi(
         AppConstants.addWatchlist,
         {
-          "movieId": movieId,
-        },
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
+          "movieId": contentId,
         },
       );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return WatchlistResponseModel.fromJson(
-          response.body is String
-              ? jsonDecode(response.body)
-              : response.body,
-        );
-      } else {
-        print("API ERROR: ${response.statusCode} - ${response.body}");
-        return null;
-      }
+      return response;
     } catch (e) {
-      print("Exception in addToWatchlist: $e");
+      print("❌ Add Watchlist Error: $e");
+      rethrow;
+    }
+  }
+
+  /// ❌ REMOVE FROM WATCHLIST
+  Future<dynamic> removeFromWatchlist(String watchlistId) async {
+    try {
+      final response = await apiProvider.deleteApi(
+        "${AppConstants.removeWatchlist}/$watchlistId",
+        {},
+      );
+      return response;
+    } catch (e) {
+      print("❌ Remove Watchlist Error: $e");
       rethrow;
     }
   }

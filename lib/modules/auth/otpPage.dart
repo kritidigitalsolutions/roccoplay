@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:roccoplay/modules/homePages/mainHomepage.dart';
 import '../../app/theme/app_colors.dart';
-import '../../view_model/home_controller/home_controller.dart';
+import '../../utils/app_session.dart';
 import '../profile/create_profile_page.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import '../../view_model/auth_controller/otp_controller.dart';
@@ -29,23 +30,27 @@ class OtpPage extends StatelessWidget {
       final response = await authController.verifyOtp(phoneNumber, otp);
 
       if (response != null && response.success) {
-        // 1. तुरंत लॉगिन स्टेटस अपडेट करें (यह सबसे ज़रूरी है)
+        // ✅ CRITICAL FIX: Update global login state
         authController.setLoginStatus(true);
-
+        
+        // Check if user is new or profile is incomplete
         bool isNew = response.isNewUser;
-        bool isProfileIncomplete = response.user != null && response.user!['profileComplete'] == false;
+        bool isProfileIncomplete = false;
+        
+        if (response.user != null && response.user!['profileComplete'] == false) {
+          isProfileIncomplete = true;
+        }
 
         if (isNew || isProfileIncomplete) {
+          print("Navigating to: CreateProfilePage");
           Get.offAll(() => CreateProfilePage(phone: phoneNumber));
         } else {
-          // 2. होम पेज पर जाते समय पक्का करें कि हम पहले टैब (Home) पर जाएँ
-          if (Get.isRegistered<HomeController>()) {
-            Get.find<HomeController>().selectedIndex.value = 0;
-          }
+          print("Navigating to: MainHomePage");
           Get.offAllNamed(AppRoutes.home);
         }
       }
     }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(

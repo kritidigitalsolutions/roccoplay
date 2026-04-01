@@ -16,6 +16,8 @@ class ContentModel {
   final List<String> category;
   final String slug;
   final String contentType;
+  final bool isComingSoon;
+  final String? releaseDate;
 
   ContentModel({
     required this.id,
@@ -35,6 +37,8 @@ class ContentModel {
     required this.category,
     required this.slug,
     required this.contentType,
+    this.isComingSoon = false,
+    this.releaseDate,
   });
 
   factory ContentModel.fromJson(Map<String, dynamic> json) {
@@ -58,6 +62,8 @@ class ContentModel {
       category: List<String>.from(json['category'] ?? []),
       slug: json['slug'] ?? '',
       contentType: json['contentType'] ?? '',
+      isComingSoon: json['isComingSoon'] ?? false,
+      releaseDate: json['releaseDate'],
     );
   }
 }
