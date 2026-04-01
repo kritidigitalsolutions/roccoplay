@@ -4,6 +4,7 @@ import 'package:roccoplay/modules/profile/privacy_policy_page.dart';
 import 'package:roccoplay/modules/profile/setting_page.dart';
 import 'package:roccoplay/modules/profile/terms_condition_page.dart';
 import 'package:roccoplay/modules/profile/watchlist.dart';
+import 'package:roccoplay/view_model/primium_controller/premium_controller.dart';
 import '../../app/theme/app_colors.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import '../premium/goPremium.dart';
@@ -23,10 +24,13 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AuthController authController = Get.find<AuthController>();
-    print("🔍 UI User Data: ${authController.userData.value}");
+    final PremiumController premiumController = Get.put(PremiumController());
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       authController.getProfile();
+      if (authController.isLoggedIn.value) {
+        premiumController.fetchSubscriptionStatus();
+      }
     });
 
     return Scaffold(
@@ -51,7 +55,6 @@ class ProfilePage extends StatelessWidget {
                           // Profile Image from API
                           Obx(() {
                             final user = authController.userData.value;
-                            // Check for 'avatar' or 'image' or 'profileImage' based on your API response
                             final imageUrl = user?['avatar'] ?? user?['image'] ?? user?['profileImage'];
                             
                             return CircleAvatar(
@@ -98,28 +101,39 @@ class ProfilePage extends StatelessWidget {
 
                     const Divider(color: Colors.grey, height: 1),
 
+                    // ---------- DYNAMIC PLAN SECTION ----------
                     Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          const Text(
-                            "No Active Plans",
-                            style: TextStyle(
-                                color: AppColors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          const Spacer(),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.buttonColor,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      child: Obx(() {
+                        final sub = premiumController.subscriptionData.value;
+                        final bool hasActiveSub = sub != null && sub['status'] == 'active';
+
+                        return Row(
+                          children: [
+                            Text(
+                              hasActiveSub 
+                                  ? (sub['plan']?['name'] ?? "Active Plan") 
+                                  : "No Active Plans",
+                              style: const TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold),
                             ),
-                            onPressed: () => Get.to(() => GoPremiumPage()),
-                            child: const Text("SUBSCRIBE", style: TextStyle(color: AppColors.white, fontSize: 12)),
-                          )
-                        ],
-                      ),
+                            const Spacer(),
+                            if (!hasActiveSub)
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.buttonColor,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: () => Get.to(() => const GoPremiumPage()),
+                                child: const Text("SUBSCRIBE", style: TextStyle(color: AppColors.white, fontSize: 12)),
+                              )
+                            else
+                              const Icon(Icons.verified, color: Colors.green, size: 24),
+                          ],
+                        );
+                      }),
                     ),
                   ],
                 ),
@@ -129,7 +143,7 @@ class ProfilePage extends StatelessWidget {
             const SizedBox(height: 10),
 
             buildMenuItem(context, Icons.person_outline, "My Account", const AccountSettingsPage()),
-            buildMenuItem(context, Icons.bookmark_border, "Watchlist",  WatchlistPage()),
+            buildMenuItem(context, Icons.bookmark_border, "Watchlist", const WatchlistPage()),
             buildMenuItem(context, Icons.settings_outlined, "Settings", const SettingsPage()),
             buildMenuItem(context, Icons.rate_review, "Rate Our App", const ReviewPage()),
             buildMenuItem(context, Icons.info_outline, "Terms & Conditions", const TermsAndConditionsPage()),

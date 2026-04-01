@@ -1,6 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
+import 'package:get/get.dart';
+import 'package:roccoplay/view_model/primium_controller/premium_controller.dart';
 import '../../app/theme/app_colors.dart';
 
 class PaymentBottomSheet extends StatelessWidget {
@@ -8,13 +8,15 @@ class PaymentBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final PremiumController controller = Get.find<PremiumController>();
+
     return DraggableScrollableSheet(
-      initialChildSize: 0.5, // 🔥 Half screen
+      initialChildSize: 0.5,
       minChildSize: 0.4,
       maxChildSize: 0.8,
-      builder: (_, controller) {
+      builder: (_, scrollController) {
         return Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: AppColors.black,
             borderRadius: BorderRadius.vertical(
               top: Radius.circular(25),
@@ -22,10 +24,9 @@ class PaymentBottomSheet extends StatelessWidget {
           ),
           child: Column(
             children: [
-
               /// 🔥 Drag Handle
               Container(
-                margin: EdgeInsets.symmetric(vertical: 10),
+                margin: const EdgeInsets.symmetric(vertical: 10),
                 width: 40,
                 height: 5,
                 decoration: BoxDecoration(
@@ -35,8 +36,8 @@ class PaymentBottomSheet extends StatelessWidget {
               ),
 
               /// Title
-              Padding(
-                padding: const EdgeInsets.all(16),
+              const Padding(
+                padding: EdgeInsets.all(16),
                 child: Text(
                   "Select Payment Method",
                   style: TextStyle(
@@ -47,22 +48,28 @@ class PaymentBottomSheet extends StatelessWidget {
                 ),
               ),
 
-              Divider(color: Colors.grey),
+              const Divider(color: Colors.grey),
 
               /// Payment Methods List
               Expanded(
-                child: ListView(
-                  controller: controller,
+                child: Obx(() => Stack(
                   children: [
-
-                    paymentTile(Icons.account_balance_wallet, "UPI"),
-                    paymentTile(Icons.credit_card, "Credit / Debit Card"),
-                    paymentTile(Icons.account_balance, "Net Banking"),
-                    paymentTile(Icons.payments, "Wallet"),
-                    paymentTile(Icons.qr_code, "Scan & Pay"),
-
+                    ListView(
+                      controller: scrollController,
+                      children: [
+                        _paymentTile(Icons.account_balance_wallet, "UPI", controller),
+                        _paymentTile(Icons.credit_card, "Credit / Debit Card", controller),
+                        _paymentTile(Icons.account_balance, "Net Banking", controller),
+                        _paymentTile(Icons.payments, "Wallet", controller),
+                        _paymentTile(Icons.qr_code, "Scan & Pay", controller),
+                      ],
+                    ),
+                    if (controller.isSubscribing.value)
+                      const Center(
+                        child: CircularProgressIndicator(color: Colors.pinkAccent),
+                      ),
                   ],
-                ),
+                )),
               ),
             ],
           ),
@@ -72,16 +79,19 @@ class PaymentBottomSheet extends StatelessWidget {
   }
 
   /// 🔹 Payment Tile
-  Widget paymentTile(IconData icon, String title) {
+  Widget _paymentTile(IconData icon, String title, PremiumController controller) {
     return ListTile(
       leading: Icon(icon, color: Colors.white),
       title: Text(
         title,
-        style: TextStyle(color: Colors.white),
+        style: const TextStyle(color: Colors.white),
       ),
-      trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
       onTap: () {
-        // Handle payment click
+        if (controller.plans.isNotEmpty) {
+          final selectedPlan = controller.plans[controller.selectedPlanIndex.value];
+          controller.subscribeToPlan(selectedPlan.id);
+        }
       },
     );
   }

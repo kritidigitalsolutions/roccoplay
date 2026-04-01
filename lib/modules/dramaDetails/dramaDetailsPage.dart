@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:roccoplay/modules/auth/signInPage.dart';
 import 'package:roccoplay/modules/videoPlayer/video_player.dart';
+import 'package:roccoplay/view_model/primium_controller/premium_controller.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../app/theme/app_colors.dart';
@@ -25,23 +26,14 @@ class DramaDetailsPage extends StatelessWidget {
     final DramaDetailsController controller = Get.put(DramaDetailsController());
     final WatchlistController watchlistController = Get.find<WatchlistController>();
     final ContentController contentController = Get.find<ContentController>();
-    final InteractionController interactionController =
-    Get.find<InteractionController>();
+    final PremiumController premiumController = Get.find<PremiumController>();
+    final InteractionController interactionController = Get.put(InteractionController());
 
-    final List<ContentModel> relatedContent =
-    contentController.allContent.where((item) {
-      /// ❌ Skip same item
-      if (item.id == content.id) return false;
-
-      /// ✅ Same content type (movie / series)
-      if (item.contentType != content.contentType) return false;
-
-      /// ✅ Category match (at least one common category)
-      bool isSameCategory = item.category.any(
-            (cat) => content.category.contains(cat),
-      );
-
-      return isSameCategory;
+    // Filter "You May Also Like" based on contentType and category
+    final List<ContentModel> relatedContent = contentController.allContent.where((item) {
+      return item.id != content.id && 
+             item.contentType == content.contentType && 
+             item.category.any((cat) => content.category.contains(cat));
     }).toList();
 
     return Scaffold(
@@ -50,7 +42,7 @@ class DramaDetailsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 🔥 Top Banner Image
+            /// 🔥 Banner
             Stack(
               children: [
                 Image.network(
@@ -65,8 +57,6 @@ class DramaDetailsPage extends StatelessWidget {
                     fit: BoxFit.cover,
                   ),
                 ),
-
-                /// 🔙 Back Button
                 Positioned(
                   top: 40,
                   left: 10,
@@ -75,8 +65,6 @@ class DramaDetailsPage extends StatelessWidget {
                     onPressed: () => Get.back(),
                   ),
                 ),
-
-                /// 🎬 Watch Trailer Button (Right Bottom)
                 if (content.trailerUrl != null && content.trailerUrl!.isNotEmpty)
                 Positioned(
                   bottom: 20,
@@ -84,129 +72,100 @@ class DramaDetailsPage extends StatelessWidget {
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.buttonColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 10,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                     ),
                     onPressed: () async {
-                      final bool? isOver18 = await Get.dialog<bool>(
-                        const AgeRestrictionPopup(),
-                      );
-
+                      final bool? isOver18 = await Get.dialog<bool>(const AgeRestrictionPopup());
                       if (isOver18 == true) {
                         Get.to(() => AdvancedVideoPlayer(
-                              url: content.trailerUrl!,
-                              title: '${content.title} - Trailer',
-                            ));
+                          url: content.trailerUrl!, 
+                          title: '${content.title} - Trailer'
+                        ));
                       }
                     },
                     icon: const Icon(Icons.play_arrow, color: AppColors.white),
-                    label: const Text(
-                      "Watch Trailer",
-                      style: TextStyle(color: Colors.white),
-                    ),
+                    label: const Text("Watch Trailer", style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ],
             ),
 
             const SizedBox(height: 15),
-
-            /// 🎬 Series Name
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                content.title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                content.title, 
+                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)
               ),
             ),
-
             const SizedBox(height: 6),
-
-            /// 📅 Date • Language • Duration
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                "${content.releaseYear} • ${content.language} ${content.duration != null ? '• ${content.duration}' : ''}",
-                style: const TextStyle(color: AppColors.white, fontSize: 14),
+                "${content.releaseYear} • ${content.language} ${content.duration != null ? '• ${content.duration}' : ''}", 
+                style: const TextStyle(color: AppColors.white, fontSize: 14)
               ),
             ),
 
             const SizedBox(height: 20),
 
-            /// 🔐 Subscribe / Sign In Button
+            /// 🔐 DYNAMIC ACTION BUTTON
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.buttonColor,
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-                onPressed: () {
-                  if (isSignedIn) {
-                    if (content.isPremium) {
+              child: Obx(() {
+                final sub = premiumController.subscriptionData.value;
+                final bool isPurchased = sub != null && sub['status'] == 'active';
+
+                return ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.buttonColor,
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  onPressed: () {
+                    if (!isSignedIn) {
+                      Get.to(() => const SignInPage());
+                    } else if (isPurchased || !content.isPremium) {
+                      if (content.videoUrl != null && content.videoUrl!.isNotEmpty) {
+                        Get.to(() => AdvancedVideoPlayer(url: content.videoUrl!, title: content.title));
+                      } else {
+                        Get.snackbar("Error", "Video URL not found");
+                      }
+                    } else {
                       Get.to(() => const GoPremiumPage());
-                    } else if (content.videoUrl != null) {
-                       Get.to(() => AdvancedVideoPlayer(
-                              url: content.videoUrl!,
-                              title: content.title,
-                            ));
                     }
-                  } else {
-                    Get.to(() => const SignInPage());
-                  }
-                },
-                child: Text(
-                  isSignedIn 
-                    ? (content.isPremium ? "Subscribe to Watch" : "Watch Now") 
-                    : "Sign In to Watch",
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
+                  },
+                  child: Text(
+                    !isSignedIn 
+                        ? "Sign In to Watch" 
+                        : (isPurchased || !content.isPremium ? "Watch Video" : "Subscribe to Watch"),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                );
+              }),
             ),
 
             const SizedBox(height: 12),
-
-            /// ⬇ Download Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: OutlinedButton(
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.white),
-                  minimumSize: const Size(double.infinity, 50),
+                  side: const BorderSide(color: Colors.white), 
+                  minimumSize: const Size(double.infinity, 50)
                 ),
-                onPressed: () {
-                  _showSubscriptionDialog(context);
-                },
-                child: const Text(
-                  "Download",
-                  style: TextStyle(color: Colors.white),
-                ),
+                onPressed: () => _showSubscriptionDialog(context),
+                child: const Text("Download", style: TextStyle(color: Colors.white)),
               ),
             ),
 
             const SizedBox(height: 20),
-
-            /// 📝 Description
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                content.description,
-                style: const TextStyle(color: Colors.white70),
-              ),
+              child: Text(content.description, style: const TextStyle(color: Colors.white70)),
             ),
 
             const SizedBox(height: 20),
 
-            /// ⭐ Action Buttons Row
+            /// ⭐ Action Buttons Row (Watchlist, Like, Dislike, Share)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Obx(() => Row(
@@ -217,10 +176,7 @@ class DramaDetailsPage extends StatelessWidget {
                       GestureDetector(
                         onTap: watchlistController.isLoading.value
                             ? null
-                            : () {
-                          watchlistController
-                              .toggleWatchlist(content.id.toString());
-                        },
+                            : () => watchlistController.toggleWatchlist(content.id.toString()),
                         child: Icon(
                           watchlistController.isInWatchlist(content.id.toString())
                               ? Icons.bookmark
@@ -230,46 +186,27 @@ class DramaDetailsPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 5),
-                      const Text(
-                        "Watchlist",
-                        style: TextStyle(color: Colors.white, fontSize: 12),
-                      ),
+                      const Text("Watchlist", style: TextStyle(color: Colors.white, fontSize: 12)),
                     ],
                   ),
 
                   _actionButton(
-                    icon: interactionController.isLiked.value
-                        ? Icons.thumb_up
-                        : Icons.thumb_up_outlined,
+                    icon: interactionController.isLiked.value ? Icons.thumb_up : Icons.thumb_up_outlined,
                     label: "Like",
-                    onTap: () {
-                      interactionController.toggleLike(
-                        contentId: content.id,
-                        contentType: content.contentType,
-                      );
-                    },
+                    onTap: () => interactionController.toggleLike(contentId: content.id, contentType: content.contentType),
                   ),
 
                   _actionButton(
-                    icon: interactionController.isDisliked.value
-                        ? Icons.thumb_down
-                        : Icons.thumb_down_outlined,
+                    icon: interactionController.isDisliked.value ? Icons.thumb_down : Icons.thumb_down_outlined,
                     label: "Dislike",
-                    onTap: () {
-                      interactionController.toggleDislike(
-                        contentId: content.id,
-                        contentType: content.contentType,
-                      );
-                    },
+                    onTap: () => interactionController.toggleDislike(contentId: content.id, contentType: content.contentType),
                   ),
 
                   _actionButton(
                     icon: Icons.share,
                     label: "Share",
                     onTap: () {
-                      Share.share(
-                        "Check out ${content.title} on RoccoPlay App 🎬🔥",
-                      );
+                      Share.share("Check out ${content.title} on RoccoPlay App 🎬🔥");
                     },
                   ),
                 ],
@@ -282,18 +219,9 @@ class DramaDetailsPage extends StatelessWidget {
             if (content.cast != null && content.cast!.isNotEmpty) ...[
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  "Cast & Crew",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: Text("Cast & Crew", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               ),
-
               const SizedBox(height: 10),
-
               SizedBox(
                 height: 110,
                 child: ListView.builder(
@@ -303,10 +231,7 @@ class DramaDetailsPage extends StatelessWidget {
                     final actor = content.cast![index];
                     return GestureDetector(
                       onTap: () {
-                        Get.to(() => CastDetailsPage(
-                              castName: actor.name,
-                              castImage: actor.image,
-                            ));
+                        Get.to(() => CastDetailsPage(castName: actor.name, castImage: actor.image));
                       },
                       child: Padding(
                         padding: const EdgeInsets.only(left: 16),
@@ -340,18 +265,9 @@ class DramaDetailsPage extends StatelessWidget {
             if (relatedContent.isNotEmpty) ...[
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  "You May Also Like",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: Text("You May Also Like", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               ),
-
               const SizedBox(height: 10),
-
               SizedBox(
                 height: 160,
                 child: ListView.builder(
@@ -361,10 +277,7 @@ class DramaDetailsPage extends StatelessWidget {
                     final item = relatedContent[index];
                     return GestureDetector(
                       onTap: () {
-                        Get.to(() => DramaDetailsPage(
-                          isSignedIn: isSignedIn,
-                          content: item,
-                        ), preventDuplicates: false);
+                        Get.to(() => DramaDetailsPage(isSignedIn: isSignedIn, content: item), preventDuplicates: false);
                       },
                       child: Padding(
                         padding: const EdgeInsets.only(left: 16),
@@ -395,21 +308,14 @@ class DramaDetailsPage extends StatelessWidget {
     );
   }
 
-  Widget _actionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
+  Widget _actionButton({required IconData icon, required String label, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
           Icon(icon, color: Colors.white),
           const SizedBox(height: 5),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
-          ),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
         ],
       ),
     );
@@ -418,58 +324,22 @@ class DramaDetailsPage extends StatelessWidget {
   void _showSubscriptionDialog(BuildContext context) {
     Get.dialog(
       Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.grey[900],
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                "Subscription Required",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              const Text("Subscription Required", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 15),
-              const Text(
-                "You need a subscription to download this video.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70),
-              ),
+              const Text("You need a subscription to download this video.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 25),
               Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white),
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () => Get.back(),
-                      child: const Text("Cancel"),
-                    ),
-                  ),
+                  Expanded(child: OutlinedButton(style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white), foregroundColor: Colors.white), onPressed: () => Get.back(), child: const Text("Cancel"))),
                   const SizedBox(width: 15),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.buttonColor,
-                      ),
-                      onPressed: () {
-                        Get.back();
-                        Get.to(() => const GoPremiumPage());
-                      },
-                      child: const Text(
-                        "Explore Plan",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ),
+                  Expanded(child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: AppColors.buttonColor), onPressed: () { Get.back(); Get.to(() => const GoPremiumPage()); }, child: const Text("Explore Plan", style: TextStyle(color: Colors.white)))),
                 ],
               ),
             ],

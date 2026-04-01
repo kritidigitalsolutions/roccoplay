@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:roccoplay/modules/auth/signInPage.dart';
+import 'package:roccoplay/view_model/primium_controller/premium_controller.dart';
+import 'package:roccoplay/modules/videoPlayer/video_player.dart';
 import '../../data/models/response_model/content_response_model/content_model.dart';
 import '../dramaDetails/dramaDetailsPage.dart';
 import '../premium/goPremium.dart';
@@ -71,6 +73,8 @@ class _AutoSliderState extends State<AutoSlider> {
 
   @override
   Widget build(BuildContext context) {
+    final PremiumController premiumController = Get.find<PremiumController>();
+
     if (widget.content.isEmpty) {
       return const SizedBox(
         height: 200,
@@ -130,22 +134,35 @@ class _AutoSliderState extends State<AutoSlider> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                ElevatedButton(
-                                  onPressed: () {
-                                    if (!widget.isSignedIn) {
-                                      Get.to(() => const SignInPage());
-                                    } else {
-                                      Get.to(() => const GoPremiumPage());
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.buttonColor,
-                                  ),
-                                  child: Text(
-                                    widget.isSignedIn ? "Subscribe" : "Sign In",
-                                    style: const TextStyle(color: AppColors.buttonTextColor),
-                                  ),
-                                ),
+                                Obx(() {
+                                  final sub = premiumController.subscriptionData.value;
+                                  final bool isPurchased = sub != null && sub['status'] == 'active';
+
+                                  return ElevatedButton(
+                                    onPressed: () {
+                                      if (!widget.isSignedIn) {
+                                        Get.to(() => const SignInPage());
+                                      } else if (!isPurchased && item.isPremium) {
+                                        Get.to(() => const GoPremiumPage());
+                                      } else if (item.videoUrl != null) {
+                                        // Play Video
+                                        Get.to(() => AdvancedVideoPlayer(
+                                          url: item.videoUrl!,
+                                          title: item.title,
+                                        ));
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.buttonColor,
+                                    ),
+                                    child: Text(
+                                      !widget.isSignedIn 
+                                          ? "Sign In" 
+                                          : (isPurchased || !item.isPremium ? "Play Video" : "Subscribe"),
+                                      style: const TextStyle(color: AppColors.buttonTextColor),
+                                    ),
+                                  );
+                                }),
                                 const SizedBox(height: 8),
                                 Text(
                                   item.title,

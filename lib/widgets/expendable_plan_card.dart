@@ -5,6 +5,7 @@ class ExpandablePlanCard extends StatefulWidget {
   final String title;
   final String price;
   final String duration;
+  final List<String> features;
   final bool isHighlighted;
 
   const ExpandablePlanCard({
@@ -12,6 +13,7 @@ class ExpandablePlanCard extends StatefulWidget {
     required this.title,
     required this.price,
     required this.duration,
+    this.features = const [],
     this.isHighlighted = false,
   }) : super(key: key);
 
@@ -25,8 +27,8 @@ class _ExpandablePlanCardState extends State<ExpandablePlanCard> {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: Duration(milliseconds: 300),
-      margin: EdgeInsets.only(bottom: 15),
+      duration: const Duration(milliseconds: 300),
+      margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         border: widget.isHighlighted
@@ -62,7 +64,7 @@ class _ExpandablePlanCardState extends State<ExpandablePlanCard> {
 
                   Text(
                     widget.title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -73,13 +75,13 @@ class _ExpandablePlanCardState extends State<ExpandablePlanCard> {
                     children: [
                       Text(
                         "${widget.price}${widget.duration}",
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.buttonColor,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(width: 6),
+                      const SizedBox(width: 6),
                       Icon(
                         isExpanded
                             ? Icons.keyboard_arrow_up
@@ -100,41 +102,28 @@ class _ExpandablePlanCardState extends State<ExpandablePlanCard> {
               child: Column(
                 children: [
 
-                  /// Feature Row (4 boxes in one row)
+                  /// Feature Row (Dynamic from API)
+                  if (widget.features.isNotEmpty)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      featureBox(Icons.lock, "All content access"),
-                      // featureBox(Icons.devices, "watch on Any device"),
-                      featureBox(Icons.block, "Ad-free Streaming"),
-                      featureBox(Icons.sd, "SD Quality playback"),
+                      if (widget.features.length > 0) featureBox(Icons.lock, widget.features[0]),
+                      if (widget.features.length > 1) featureBox(Icons.block, widget.features[1]),
+                      if (widget.features.length > 2) featureBox(Icons.sd, widget.features[2]),
                     ],
                   ),
 
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                  /// Bullet Points
+                  /// Bullet Points (Rest of features if any)
+                  if (widget.features.length > 3)
                   Column(
-                    children: [
-
-                      bulletText(
-                        "Access to 3 Devices 5 Profiles",
-                        alignment: MainAxisAlignment.start,
-                      ),
-
-                      bulletText(
-                        "Cashback offers available",
-                        alignment: MainAxisAlignment.center,
-                      ),
-
-                      bulletText(
-                        "Watch in India + 236 Countries",
-                        alignment: MainAxisAlignment.end,
-                      ),
-                    ],
+                    children: List.generate(widget.features.length - 3, (index) {
+                      return bulletText(widget.features[index + 3]);
+                    }),
                   ),
 
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
                 ],
               ),
@@ -148,8 +137,8 @@ class _ExpandablePlanCardState extends State<ExpandablePlanCard> {
   Widget featureBox(IconData icon, String text) {
     return Expanded(
       child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 4),
-        padding: EdgeInsets.symmetric(vertical: 14),
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.4),
           borderRadius: BorderRadius.circular(12),
@@ -157,10 +146,10 @@ class _ExpandablePlanCardState extends State<ExpandablePlanCard> {
         child: Column(
           children: [
             Icon(icon, color: Colors.white),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
               text,
-              style: TextStyle(color: Colors.white, fontSize: 11),
+              style: const TextStyle(color: Colors.white, fontSize: 11),
               textAlign: TextAlign.center,
             )
           ],
@@ -176,24 +165,24 @@ class _ExpandablePlanCardState extends State<ExpandablePlanCard> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment: alignment,
-        crossAxisAlignment: CrossAxisAlignment.start, // 🔥 important
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 6), // 🔥 adjust bullet top
+            padding: const EdgeInsets.only(top: 6),
             child: Container(
               width: 6,
               height: 6,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
               ),
             ),
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 13,
               ),

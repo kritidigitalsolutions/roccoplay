@@ -28,5 +28,9 @@ class AppConstants {
 
   /// review
   static const String rateApp = '$baseUrl/rating/rate';
-
+  /// plans
+  static const String planList = '$baseUrl/plans';
+  static const String buyPlan = '$baseUrl/subscription/subscribe';
+  static const String planCheck = '$baseUrl/subscription/status';
+  static const String cancelPlan = '$baseUrl/subscription/status';
 }
