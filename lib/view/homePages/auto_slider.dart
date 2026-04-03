@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:roccoplay/modules/auth/signInPage.dart';
 import 'package:roccoplay/view_model/primium_controller/premium_controller.dart';
-import 'package:roccoplay/modules/videoPlayer/video_player.dart';
 import '../../data/models/response_model/content_response_model/content_model.dart';
+import '../auth/signInPage.dart';
 import '../dramaDetails/dramaDetailsPage.dart';
 import '../premium/goPremium.dart';
 import '../../app/theme/app_colors.dart';
@@ -23,6 +22,8 @@ class AutoSlider extends StatefulWidget {
   State<AutoSlider> createState() => _AutoSliderState();
 }
 
+// ... (existing imports)
+
 class _AutoSliderState extends State<AutoSlider> {
   late PageController _pageController;
   int currentPage = 0;
@@ -36,44 +37,38 @@ class _AutoSliderState extends State<AutoSlider> {
       initialPage: 1000,
     );
     currentPage = 1000;
-
     _startTimer();
   }
 
   void _startTimer() {
-    _timer?.cancel();
-    if (widget.content.isNotEmpty) {
-      _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    if (_timer?.isActive ?? false) return;
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (_pageController.hasClients) {
         currentPage++;
-        if (_pageController.hasClients) {
-          _pageController.animateToPage(
-            currentPage,
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.easeInOut,
-          );
-        }
-      });
-    }
+        _pageController.animateToPage(
+          currentPage,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
-  @override
-  void didUpdateWidget(AutoSlider oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.content.length != widget.content.length) {
-      _startTimer();
-    }
+  void _stopTimer() {
+    _timer?.cancel();
+    _timer = null;
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _stopTimer();
     _pageController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final PremiumController premiumController = Get.find<PremiumController>();
+    final PremiumController premiumController = Get.put(PremiumController());
 
     if (widget.content.isEmpty) {
       return const SizedBox(
@@ -89,11 +84,7 @@ class _AutoSliderState extends State<AutoSlider> {
           child: PageView.builder(
             controller: _pageController,
             itemCount: null,
-            onPageChanged: (index) {
-              setState(() {
-                currentPage = index;
-              });
-            },
+            onPageChanged: (index) => setState(() => currentPage = index),
             itemBuilder: (context, index) {
               final item = widget.content[index % widget.content.length];
               double scale = currentPage == index ? 1 : 0.9;
@@ -101,12 +92,7 @@ class _AutoSliderState extends State<AutoSlider> {
               return TweenAnimationBuilder(
                 tween: Tween<double>(begin: scale, end: scale),
                 duration: const Duration(milliseconds: 400),
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: child,
-                  );
-                },
+                builder: (context, value, child) => Transform.scale(scale: value, child: child),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: GestureDetector(
@@ -121,12 +107,12 @@ class _AutoSliderState extends State<AutoSlider> {
                           Image.network(
                             item.banner,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Image.asset("assets/images/farzi.jpg", fit: BoxFit.cover),
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: Colors.grey[900],
+                              child: const Icon(Icons.broken_image, color: Colors.white54, size: 50),
+                            ),
                           ),
-                          Container(
-                            color: AppColors.black.withOpacity(0.3),
-                          ),
+                          Container(color: AppColors.black.withOpacity(0.3)),
                           Positioned(
                             bottom: 25,
                             left: 0,
@@ -139,16 +125,25 @@ class _AutoSliderState extends State<AutoSlider> {
                                   final bool isPurchased = sub != null && sub['status'] == 'active';
 
                                   return ElevatedButton(
-                                    onPressed: () {
+                                    onPressed: () async {
                                       if (!widget.isSignedIn) {
-                                        Get.to(() => const SignInPage());
-                                      } else if (!isPurchased && item.isPremium) {
+                                        FocusManager.instance.primaryFocus?.unfocus();
+                                        _stopTimer();
+
+                                        await Get.to(() => const SignInPage(),
+                                        fullscreenDialog: true,
+                                      transition: Transition.downToUp,
+                                        );
+
+                                      _startTimer();
+                                      }
+                                      else if (!isPurchased) {
                                         Get.to(() => const GoPremiumPage());
-                                      } else if (item.videoUrl != null) {
-                                        // Play Video
-                                        Get.to(() => AdvancedVideoPlayer(
-                                          url: item.videoUrl!,
-                                          title: item.title,
+                                      }
+                                      else {
+                                        Get.to(() => DramaDetailsPage(
+                                            isSignedIn: widget.isSignedIn,
+                                            content: item
                                         ));
                                       }
                                     },
@@ -156,9 +151,9 @@ class _AutoSliderState extends State<AutoSlider> {
                                       backgroundColor: AppColors.buttonColor,
                                     ),
                                     child: Text(
-                                      !widget.isSignedIn 
-                                          ? "Sign In" 
-                                          : (isPurchased || !item.isPremium ? "Play Video" : "Subscribe"),
+                                      !widget.isSignedIn
+                                          ? "Sign In"
+                                          : (isPurchased ? "Play Video" : "Subscribe"),
                                       style: const TextStyle(color: AppColors.buttonTextColor),
                                     ),
                                   );
@@ -186,34 +181,7 @@ class _AutoSliderState extends State<AutoSlider> {
           ),
         ),
         const SizedBox(height: 18),
-        AnimatedBuilder(
-          animation: _pageController,
-          builder: (context, child) {
-            double page = _pageController.hasClients ? (_pageController.page ?? currentPage.toDouble()) : currentPage.toDouble();
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (index) {
-                double diff = (page - page.round()).abs();
-                int distanceFromCenter = (index - 2).abs();
-                double scale = distanceFromCenter == 0 ? 1.4 - (diff * 0.4) : (distanceFromCenter == 1 ? 1.0 - (diff * 0.2) : 0.8);
-                double opacity = distanceFromCenter == 0 ? 1.0 : (distanceFromCenter == 1 ? 0.6 : 0.3);
-
-                return Transform.scale(
-                  scale: scale,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(opacity),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                );
-              }),
-            );
-          },
-        ),
+        // ... Pagination dots Row ...
       ],
     );
   }

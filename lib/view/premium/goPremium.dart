@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:roccoplay/modules/auth/signInPage.dart';
-import 'package:roccoplay/modules/premium/paymentPage.dart';
+import 'package:roccoplay/view/premium/paymentPage.dart';
 import 'package:roccoplay/view_model/primium_controller/premium_controller.dart';
 import '../../app/theme/app_colors.dart';
 import '../../view_model/home_controller/home_controller.dart';
 import '../../widgets/expendable_plan_card.dart';
+import '../auth/signInPage.dart';
+import '../homePages/mainHomepage.dart';
 import '../popUp/promo_code_popup.dart';
 import '../popUp/redeem_voucher_page.dart';
 
@@ -35,13 +36,14 @@ class GoPremiumPage extends StatelessWidget {
                     /// Back Icon
                     IconButton(
                       icon: const Icon(Icons.arrow_back_ios, color: AppColors.white),
-                      onPressed: () {
-                        if (Get.isRegistered<HomeController>()) {
-                          Get.find<HomeController>().selectedIndex.value = 0;
-                        } else {
-                          Get.back();
+                        onPressed: () {
+                          if (Get.key.currentState?.canPop() ?? false) {
+                            Get.back(); // ✅ If opened via Get.to()
+                          } else {
+                            Get.find<HomeController>().selectedIndex.value = 0; // ✅ If opened via navbar
+                          }
                         }
-                      },
+
                     ),
                   ],
                 ),

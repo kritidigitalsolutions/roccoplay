@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:roccoplay/modules/profile/privacy_policy_page.dart';
-import 'package:roccoplay/modules/profile/setting_page.dart';
-import 'package:roccoplay/modules/profile/terms_condition_page.dart';
-import 'package:roccoplay/modules/profile/watchlist.dart';
+import 'package:roccoplay/view/profile/privacy_policy_page.dart';
+import 'package:roccoplay/view/profile/setting_page.dart';
+import 'package:roccoplay/view/profile/terms_condition_page.dart';
+import 'package:roccoplay/view/profile/watchlist.dart';
 import 'package:roccoplay/view_model/primium_controller/premium_controller.dart';
 import '../../app/theme/app_colors.dart';
 import '../../view_model/auth_controller/auth_controller.dart';

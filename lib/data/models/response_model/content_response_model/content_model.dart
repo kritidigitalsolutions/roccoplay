@@ -66,6 +66,30 @@ class ContentModel {
       releaseDate: json['releaseDate'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'title': title,
+      'description': description,
+      'genre': genre,
+      'releaseYear': releaseYear,
+      'duration': duration,
+      'language': language,
+      'poster': poster,
+      'banner': banner,
+      'videoUrl': videoUrl,
+      'trailerUrl': trailerUrl,
+      'isPremium': isPremium,
+      'rating': rating,
+      'cast': cast?.map((e) => e.toJson()).toList(),
+      'category': category,
+      'slug': slug,
+      'contentType': contentType,
+      'isComingSoon': isComingSoon,
+      'releaseDate': releaseDate,
+    };
+  }
 }
 
 class Cast {
@@ -85,5 +109,13 @@ class Cast {
       image: json['image'] ?? '',
       id: json['_id'] ?? '',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'name': name,
+      'image': image,
+    };
   }
 }

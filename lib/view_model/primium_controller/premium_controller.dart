@@ -5,17 +5,21 @@ import '../../data/models/response_model/plan_response/plan_model.dart';
 import '../../data/network/base_api_service.dart';
 import '../../data/repositories/premium_repository.dart';
 import '../../utils/app_session.dart';
+import '../auth_controller/auth_controller.dart';
 
 class PremiumController extends GetxController {
   late final PremiumRepository _repository;
+  final AuthController _authController = Get.find<AuthController>();
 
   var selectedPlanIndex = 0.obs;
-  var isUserLoggedIn = false.obs;
+  // Use AuthController's isLoggedIn status instead of local copy
+  RxBool get isUserLoggedIn => _authController.isLoggedIn;
+
   var selectedPrice = "0".obs;
   var isLoading = true.obs;
   var isSubscribing = false.obs;
   var plans = <PlanModel>[].obs;
-  
+
   // Subscription Status Data
   var subscriptionData = Rxn<Map<String, dynamic>>();
   var isLoadingStatus = false.obs;
@@ -24,15 +28,22 @@ class PremiumController extends GetxController {
   void onInit() {
     super.onInit();
     _repository = PremiumRepository(Get.find<BaseApiService>());
-    checkLoginStatus();
+
+    // Fetch plans and subscription status
     fetchPlans();
-    if (AppSession.getLogin()) {
+
+    // Fetch status if logged in
+    ever(isUserLoggedIn, (bool loggedIn) {
+      if (loggedIn) {
+        fetchSubscriptionStatus();
+      } else {
+        subscriptionData.value = null;
+      }
+    });
+
+    if (isUserLoggedIn.value) {
       fetchSubscriptionStatus();
     }
-  }
-
-  void checkLoginStatus() async {
-    isUserLoggedIn.value = AppSession.getLogin();
   }
 
   Future<void> fetchPlans() async {
@@ -61,6 +72,7 @@ class PremiumController extends GetxController {
   }
 
   Future<void> fetchSubscriptionStatus() async {
+    if (!isUserLoggedIn.value) return;
     try {
       isLoadingStatus.value = true;
       final response = await _repository.getSubscriptionStatus();
@@ -91,11 +103,11 @@ class PremiumController extends GetxController {
       }
     } catch (e) {
       Get.back();
-      if (e.toString().contains("already purchased") || 
+      if (e.toString().contains("already purchased") ||
           e.toString().contains("already has an active subscription") ||
           e.toString().contains("400")) {
-         
-         _showStatusDialog(
+
+        _showStatusDialog(
           title: "Info",
           message: "Already purchased",
           icon: Icons.info_outline,

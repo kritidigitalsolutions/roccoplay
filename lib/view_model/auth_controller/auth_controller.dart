@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -53,7 +54,15 @@ class AuthController extends GetxController {
     isLoading.value = true;
     try {
       final response = await repository.sendOtp(identifier);
-      Get.snackbar('Success', response.message);
+      Get.snackbar(
+        'OTP Generated',
+        'Your OTP is ${response.otp}',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: Duration(seconds: 5),
+
+        backgroundColor: Colors.white,
+        colorText: Colors.black,
+      );
       return true;
     } catch (e) {
       Get.snackbar('Error', e.toString());

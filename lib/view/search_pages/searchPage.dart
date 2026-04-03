@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:roccoplay/modules/popUp/search_with_mic.dart';
 import 'package:roccoplay/view_model/auth_controller/auth_controller.dart';
 import 'package:roccoplay/view_model/content_controller/content_controller.dart';
 import 'package:roccoplay/view_model/search_controller/search_controller.dart';
@@ -10,6 +9,7 @@ import '../../data/models/response_model/content_response_model/content_model.da
 import '../dramaDetails/cast_crewPage.dart';
 import '../dramaDetails/dramaDetailsPage.dart';
 import '../dramaDetails/topArtistpage.dart';
+import '../popUp/search_with_mic.dart';
 
 class SearchPage extends StatelessWidget {
   const SearchPage({super.key});

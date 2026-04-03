@@ -1,8 +1,8 @@
 import 'package:get/get.dart';
-import '../../modules/homePages/mainHomepage.dart';
-import '../../modules/splash/splashScreen.dart';
-import '../../modules/auth/signInPage.dart';
-import '../../modules/auth/otpPage.dart';
+import '../../view/auth/otpPage.dart';
+import '../../view/auth/signInPage.dart';
+import '../../view/homePages/mainHomepage.dart';
+import '../../view/splash/splashScreen.dart';
 import 'app_routes.dart';
 
 class AppPages {

@@ -1,6 +1,8 @@
 class AppConstants {
-  static const String baseUrl = 'http://192.168.1.31:5000/api';
-  
+  // static const String baseUrl = 'http://192.168.1.31:5000/api';
+  // static const String baseUrl = 'https://rocco-play.vercel.app/api';
+  static const String baseUrl = 'https://rocco-play-backend.vercel.app/api';
+
   // Auth Endpoints
   static const String sendOtp = '$baseUrl/user/auth/send-otp';
   static const String verifyOtp = '$baseUrl/user/auth/verify-otp';
@@ -25,6 +27,7 @@ class AppConstants {
 
   /// interaction
   static const String toggleInteraction = '$baseUrl/interaction/toggle';
+  static const String interactionStats = '$baseUrl/interaction/stats';
 
   /// review
   static const String rateApp = '$baseUrl/rating/rate';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:roccoplay/app/theme/app_colors.dart';
 import 'package:roccoplay/data/models/response_model/content_response_model/content_model.dart';
-import 'package:roccoplay/modules/dramaDetails/dramaDetailsPage.dart';
+import '../dramaDetails/dramaDetailsPage.dart';
 
 class ComingSoonSection extends StatelessWidget {
   final List<ContentModel> content;
@@ -72,19 +72,32 @@ class ComingSoonSection extends StatelessWidget {
                   child: Stack(
                     children: [
                       /// Poster Image
+                      // lib/modules/homePages/coming_soon.dart
+
                       ClipRRect(
                         borderRadius: BorderRadius.circular(15),
                         child: Image.network(
-                          item.poster,
+                          item.poster ?? "",
                           height: 250,
                           width: 170,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Image.asset(
-                            "assets/images/asur.webp",
+                          // Agar URL galat ho ya image load na ho
+                          errorBuilder: (context, error, stackTrace) => Container(
                             height: 250,
                             width: 170,
-                            fit: BoxFit.cover,
+                            color: Colors.grey[900],
+                            child: const Icon(Icons.broken_image, color: Colors.white54, size: 40),
                           ),
+                          // Agar URL null ho (Loading state)
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              height: 250,
+                              width: 170,
+                              color: Colors.grey[900],
+                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            );
+                          },
                         ),
                       ),
 

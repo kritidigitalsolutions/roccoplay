@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:roccoplay/modules/dramaDetails/dramaDetailsPage.dart';
 import '../data/models/response_model/content_response_model/content_model.dart';
+import '../view/dramaDetails/dramaDetailsPage.dart';
 import 'catagory_widget.dart';
 
 class HomeSliderSection extends StatelessWidget {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:roccoplay/modules/auth/signInPage.dart';
-import 'package:roccoplay/modules/videoPlayer/video_player.dart';
+import 'package:roccoplay/view_model/auth_controller/auth_controller.dart';
+import 'package:roccoplay/view_model/download_controller/download_controller.dart';
 import 'package:roccoplay/view_model/primium_controller/premium_controller.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -10,7 +10,9 @@ import '../../data/models/response_model/content_response_model/content_model.da
 import '../../view_model/content_controller/content_controller.dart';
 import '../../view_model/like_dislike_controller/like_dislike_controller.dart';
 import '../../view_model/watchlist_controller/watchlist_controller.dart';
+import '../auth/signInPage.dart';
 import '../popUp/age_popup.dart';
+import '../videoPlayer/video_player.dart';
 import 'cast_crewPage.dart';
 import '../premium/goPremium.dart';
 import '../../view_model/drama_detail_controller/drama_details_controller.dart';
@@ -24,12 +26,14 @@ class DramaDetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final DramaDetailsController controller = Get.put(DramaDetailsController());
-    final WatchlistController watchlistController = Get.find<WatchlistController>();
+    final AuthController authController = Get.find<AuthController>();
+    final WatchlistController watchlistController = Get.put(WatchlistController());
     final ContentController contentController = Get.find<ContentController>();
-    final PremiumController premiumController = Get.find<PremiumController>();
+    final PremiumController premiumController = Get.put(PremiumController());
     final InteractionController interactionController = Get.put(InteractionController());
+    final DownloadController downloadController = Get.put(DownloadController());
 
-    // Filter "You May Also Like" based on contentType and category
+    // Filter "You May Also Like"
     final List<ContentModel> relatedContent = contentController.allContent.where((item) {
       return item.id != content.id && 
              item.contentType == content.contentType && 
@@ -42,7 +46,7 @@ class DramaDetailsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 🔥 Banner
+            /// 🔥 Banner Section
             Stack(
               children: [
                 Image.network(
@@ -93,28 +97,23 @@ class DramaDetailsPage extends StatelessWidget {
             const SizedBox(height: 15),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                content.title, 
-                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)
-              ),
+              child: Text(content.title, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                "${content.releaseYear} • ${content.language} ${content.duration != null ? '• ${content.duration}' : ''}", 
-                style: const TextStyle(color: AppColors.white, fontSize: 14)
-              ),
+              child: Text("${content.releaseYear} • ${content.language} ${content.duration != null ? '• ${content.duration}' : ''}", style: const TextStyle(color: AppColors.white, fontSize: 14)),
             ),
 
             const SizedBox(height: 20),
 
-            /// 🔐 DYNAMIC ACTION BUTTON
+            /// 🔐 DYNAMIC WATCH BUTTON
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Obx(() {
                 final sub = premiumController.subscriptionData.value;
                 final bool isPurchased = sub != null && sub['status'] == 'active';
+                final bool userLoggedIn = authController.isLoggedIn.value;
 
                 return ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -122,7 +121,7 @@ class DramaDetailsPage extends StatelessWidget {
                     minimumSize: const Size(double.infinity, 50),
                   ),
                   onPressed: () {
-                    if (!isSignedIn) {
+                    if (!userLoggedIn) {
                       Get.to(() => const SignInPage());
                     } else if (isPurchased || !content.isPremium) {
                       if (content.videoUrl != null && content.videoUrl!.isNotEmpty) {
@@ -135,7 +134,7 @@ class DramaDetailsPage extends StatelessWidget {
                     }
                   },
                   child: Text(
-                    !isSignedIn 
+                    !userLoggedIn 
                         ? "Sign In to Watch" 
                         : (isPurchased || !content.isPremium ? "Watch Video" : "Subscribe to Watch"),
                     style: const TextStyle(color: Colors.white),
@@ -145,16 +144,70 @@ class DramaDetailsPage extends StatelessWidget {
             ),
 
             const SizedBox(height: 12),
+            
+            /// ⬇ DYNAMIC DOWNLOAD BUTTON (Logic Fixed)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.white), 
-                  minimumSize: const Size(double.infinity, 50)
-                ),
-                onPressed: () => _showSubscriptionDialog(context),
-                child: const Text("Download", style: TextStyle(color: Colors.white)),
-              ),
+              child: Obx(() {
+                final sub = premiumController.subscriptionData.value;
+                final bool isPurchased = sub != null && sub['status'] == 'active';
+                final bool userLoggedIn = authController.isLoggedIn.value;
+                final bool isAlreadyDownloaded = downloadController.isDownloaded(content.id);
+                final bool downloading = downloadController.isDownloading[content.id] ?? false;
+
+                return OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white), 
+                    minimumSize: const Size(double.infinity, 50)
+                  ),
+                  onPressed: () {
+                    if (!userLoggedIn) {
+                      Get.to(() => const SignInPage());
+                    } else if (isPurchased) {
+                      // ✅ Direct download if plan is purchased
+                      if (isAlreadyDownloaded) {
+                        Get.snackbar("Info", "Already downloaded");
+                      } else {
+                        downloadController.downloadVideo(content);
+                      }
+                    } else {
+                      // ❌ Show popup only if plan is NOT purchased
+                      _showSubscriptionDialog(context);
+                    }
+                  },
+                  child: downloading
+                      ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          value: downloadController.downloadProgress[content.id] ?? 0,
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        "${((downloadController.downloadProgress[content.id] ?? 0) * 100).toInt()}%",
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ],
+                  )
+                      : isAlreadyDownloaded
+                      ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.check_circle, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text("Downloaded", style: TextStyle(color: Colors.white)),
+                    ],
+                  )
+                      : const Text("Download", style: TextStyle(color: Colors.white)),
+
+                );
+              }),
             ),
 
             const SizedBox(height: 20),
@@ -165,7 +218,7 @@ class DramaDetailsPage extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            /// ⭐ Action Buttons Row (Watchlist, Like, Dislike, Share)
+            /// ⭐ Action Buttons Row
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Obx(() => Row(
@@ -277,7 +330,7 @@ class DramaDetailsPage extends StatelessWidget {
                     final item = relatedContent[index];
                     return GestureDetector(
                       onTap: () {
-                        Get.to(() => DramaDetailsPage(isSignedIn: isSignedIn, content: item), preventDuplicates: false);
+                        Get.to(() => DramaDetailsPage(isSignedIn: authController.isLoggedIn.value, content: item), preventDuplicates: false);
                       },
                       child: Padding(
                         padding: const EdgeInsets.only(left: 16),
@@ -287,11 +340,7 @@ class DramaDetailsPage extends StatelessWidget {
                             item.poster,
                             width: 110,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Image.asset(
-                              "assets/images/asur.webp",
-                              width: 110,
-                              fit: BoxFit.cover,
-                            ),
+                            errorBuilder: (context, error, stackTrace) => Image.asset("assets/images/asur.webp", width: 110, fit: BoxFit.cover),
                           ),
                         ),
                       ),

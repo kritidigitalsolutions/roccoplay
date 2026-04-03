@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:roccoplay/modules/dramaDetails/dramaDetailsPage.dart';
 import '../../data/models/response_model/content_response_model/content_model.dart';
 import '../../app/theme/app_colors.dart';
 import '../../widgets/catagory_widget.dart';
+import '../dramaDetails/dramaDetailsPage.dart';
 
 class Top10List extends StatelessWidget {
   final List<ContentModel> content;
