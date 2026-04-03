@@ -101,10 +101,12 @@ class AuthController extends GetxController {
     required String name,
     required String email,
     required String phone,
-    required String imagePath,
+    String? imagePath,
   }) async {
     try {
       isLoading.value = true;
+      // Note: Image upload logic should be handled here or in repository if API supports multipart.
+      // For now, continuing with existing logic while making imagePath optional.
       final response = await repository.createProfile(phone: phone, name: name, email: email);
 
       if (response != null) {
@@ -115,6 +117,9 @@ class AuthController extends GetxController {
         }
 
         userData.value = response['user'] ?? {"name": name, "email": email, "phone": phone};
+        if (imagePath != null && userData.value != null) {
+           userData.value!['image'] = imagePath; // Local preview or handle upload
+        }
         await storage.write('user_data', userData.value);
         setLoginStatus(true);
         return true;
@@ -141,5 +146,13 @@ class AuthController extends GetxController {
     } catch (e) {
       print("❌ Error fetching profile: $e");
     }
+  }
+
+  Future<void> logout() async {
+    await AppSession.clearSession();
+    await storage.remove('user_data');
+    userData.value = null;
+    isLoggedIn.value = false;
+    _updateGlobalToken(""); // Clear token in network service
   }
 }

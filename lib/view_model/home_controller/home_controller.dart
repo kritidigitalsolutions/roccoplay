@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import '../../utils/app_session.dart';
+import '../auth_controller/auth_controller.dart';
 
 class HomeController extends GetxController {
   var selectedIndex = 0.obs;
@@ -30,7 +31,8 @@ class HomeController extends GetxController {
   }
 
   void logout() async {
-    await AppSession.clearSession();
+    final authController = Get.find<AuthController>();
+    await authController.logout();
     isLoggedIn.value = false;
     selectedIndex.value = 0;
   }

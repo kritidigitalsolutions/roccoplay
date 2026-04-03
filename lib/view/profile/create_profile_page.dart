@@ -4,23 +4,46 @@ import '../../app/theme/app_colors.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import '../../view_model/profile/create_profile_controller.dart';
 
-class CreateProfilePage extends StatelessWidget {
+class CreateProfilePage extends StatefulWidget {
   final String phone;
 
   const CreateProfilePage({super.key, required this.phone});
 
   @override
-  Widget build(BuildContext context) {
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final authController = Get.find<AuthController>();
-    final createProfileController = Get.put(CreateProfileController());
+  State<CreateProfilePage> createState() => _CreateProfilePageState();
+}
 
+class _CreateProfilePageState extends State<CreateProfilePage> {
+  late final TextEditingController nameController;
+  late final TextEditingController emailController;
+  late final AuthController authController;
+  late final CreateProfileController createProfileController;
+
+  @override
+  void initState() {
+    super.initState();
+    nameController = TextEditingController();
+    emailController = TextEditingController();
+    authController = Get.find<AuthController>();
+    createProfileController = Get.put(CreateProfileController());
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
+        title: const Text("Create Profile", style: TextStyle(color: AppColors.white)),
+        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -29,17 +52,17 @@ class CreateProfilePage extends StatelessWidget {
             children: [
               const SizedBox(height: 30),
 
-              /// Profile Image
+              /// Profile Image (Optional)
               GestureDetector(
                 onTap: createProfileController.pickImage,
                 child: Obx(() => CircleAvatar(
                   radius: 50,
-                  backgroundColor: Colors.grey,
+                  backgroundColor: Colors.grey[900],
                   backgroundImage: createProfileController.selectedImage.value != null
                       ? FileImage(createProfileController.selectedImage.value!)
                       : null,
                   child: createProfileController.selectedImage.value == null
-                      ? const Icon(Icons.person, size: 50, color: Colors.white)
+                      ? const Icon(Icons.camera_alt, size: 40, color: Colors.white54)
                       : null,
                 )),
               ),
@@ -47,7 +70,7 @@ class CreateProfilePage extends StatelessWidget {
               TextButton(
                 onPressed: createProfileController.pickImage,
                 child: const Text(
-                  "Change Avatar",
+                  "Choose Profile Picture",
                   style: TextStyle(color: AppColors.buttonColor),
                 ),
               ),
@@ -104,18 +127,17 @@ class CreateProfilePage extends StatelessWidget {
                   onPressed: authController.isLoading.value
                       ? null
                       : () async {
-                          if (nameController.text.isEmpty ||
-                              emailController.text.isEmpty ||
-                              createProfileController.selectedImage.value == null) {
-                            Get.snackbar("Error", "All fields are required");
+                          if (nameController.text.trim().isEmpty ||
+                              emailController.text.trim().isEmpty) {
+                            Get.snackbar("Error", "Name and Email are required");
                             return;
                           }
 
                           bool success = await authController.updateAndSaveProfile(
-                            name: nameController.text,
-                            email: emailController.text,
-                            phone: phone,
-                            imagePath: createProfileController.selectedImage.value!.path,
+                            name: nameController.text.trim(),
+                            email: emailController.text.trim(),
+                            phone: widget.phone,
+                            imagePath: createProfileController.selectedImage.value?.path,
                           );
 
                           if (success) {

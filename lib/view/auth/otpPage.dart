@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
-import '../../utils/app_session.dart';
 import '../profile/create_profile_page.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import '../../view_model/auth_controller/otp_controller.dart';
@@ -29,24 +28,19 @@ class OtpPage extends StatelessWidget {
       final response = await authController.verifyOtp(phoneNumber, otp);
 
       if (response != null && response.success) {
-        // ✅ CRITICAL FIX: Update global login state
         authController.setLoginStatus(true);
         
-        // Check if user is new or profile is incomplete
         bool isNew = response.isNewUser;
-        bool isProfileIncomplete = false;
-        
-        if (response.user != null && response.user!['profileComplete'] == false) {
-          isProfileIncomplete = true;
-        }
+        bool isProfileIncomplete = (response.user != null && response.user!['profileComplete'] == false);
 
-        if (isNew || isProfileIncomplete) {
-          print("Navigating to: CreateProfilePage");
-          Get.offAll(() => CreateProfilePage(phone: phoneNumber));
-        } else {
-          print("Navigating to: MainHomePage");
-          Get.offAllNamed(AppRoutes.home);
-        }
+        // ✅ Add a small delay to prevent FocusNode issues during navigation
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (isNew || isProfileIncomplete) {
+            Get.offAll(() => CreateProfilePage(phone: phoneNumber));
+          } else {
+            Get.offAllNamed(AppRoutes.home);
+          }
+        });
       }
     }
 
@@ -87,7 +81,6 @@ class OtpPage extends StatelessWidget {
               ),
               const SizedBox(height: 40),
 
-              /// OTP Boxes (6 digits)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: List.generate(
@@ -139,7 +132,6 @@ class OtpPage extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              /// Verify Button
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -162,7 +154,6 @@ class OtpPage extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              /// Resend OTP
               Center(
                 child: Obx(() => TextButton(
                   onPressed: (otpController.isResendButtonDisabled.value || authController.isLoading.value)
