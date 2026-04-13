@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import '../../app/theme/app_colors.dart';
 import '../../data/models/response_model/plan_response/plan_model.dart';
 import '../../data/network/base_api_service.dart';
 import '../../data/repositories/premium_repository.dart';
@@ -18,7 +19,15 @@ class PremiumController extends GetxController {
   var selectedPrice = "0".obs;
   var isLoading = true.obs;
   var isSubscribing = false.obs;
+  var isRedeeming = false.obs;
+  var isApplyingPromo = false.obs;
   var plans = <PlanModel>[].obs;
+
+  // Promo Code State
+  var appliedPromoCode = "".obs;
+  var originalPrice = 0.0.obs;
+  var discountedPrice = 0.0.obs;
+  var isPromoApplied = false.obs;
 
   // Subscription Status Data
   var subscriptionData = Rxn<Map<String, dynamic>>();
@@ -66,7 +75,11 @@ class PremiumController extends GetxController {
 
   void selectPlan(int index) {
     selectedPlanIndex.value = index;
+    isPromoApplied.value = false;
+    appliedPromoCode.value = "";
     if (index < plans.length) {
+      originalPrice.value = (plans[index].price ?? 0).toDouble();
+      discountedPrice.value = originalPrice.value;
       selectedPrice.value = "₹${plans[index].price}";
     }
   }
@@ -86,13 +99,55 @@ class PremiumController extends GetxController {
     }
   }
 
-  Future<void> subscribeToPlan(String planId) async {
+  /// 🔹 Apply Promo Code (Local Calculation)
+  /// "free ke bad jitna number likhe h utna hi discont ho jana chaiye amount m"
+  Future<void> applyPromoCode(String promoCode) async {
+    if (plans.isEmpty || selectedPlanIndex.value >= plans.length) return;
+
+    try {
+      isApplyingPromo.value = true;
+      String code = promoCode.toUpperCase();
+
+      // Extract numeric part from codes like FREE30, WELCOME50, ROCCO50
+      final RegExp regExp = RegExp(r'\d+');
+      final match = regExp.firstMatch(code);
+
+      if (match != null) {
+        double discountValue = double.parse(match.group(0)!);
+        isPromoApplied.value = true;
+        appliedPromoCode.value = code;
+
+        // Apply FLAT rupee discount based on the number in the code
+        discountedPrice.value = originalPrice.value - discountValue;
+        if (discountedPrice.value < 0) discountedPrice.value = 0;
+
+        selectedPrice.value = "₹${discountedPrice.value.toStringAsFixed(1)}";
+
+        Get.snackbar("Success", "Promo code applied: ₹$discountValue Discount!",
+            backgroundColor: Colors.green, colorText: Colors.white);
+      } else {
+        Get.snackbar("Error", "Invalid Promo Code Format",
+            backgroundColor: Colors.red, colorText: Colors.white);
+      }
+    } catch (e) {
+      isPromoApplied.value = false;
+      appliedPromoCode.value = "";
+      discountedPrice.value = originalPrice.value;
+      selectedPrice.value = "₹${originalPrice.value}";
+    } finally {
+      isApplyingPromo.value = false;
+    }
+  }
+
+  Future<void> subscribeToPlan(String planId, {String? promoCode}) async {
     try {
       isSubscribing.value = true;
-      final response = await _repository.subscribeToPlan(planId);
+      final response = await _repository.subscribeToPlan(planId, promoCode: promoCode ?? (isPromoApplied.value ? appliedPromoCode.value : null));
 
       if (response != null && response['success'] == true) {
-        Get.back(); // Close bottom sheet
+        if (Get.isBottomSheetOpen == true || Get.isDialogOpen == true) {
+          Get.back();
+        }
         _showStatusDialog(
           title: "Success",
           message: "Successfully plan purchase",
@@ -102,11 +157,12 @@ class PremiumController extends GetxController {
         fetchSubscriptionStatus(); // Refresh status after purchase
       }
     } catch (e) {
-      Get.back();
-      if (e.toString().contains("already purchased") ||
-          e.toString().contains("already has an active subscription") ||
-          e.toString().contains("400")) {
+      if (Get.isBottomSheetOpen == true || Get.isDialogOpen == true) {
+        Get.back();
+      }
 
+      String errorMsg = e.toString();
+      if (errorMsg.contains("already purchased") || errorMsg.contains("already has an active subscription")) {
         _showStatusDialog(
           title: "Info",
           message: "Already purchased",
@@ -114,10 +170,38 @@ class PremiumController extends GetxController {
           iconColor: Colors.blue,
         );
       } else {
-        Get.snackbar("Error", e.toString());
+        Get.snackbar("Error", errorMsg);
       }
     } finally {
       isSubscribing.value = false;
+    }
+  }
+
+  Future<void> redeemVoucher(String code) async {
+    try {
+      isRedeeming.value = true;
+      final response = await _repository.redeemVoucher(code);
+      if (response != null && response['success'] == true) {
+        _showStatusDialog(
+          title: "Success",
+          message: response['message'] ?? "Voucher redeemed successfully",
+          icon: Icons.check_circle,
+          iconColor: Colors.green,
+        );
+        fetchSubscriptionStatus(); // Refresh status
+      }
+    } catch (e) {
+      String errorMsg = e.toString();
+      // Handle "Already used" or other specific messages from API
+      if (errorMsg.contains("Already used")) {
+        Get.snackbar("Info", "This voucher has already been used",
+            backgroundColor: Colors.orange, colorText: Colors.white);
+      } else {
+        Get.snackbar("Error", errorMsg,
+            backgroundColor: Colors.red, colorText: Colors.white);
+      }
+    } finally {
+      isRedeeming.value = false;
     }
   }
 
@@ -153,7 +237,7 @@ class PremiumController extends GetxController {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.pinkAccent,
+                  backgroundColor: AppColors.buttonColor,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: () => Get.back(),

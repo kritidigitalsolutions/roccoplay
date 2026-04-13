@@ -15,6 +15,8 @@ import '../premium/goPremium.dart';
 import '../profile/profilePage.dart';
 import '../../view_model/home_controller/home_controller.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
+import '../../utils/notification_service.dart';
+import '../notifications/notification_page.dart';
 
 class MainHomePage extends StatelessWidget {
   const MainHomePage({super.key});
@@ -24,6 +26,7 @@ class MainHomePage extends StatelessWidget {
     final ContentController contentController = Get.put(ContentController());
     final HomeController controller = Get.put(HomeController());
     final AuthController authController = Get.find<AuthController>();
+    final notificationService = NotificationService.to;
 
     return PopScope(
       canPop: false, // ❌ direct pop disable
@@ -40,64 +43,65 @@ class MainHomePage extends StatelessWidget {
         backgroundColor: AppColors.black,
         body: Stack(
           children: [
-          /// ✅ PAGE CONTENT
-          SafeArea(
-            child: Obx(
-              () => IndexedStack(
-                index: controller.selectedIndex.value,
-                children: [
-                  _buildHomeContent(
-                    context,
-                    controller,
-                    authController,
-                    contentController,
-                  ),
-                  const SearchPage(),
-                  const GoPremiumPage(),
-                  const DownloadsPage(),
+            /// ✅ PAGE CONTENT
+            SafeArea(
+              child: Obx(
+                () => IndexedStack(
+                  index: controller.selectedIndex.value,
+                  children: [
+                    _buildHomeContent(
+                      context,
+                      controller,
+                      authController,
+                      contentController,
+                      notificationService,
+                    ),
+                    const SearchPage(),
+                    const GoPremiumPage(),
+                    const DownloadsPage(),
 
-                  /// ✅ ONLY PROFILE HERE
-                  ProfilePage(
-                    onLogout: () {
-                      controller.logout();
-                      authController.setLoginStatus(false);
-                    },
-                  ),
-                ],
+                    /// ✅ ONLY PROFILE HERE
+                    ProfilePage(
+                      onLogout: () {
+                        controller.logout();
+                        authController.setLoginStatus(false);
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          /// ✅ BOTTOM NAVBAR
-          Obx(() {
-            int selectedIndex = controller.selectedIndex.value;
-            bool isLoggedIn = authController.isLoggedIn.value;
+            /// ✅ BOTTOM NAVBAR
+            Obx(() {
+              int selectedIndex = controller.selectedIndex.value;
+              bool isLoggedIn = authController.isLoggedIn.value;
 
-            if (selectedIndex != 2) {
-              return Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: CustomBottomNavbar(
-                  selectedIndex: selectedIndex,
-                  onItemTapped: (index) {
-                    /// 🔥 LOGIN GUARD
-                    if (index == 4 && !isLoggedIn) {
-                      Get.to(() => const SignInPage());
-                      return;
-                    }
+              if (selectedIndex != 2) {
+                return Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: CustomBottomNavbar(
+                    selectedIndex: selectedIndex,
+                    onItemTapped: (index) {
+                      /// 🔥 LOGIN GUARD
+                      if (index == 4 && !isLoggedIn) {
+                        Get.to(() => const SignInPage());
+                        return;
+                      }
 
-                    controller.onItemTapped(index);
-                  },
-                  isLoggedIn: isLoggedIn,
-                ),
-              );
-            }
-            return const SizedBox.shrink();
-          }),
-        ],
+                      controller.onItemTapped(index);
+                    },
+                    isLoggedIn: isLoggedIn,
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            }),
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -107,6 +111,7 @@ class MainHomePage extends StatelessWidget {
     HomeController controller,
     AuthController authController,
     ContentController contentController,
+    NotificationService notificationService,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,22 +123,68 @@ class MainHomePage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Image.asset('assets/images/roccoplay_logo.png', height: 40),
-
-              SizedBox(
-                width: 110,
-                height: 22,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Get.to(() => const GoPremiumPage());
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.buttonColor,
+              Row(
+                children: [
+                  Obx(() {
+                    int unreadCount = notificationService.notifications
+                        .where((n) => n['isRead'] == false)
+                        .length;
+                    return Stack(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            Get.to(() => const NotificationPage());
+                          },
+                          icon: const Icon(Icons.notifications_outlined,
+                              color: Colors.white, size: 28),
+                        ),
+                        if (unreadCount > 0)
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
+                              child: Text(
+                                unreadCount > 9 ? '9+' : '$unreadCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  }),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 110,
+                    height: 28,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Get.to(() => const GoPremiumPage());
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.buttonColor,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      child: const Text(
+                        "Go Premium",
+                        style: TextStyle(color: Colors.white, fontSize: 10),
+                      ),
+                    ),
                   ),
-                  child: const Text(
-                    "Go Premium",
-                    style: TextStyle(color: Colors.white, fontSize: 10),
-                  ),
-                ),
+                ],
               ),
             ],
           ),
@@ -143,7 +194,7 @@ class MainHomePage extends StatelessWidget {
         Expanded(
           child: SingleChildScrollView(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, // ✅ ADD THIS
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 15),
 

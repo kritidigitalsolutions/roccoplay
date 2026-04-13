@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
+import '../../view_model/primium_controller/premium_controller.dart';
 
 class ApplyPromoPopup extends StatefulWidget {
   const ApplyPromoPopup({Key? key}) : super(key: key);
@@ -9,22 +11,8 @@ class ApplyPromoPopup extends StatefulWidget {
 }
 
 class _ApplyPromoPopupState extends State<ApplyPromoPopup> {
-  TextEditingController promoController = TextEditingController();
-
-  double originalPrice = 199;
-  double totalAmount = 199;
-
-  void applyPromo() {
-    if (promoController.text.trim().toLowerCase() == "rocco50") {
-      setState(() {
-        totalAmount = originalPrice * 0.5;
-      });
-    } else {
-      setState(() {
-        totalAmount = originalPrice;
-      });
-    }
-  }
+  final TextEditingController promoController = TextEditingController();
+  final PremiumController controller = Get.find<PremiumController>();
 
   @override
   Widget build(BuildContext context) {
@@ -36,160 +24,172 @@ class _ApplyPromoPopupState extends State<ApplyPromoPopup> {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          child: Obx(() {
+            final selectedPlan = controller.plans.isNotEmpty
+                ? controller.plans[controller.selectedPlanIndex.value]
+                : null;
 
-              /// 🔴 Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Apply Promo Code",
-                    style: TextStyle(
-                      color: AppColors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+            if (selectedPlan == null) return const SizedBox.shrink();
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /// 🔴 Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Apply Promo Code",
+                      style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Icon(Icons.close, color: AppColors.white),
-                  )
-                ],
-              ),
-
-              SizedBox(height: 20),
-
-              Text(
-                "Your Plan",
-                style: TextStyle(color: AppColors.grey),
-              ),
-
-              SizedBox(height: 10),
-
-              Row(
-                children: [
-                  Icon(Icons.workspace_premium, color: AppColors.buttonColor),
-                  SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Mobile Only",
-                          style: TextStyle(
-                              color: AppColors.white,
-                              fontWeight: FontWeight.bold)),
-                      Text("Billed every month",
-                          style: TextStyle(
-                              color: AppColors.grey,
-                              fontSize: 12)),
-                    ],
-                  ),
-                ],
-              ),
-
-              SizedBox(height: 10),
-
-              Text(
-                "INR ${originalPrice.toStringAsFixed(0)}",
-                style: TextStyle(
-                  color: AppColors.buttonColor,
-                  fontWeight: FontWeight.bold,
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(Icons.close, color: AppColors.white),
+                    )
+                  ],
                 ),
-              ),
 
-              SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-              Text(
-                "Have a promo code?",
-                style: TextStyle(
-                  color: AppColors.white,
-                  fontWeight: FontWeight.bold,
+                const Text(
+                  "Your Plan",
+                  style: TextStyle(color: AppColors.grey),
                 ),
-              ),
 
-              SizedBox(height: 10),
+                const SizedBox(height: 10),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: promoController,
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: "Enter Code",
-                        hintStyle:
-                        TextStyle(color: AppColors.grey),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide:
-                          BorderSide(color: AppColors.grey),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide:
-                          BorderSide(color: AppColors.buttonColor),
+                Row(
+                  children: [
+                    const Icon(Icons.workspace_premium, color: AppColors.buttonColor),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(selectedPlan.name ?? "Premium Plan",
+                              style: const TextStyle(
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.bold)),
+                          Text("Billed every ${selectedPlan.duration} days",
+                              style: const TextStyle(
+                                  color: AppColors.grey,
+                                  fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                Text(
+                  "INR ${controller.originalPrice.value.toStringAsFixed(0)}",
+                  style: TextStyle(
+                    color: controller.isPromoApplied.value ? AppColors.grey : AppColors.buttonColor,
+                    fontWeight: FontWeight.bold,
+                    decoration: controller.isPromoApplied.value ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                const Text(
+                  "Have a promo code?",
+                  style: TextStyle(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: promoController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          hintText: "Enter Code",
+                          hintStyle: TextStyle(color: AppColors.grey),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: AppColors.grey),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: AppColors.buttonColor),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  SizedBox(width: 10),
-                  ElevatedButton(
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.buttonColor,
+                        ),
+                        onPressed: controller.isApplyingPromo.value
+                            ? null
+                            : () => controller.applyPromoCode(promoController.text.trim()),
+                        child: controller.isApplyingPromo.value
+                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Text("Apply",
+                          style: TextStyle(
+                              color: AppColors.white,
+                              fontWeight: FontWeight.bold
+                          ),),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Total Amount",
+                        style: TextStyle(color: AppColors.white)),
+                    Text(
+                      "INR ${controller.discountedPrice.value.toStringAsFixed(0)}",
+                      style: const TextStyle(
+                          color: AppColors.buttonColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 45,
+                  child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.buttonColor,
                     ),
-                    onPressed: applyPromo,
-                    child: Text("Apply",
-                    style: TextStyle(
-                      color: AppColors.white,
-                      fontWeight: FontWeight.bold
-                    ),),
-                  ),
-                ],
-              ),
-
-              SizedBox(height: 20),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Total Amount",
-                      style: TextStyle(color: AppColors.white)),
-                  Text(
-                    "INR ${totalAmount.toStringAsFixed(0)}",
-                    style: TextStyle(
-                        color: AppColors.buttonColor,
-                        fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-
-              SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                height: 45,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.buttonColor,
-                  ),
-                  onPressed: () {
-                    // Navigator.pop(context);
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //       builder: (context) => PaymentPage()),
-                    // );
-                  },
-                  child: Text(
-                    "Proceed To Pay",
-                    style: TextStyle(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.bold),
+                    onPressed: controller.isSubscribing.value
+                        ? null
+                        : () => controller.subscribeToPlan(selectedPlan.id!),
+                    child: controller.isSubscribing.value
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                      "Proceed To Pay",
+                      style: TextStyle(
+                          color: AppColors.white,
+                          fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            );
+          }),
         ),
       ),
     );

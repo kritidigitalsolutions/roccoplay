@@ -56,13 +56,13 @@ class AuthController extends GetxController {
       final response = await repository.sendOtp(identifier);
       Get.snackbar(
         'OTP Generated',
-        'Your OTP is ${response.otp}',
+        'Your OTP is send Successfully',
         snackPosition: SnackPosition.BOTTOM,
         duration: Duration(seconds: 5),
-
         backgroundColor: Colors.white,
         colorText: Colors.black,
       );
+      print(response);
       return true;
     } catch (e) {
       Get.snackbar('Error', e.toString());

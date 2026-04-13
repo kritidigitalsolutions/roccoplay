@@ -12,6 +12,7 @@ class AuthRepository {
     try {
       final response = await apiProvider.postApi(AppConstants.sendOtp, {
         'identifier': identifier,
+        'phone': identifier,   // 🔥 ADD THIS
         'type': 'phone',
       });
       return SendOtpResponse.fromJson(response);
@@ -24,6 +25,7 @@ class AuthRepository {
     try {
       final response = await apiProvider.postApi(AppConstants.verifyOtp, {
         'identifier': phoneNumber,
+        'phone': phoneNumber,   // 🔥 ADD THIS
         'otp': otp,
         'type': 'phone',
       });

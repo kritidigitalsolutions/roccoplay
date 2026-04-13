@@ -24,7 +24,7 @@ class GoPremiumPage extends StatelessWidget {
           if (controller.isLoading.value) {
             return const Center(child: CircularProgressIndicator(color: Colors.pink));
           }
-          
+
           return Column(
             children: [
               /// 🔹 Top Section
@@ -35,7 +35,7 @@ class GoPremiumPage extends StatelessWidget {
                   children: [
                     /// Back Icon
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios, color: AppColors.white),
+                        icon: const Icon(Icons.arrow_back_ios, color: AppColors.white),
                         onPressed: () {
                           if (Get.key.currentState?.canPop() ?? false) {
                             Get.back(); // ✅ If opened via Get.to()
@@ -65,26 +65,26 @@ class GoPremiumPage extends StatelessWidget {
 
               ///  Custom Plan Buttons
               if (controller.plans.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 15),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: List.generate(controller.plans.length, (index) {
-                      return SizedBox(
-                        width: MediaQuery.of(context).size.width / 3 - 10,
-                        child: _buildPlanButton(controller, controller.plans[index].name, index),
-                      );
-                    }),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: List.generate(controller.plans.length, (index) {
+                        return SizedBox(
+                          width: MediaQuery.of(context).size.width / 3 - 10,
+                          child: _buildPlanButton(controller, controller.plans[index].name, index),
+                        );
+                      }),
+                    ),
                   ),
                 ),
-              ),
 
               /// 🔹 Plans According To Selection
               Expanded(
-                child: controller.plans.isEmpty 
-                  ? const Center(child: Text("No plans available", style: TextStyle(color: Colors.white)))
-                  : _buildPlanList(controller),
+                child: controller.plans.isEmpty
+                    ? const Center(child: Text("No plans available", style: TextStyle(color: Colors.white)))
+                    : _buildPlanList(controller),
               ),
 
               /// 🔴 Sign In / Purchase / Already Purchased Button
@@ -98,35 +98,35 @@ class GoPremiumPage extends StatelessWidget {
                     // Check if selected plan is already active
                     bool isAlreadyPurchased = false;
                     if (sub != null && sub['status'] == 'active' && controller.plans.isNotEmpty) {
-                       final selectedPlanId = controller.plans[controller.selectedPlanIndex.value].id;
-                       if (sub['plan']['_id'] == selectedPlanId) {
-                         isAlreadyPurchased = true;
-                       }
+                      final selectedPlanId = controller.plans[controller.selectedPlanIndex.value].id;
+                      if (sub['plan']['_id'] == selectedPlanId) {
+                        isAlreadyPurchased = true;
+                      }
                     }
 
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isAlreadyPurchased ? Colors.grey : AppColors.buttonColor,
                       ),
-                      onPressed: isAlreadyPurchased 
-                        ? null // Make unclickable if already purchased
-                        : () {
-                          if (controller.isUserLoggedIn.value) {
-                            Get.bottomSheet(
-                              const PaymentBottomSheet(),
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                            );
-                          } else {
-                            Get.to(() => const SignInPage());
-                          }
-                        },
+                      onPressed: isAlreadyPurchased
+                          ? null // Make unclickable if already purchased
+                          : () {
+                        if (controller.isUserLoggedIn.value) {
+                          Get.bottomSheet(
+                            const PaymentBottomSheet(),
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                          );
+                        } else {
+                          Get.to(() => const SignInPage());
+                        }
+                      },
                       child: Text(
-                        isAlreadyPurchased 
-                          ? "Already Purchased" 
-                          : (controller.isUserLoggedIn.value
-                              ? "Continue with ${controller.selectedPrice.value}"
-                              : "Sign In"),
+                        isAlreadyPurchased
+                            ? "Already Purchased"
+                            : (controller.isUserLoggedIn.value
+                            ? "Continue with ${controller.selectedPrice.value}"
+                            : "Sign In"),
                         style: const TextStyle(
                           color: AppColors.white,
                           fontSize: 20,
@@ -228,9 +228,9 @@ class GoPremiumPage extends StatelessWidget {
   Widget _buildPlanList(PremiumController controller) {
     return Obx(() {
       if (controller.plans.isEmpty) return const SizedBox.shrink();
-      
+
       final selectedPlan = controller.plans[controller.selectedPlanIndex.value];
-      
+
       return ListView(
         padding: const EdgeInsets.all(15),
         children: [

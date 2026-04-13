@@ -15,11 +15,15 @@ class PremiumRepository {
     }
   }
 
-  Future<dynamic> subscribeToPlan(String planId) async {
+  Future<dynamic> subscribeToPlan(String planId, {String? promoCode}) async {
     try {
+      final Map<String, dynamic> data = {"planId": planId};
+      if (promoCode != null && promoCode.isNotEmpty) {
+        data["promoCode"] = promoCode;
+      }
       final response = await apiProvider.postApi(
         AppConstants.buyPlan,
-        {"planId": planId},
+        data,
       );
       return response;
     } catch (e) {
@@ -30,6 +34,18 @@ class PremiumRepository {
   Future<dynamic> getSubscriptionStatus() async {
     try {
       final response = await apiProvider.getApi(AppConstants.planCheck);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<dynamic> redeemVoucher(String code) async {
+    try {
+      final response = await apiProvider.postApi(
+        AppConstants.redeemVoucher,
+        {"code": code},
+      );
       return response;
     } catch (e) {
       rethrow;

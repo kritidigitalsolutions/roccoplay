@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
+import '../../view_model/primium_controller/premium_controller.dart';
 
 class RedeemVoucherPage extends StatefulWidget {
   const RedeemVoucherPage({Key? key}) : super(key: key);
@@ -9,40 +11,13 @@ class RedeemVoucherPage extends StatefulWidget {
 }
 
 class _RedeemVoucherPageState extends State<RedeemVoucherPage> {
-  TextEditingController voucherController = TextEditingController();
-  String errorMessage = "";
-
-  void redeemVoucher() {
-    String code = voucherController.text.trim();
-
-    if (code.isEmpty) {
-      setState(() {
-        errorMessage = "Please enter voucher code";
-      });
-    } else if (code != "ROCCO100") {
-      setState(() {
-        errorMessage = "Invalid voucher code";
-      });
-    } else {
-      setState(() {
-        errorMessage = "";
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Voucher Applied Successfully!"),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  }
+  final TextEditingController voucherController = TextEditingController();
+  final PremiumController controller = Get.find<PremiumController>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-
-      /// 🔴 HEADER
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
@@ -67,7 +42,7 @@ class _RedeemVoucherPageState extends State<RedeemVoucherPage> {
               color: Colors.grey[900],
               borderRadius: BorderRadius.circular(15),
             ),
-            child: Column(
+            child: Obx(() => Column(
               mainAxisSize: MainAxisSize.min,
               children: [
 
@@ -79,10 +54,10 @@ class _RedeemVoucherPageState extends State<RedeemVoucherPage> {
                   fit: BoxFit.contain,
                 ),
 
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 /// 🔹 Instruction Text
-                Text(
+                const Text(
                   "Please enter the voucher code below",
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -91,33 +66,25 @@ class _RedeemVoucherPageState extends State<RedeemVoucherPage> {
                   ),
                 ),
 
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 /// 🔹 TextField
                 TextField(
                   controller: voucherController,
-                  style: TextStyle(color: AppColors.white),
-                  decoration: InputDecoration(
+                  style: const TextStyle(color: AppColors.white),
+                  decoration: const InputDecoration(
                     hintText: "Enter Voucher Code",
                     hintStyle: TextStyle(color: AppColors.grey),
-                    errorText:
-                    errorMessage.isEmpty ? null : errorMessage,
                     enabledBorder: OutlineInputBorder(
-                      borderSide:
-                      BorderSide(color: AppColors.grey),
+                      borderSide: BorderSide(color: AppColors.grey),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderSide:
-                      BorderSide(color: AppColors.buttonColor),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderSide:
-                      BorderSide(color: AppColors.buttonColor),
+                      borderSide: BorderSide(color: AppColors.buttonColor),
                     ),
                   ),
                 ),
 
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 /// 🔴 Apply Button
                 SizedBox(
@@ -127,8 +94,12 @@ class _RedeemVoucherPageState extends State<RedeemVoucherPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.buttonColor,
                     ),
-                    onPressed: redeemVoucher,
-                    child: Text(
+                    onPressed: controller.isRedeeming.value
+                        ? null
+                        : () => controller.redeemVoucher(voucherController.text.trim()),
+                    child: controller.isRedeeming.value
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
                       "Apply",
                       style: TextStyle(
                           color: AppColors.white,
@@ -137,7 +108,7 @@ class _RedeemVoucherPageState extends State<RedeemVoucherPage> {
                   ),
                 ),
               ],
-            ),
+            )),
           ),
         ),
       ),

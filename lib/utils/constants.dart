@@ -1,7 +1,7 @@
 class AppConstants {
-  // static const String baseUrl = 'http://192.168.1.31:5000/api';
+  static const String baseUrl = 'http://192.168.1.19:5000/api';
   // static const String baseUrl = 'https://rocco-play.vercel.app/api';
-  static const String baseUrl = 'https://rocco-play-backend.vercel.app/api';
+  // static const String baseUrl = 'https://rocco-play-backend.vercel.app/api';
 
   // Auth Endpoints
   static const String sendOtp = '$baseUrl/user/auth/send-otp';
@@ -9,6 +9,9 @@ class AppConstants {
   /// user proflie
   static const String getProfile = '$baseUrl/user/profile';
   static const String createProfile = '$baseUrl/user/profile-info';
+
+  /// fcm
+  static const String updateFcmToken = '$baseUrl/user/fcm-token';
 
   /// legal
   static const String privacyPolicyUrl = '$baseUrl/user/legal/privacy-policy';
@@ -36,4 +39,7 @@ class AppConstants {
   static const String buyPlan = '$baseUrl/subscription/subscribe';
   static const String planCheck = '$baseUrl/subscription/status';
   static const String cancelPlan = '$baseUrl/subscription/status';
+
+  /// voucher
+  static const String redeemVoucher = '$baseUrl/voucher/redeem';
 }
