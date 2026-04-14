@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../app/theme/app_colors.dart';
 import '../../data/models/response_model/plan_response/plan_model.dart';
 import '../../data/network/base_api_service.dart';
 import '../../data/repositories/premium_repository.dart';
 import '../../utils/app_session.dart';
+import '../../utils/constants.dart';
 import '../auth_controller/auth_controller.dart';
 
 class PremiumController extends GetxController {
   late final PremiumRepository _repository;
   final AuthController _authController = Get.find<AuthController>();
+  late Razorpay _razorpay;
 
   var selectedPlanIndex = 0.obs;
   // Use AuthController's isLoggedIn status instead of local copy
@@ -33,10 +36,18 @@ class PremiumController extends GetxController {
   var subscriptionData = Rxn<Map<String, dynamic>>();
   var isLoadingStatus = false.obs;
 
+  // ✅ Helper to check if ANY plan is active
+  bool get hasActiveSubscription => 
+      subscriptionData.value != null && subscriptionData.value!['status'] == 'active';
+
   @override
   void onInit() {
     super.onInit();
     _repository = PremiumRepository(Get.find<BaseApiService>());
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
 
     // Fetch plans and subscription status
     fetchPlans();
@@ -53,6 +64,12 @@ class PremiumController extends GetxController {
     if (isUserLoggedIn.value) {
       fetchSubscriptionStatus();
     }
+  }
+
+  @override
+  void onClose() {
+    _razorpay.clear();
+    super.onClose();
   }
 
   Future<void> fetchPlans() async {
@@ -99,8 +116,104 @@ class PremiumController extends GetxController {
     }
   }
 
-  /// 🔹 Apply Promo Code (Local Calculation)
-  /// "free ke bad jitna number likhe h utna hi discont ho jana chaiye amount m"
+  /// 🔹 Start Payment Process (Triggered when user clicks Continue)
+  Future<void> startPayment(String planId) async {
+    // ✅ Check if already has an active plan
+    if (hasActiveSubscription) {
+      Get.snackbar("Info", "Already Purchased", backgroundColor: Colors.blue, colorText: Colors.white);
+      return;
+    }
+
+    try {
+      // ✅ Close bottom sheet if open before starting payment
+      if (Get.isBottomSheetOpen == true) Get.back();
+
+      isSubscribing.value = true;
+      final apiService = Get.find<BaseApiService>();
+      
+      // Prepare request body with promo code if applied
+      Map<String, dynamic> body = {"planId": planId};
+      if (isPromoApplied.value) {
+        body["promoCode"] = appliedPromoCode.value;
+      }
+
+      // 1. Create Order on Backend
+      final response = await apiService.postApi(
+        AppConstants.createOrder,
+        body,
+      );
+
+      if (response != null && response['success'] == true) {
+        var options = {
+          'key': response['key'],
+          'amount': response['order']['amount'],
+          'name': 'Rocco Play',
+          'order_id': response['order']['id'],
+          'description': 'Subscription Plan',
+          'prefill': {
+            'contact': _authController.userData.value?['phone'] ?? '',
+            'email': _authController.userData.value?['email'] ?? ''
+          },
+          'notes': {
+            'planId': planId,
+            'promoCode': isPromoApplied.value ? appliedPromoCode.value : "",
+          }
+        };
+
+        _razorpay.open(options);
+      }
+    } catch (e) {
+      String errorMsg = e.toString();
+      if (errorMsg.contains("already has an active subscription") || errorMsg.contains("already purchased")) {
+         Get.snackbar("Info", "Already Purchased", backgroundColor: Colors.blue, colorText: Colors.white);
+      } else {
+        Get.snackbar("Payment Failed", "Something went wrong", backgroundColor: Colors.red, colorText: Colors.white);
+      }
+    } finally {
+      isSubscribing.value = false;
+    }
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    try {
+      isSubscribing.value = true;
+      final apiService = Get.find<BaseApiService>();
+      
+      final String planId = plans[selectedPlanIndex.value].id ?? "";
+
+      // 2. Verify Payment on Backend
+      final verifyResponse = await apiService.postApi(
+        AppConstants.verifyPayment,
+        {
+          "razorpay_order_id": response.orderId,
+          "razorpay_payment_id": response.paymentId,
+          "razorpay_signature": response.signature,
+          "planId": planId
+        },
+      );
+
+      if (verifyResponse != null && verifyResponse['success'] == true) {
+        Get.snackbar("Success", "Payment Success", backgroundColor: Colors.green, colorText: Colors.white);
+        fetchSubscriptionStatus();
+      }
+    } catch (e) {
+       Get.snackbar("Payment Failed", "Something went wrong", backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      isSubscribing.value = false;
+    }
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    isSubscribing.value = false;
+    Get.snackbar("Payment Failed", "Payment Failed", backgroundColor: Colors.red, colorText: Colors.white);
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    Get.snackbar("External Wallet", "Wallet: ${response.walletName}",
+        backgroundColor: Colors.blue, colorText: Colors.white);
+  }
+
+  /// 🔹 Apply Code Logic
   Future<void> applyPromoCode(String promoCode) async {
     if (plans.isEmpty || selectedPlanIndex.value >= plans.length) return;
 
@@ -108,25 +221,35 @@ class PremiumController extends GetxController {
       isApplyingPromo.value = true;
       String code = promoCode.toUpperCase();
 
-      // Extract numeric part from codes like FREE30, WELCOME50, ROCCO50
       final RegExp regExp = RegExp(r'\d+');
       final match = regExp.firstMatch(code);
 
       if (match != null) {
-        double discountValue = double.parse(match.group(0)!);
+        double numericValue = double.parse(match.group(0)!);
         isPromoApplied.value = true;
         appliedPromoCode.value = code;
 
-        // Apply FLAT rupee discount based on the number in the code
-        discountedPrice.value = originalPrice.value - discountValue;
-        if (discountedPrice.value < 0) discountedPrice.value = 0;
+        // Check if it's a Voucher/Flat discount or a Percentage Promo
+        if (code.contains("VOUCH") || code.contains("FLAT")) {
+          // ➖ VOUCHER: Implement "-" Flat Calculations
+          discountedPrice.value = originalPrice.value - numericValue;
+          if (discountedPrice.value < 0) discountedPrice.value = 0;
+
+          Get.snackbar("Success", "Voucher applied: ₹$numericValue Flat Off!",
+              backgroundColor: Colors.green, colorText: Colors.white);
+        } else {
+          // 🏷️ PROMO CODE: Implement "%" Percentage Calculations
+          double discountAmount = (originalPrice.value * numericValue) / 100;
+          discountedPrice.value = originalPrice.value - discountAmount;
+          if (discountedPrice.value < 0) discountedPrice.value = 0;
+
+          Get.snackbar("Success", "Promo applied: $numericValue% Discount Off!",
+              backgroundColor: Colors.green, colorText: Colors.white);
+        }
 
         selectedPrice.value = "₹${discountedPrice.value.toStringAsFixed(1)}";
-
-        Get.snackbar("Success", "Promo code applied: ₹$discountValue Discount!",
-            backgroundColor: Colors.green, colorText: Colors.white);
       } else {
-        Get.snackbar("Error", "Invalid Promo Code Format",
+        Get.snackbar("Error", "Invalid Code Format",
             backgroundColor: Colors.red, colorText: Colors.white);
       }
     } catch (e) {
@@ -140,40 +263,35 @@ class PremiumController extends GetxController {
   }
 
   Future<void> subscribeToPlan(String planId, {String? promoCode}) async {
-    try {
-      isSubscribing.value = true;
-      final response = await _repository.subscribeToPlan(planId, promoCode: promoCode ?? (isPromoApplied.value ? appliedPromoCode.value : null));
 
-      if (response != null && response['success'] == true) {
-        if (Get.isBottomSheetOpen == true || Get.isDialogOpen == true) {
-          Get.back();
+    if (hasActiveSubscription) {
+      Get.snackbar("Info", "Already Purchased", backgroundColor: Colors.blue, colorText: Colors.white);
+      return;
+    }
+
+    // If it's a paid plan, use Razorpay. If price is 0 (after promo), use old logic.
+    if (discountedPrice.value > 0) {
+      startPayment(planId);
+    } else {
+
+      try {
+        isSubscribing.value = true;
+        final response = await _repository.subscribeToPlan(planId, promoCode: promoCode ?? (isPromoApplied.value ? appliedPromoCode.value : null));
+
+        if (response != null && response['success'] == true) {
+          Get.snackbar("Success", "Payment Success", backgroundColor: Colors.green, colorText: Colors.white);
+          fetchSubscriptionStatus();
         }
-        _showStatusDialog(
-          title: "Success",
-          message: "Successfully plan purchase",
-          icon: Icons.check_circle,
-          iconColor: Colors.green,
-        );
-        fetchSubscriptionStatus(); // Refresh status after purchase
+      } catch (e) {
+        String errorMsg = e.toString();
+        if (errorMsg.contains("already has an active subscription") || errorMsg.contains("already purchased")) {
+          Get.snackbar("Info", "Already Purchased", backgroundColor: Colors.blue, colorText: Colors.white);
+        } else {
+          Get.snackbar("Payment Failed", "Something went wrong", backgroundColor: Colors.red, colorText: Colors.white);
+        }
+      } finally {
+        isSubscribing.value = false;
       }
-    } catch (e) {
-      if (Get.isBottomSheetOpen == true || Get.isDialogOpen == true) {
-        Get.back();
-      }
-
-      String errorMsg = e.toString();
-      if (errorMsg.contains("already purchased") || errorMsg.contains("already has an active subscription")) {
-        _showStatusDialog(
-          title: "Info",
-          message: "Already purchased",
-          icon: Icons.info_outline,
-          iconColor: Colors.blue,
-        );
-      } else {
-        Get.snackbar("Error", errorMsg);
-      }
-    } finally {
-      isSubscribing.value = false;
     }
   }
 
@@ -182,24 +300,12 @@ class PremiumController extends GetxController {
       isRedeeming.value = true;
       final response = await _repository.redeemVoucher(code);
       if (response != null && response['success'] == true) {
-        _showStatusDialog(
-          title: "Success",
-          message: response['message'] ?? "Voucher redeemed successfully",
-          icon: Icons.check_circle,
-          iconColor: Colors.green,
-        );
-        fetchSubscriptionStatus(); // Refresh status
+        Get.snackbar("Success", "Redeemed successfully", backgroundColor: Colors.green, colorText: Colors.white);
+        fetchSubscriptionStatus();
       }
     } catch (e) {
-      String errorMsg = e.toString();
-      // Handle "Already used" or other specific messages from API
-      if (errorMsg.contains("Already used")) {
-        Get.snackbar("Info", "This voucher has already been used",
-            backgroundColor: Colors.orange, colorText: Colors.white);
-      } else {
-        Get.snackbar("Error", errorMsg,
-            backgroundColor: Colors.red, colorText: Colors.white);
-      }
+      Get.snackbar("Error", "Something went wrong",
+          backgroundColor: Colors.red, colorText: Colors.white);
     } finally {
       isRedeeming.value = false;
     }

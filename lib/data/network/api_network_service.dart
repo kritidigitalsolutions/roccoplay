@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-
+import '../../utils/app_session.dart';
 import '../exception/app_exception.dart';
 import 'base_api_service.dart';
 
@@ -16,13 +16,18 @@ class NetworkApiService extends BaseApiService {
       ),
     );
 
-    /// Interceptor for logging
+    /// Interceptor for dynamic token and logging
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
+          // ✅ AUTOMATICALLY ADD TOKEN FROM STORAGE EVERY TIME
+          String? token = AppSession.getToken();
+          if (token != null && token.isNotEmpty) {
+            options.headers["Authorization"] = "Bearer $token";
+            debugPrint("🔐 Interceptor: Added Bearer Token");
+          }
+
           debugPrint("➡️ REQUEST [${options.method}] => ${options.uri}");
-          debugPrint("Headers: ${options.headers}");
-          debugPrint("Data: ${options.data}");
           return handler.next(options);
         },
         onResponse: (response, handler) {

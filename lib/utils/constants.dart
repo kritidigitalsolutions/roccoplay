@@ -1,7 +1,8 @@
 class AppConstants {
-  static const String baseUrl = 'http://192.168.1.19:5000/api';
-  // static const String baseUrl = 'https://rocco-play.vercel.app/api';
-  // static const String baseUrl = 'https://rocco-play-backend.vercel.app/api';
+  // static const String baseUrl = 'http://192.168.1.19:5000/api';
+  // static const String baseUrl = 'https://rocco-play-v3vs.vercel.app/api';
+  // static const String baseUrl = 'https://rocco-play-v3vs.vercel.app/api';
+  static const String baseUrl = 'https://rocco-play-backend.vercel.app/api';
 
   // Auth Endpoints
   static const String sendOtp = '$baseUrl/user/auth/send-otp';
@@ -13,6 +14,12 @@ class AppConstants {
   /// fcm
   static const String updateFcmToken = '$baseUrl/user/fcm-token';
 
+  /// notifications
+  static const String getNotifications = '$baseUrl/notifications';
+  static String markNotificationRead(String id) => '$baseUrl/notifications/$id/read';
+  static const String markAllNotificationsRead = '$baseUrl/notifications/read-all';
+  static String deleteNotification(String id) => '$baseUrl/notifications/$id';
+
   /// legal
   static const String privacyPolicyUrl = '$baseUrl/user/legal/privacy-policy';
   static const String termsAndConditionsUrl = '$baseUrl/user/legal/terms-conditions';
@@ -22,6 +29,9 @@ class AppConstants {
   /// content
   static const String getAllContent = '$baseUrl/content';
 
+  /// payment
+  static const String createOrder = '$baseUrl/payment/create-order';
+  static const String verifyPayment = '$baseUrl/payment/verify';
 
   /// watchlist
   static const String addWatchlist = '$baseUrl/user/watchlist';

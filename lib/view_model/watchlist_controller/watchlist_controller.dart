@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import '../../data/network/base_api_service.dart';
 import '../../data/repositories/watchlist_repo.dart';
+import '../auth_controller/auth_controller.dart';
 
 class WatchlistController extends GetxController {
   final WatchlistRepo repo = WatchlistRepo(apiProvider: Get.find<BaseApiService>());
@@ -11,7 +12,23 @@ class WatchlistController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    getWatchlist();
+    
+    // Auth status check करें
+    final authController = Get.find<AuthController>();
+    
+    // Initial fetch if logged in
+    if (authController.isLoggedIn.value) {
+      getWatchlist();
+    }
+
+    // Login status change को listen करें
+    ever(authController.isLoggedIn, (bool loggedIn) {
+      if (loggedIn) {
+        getWatchlist();
+      } else {
+        watchlist.clear();
+      }
+    });
   }
 
   /// 📥 GET WATCHLIST

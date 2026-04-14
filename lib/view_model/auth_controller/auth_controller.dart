@@ -6,6 +6,7 @@ import '../../data/network/api_network_service.dart';
 import '../../data/network/base_api_service.dart';
 import '../../data/models/response_model/auth_response_model/verify_otp_response.dart';
 import '../../utils/app_session.dart';
+import '../../utils/notification_service.dart';
 
 class AuthController extends GetxController {
   // ✅ FIX: Use late and initialize in onInit to ensure we get the global instance
@@ -32,7 +33,7 @@ class AuthController extends GetxController {
 
     // Set initial token from session if available
     String? token = AppSession.getToken();
-    if (token != null) {
+    if (token != null && token.isNotEmpty) {
       _updateGlobalToken(token);
     }
   }
@@ -44,6 +45,16 @@ class AuthController extends GetxController {
       apiService.setToken(token);
     }
   }
+
+  // void _syncFCMToken() {
+  //   try {
+  //     if (Get.isRegistered<NotificationService>()) {
+  //       NotificationService.to.uploadToken();
+  //     }
+  //   } catch (e) {
+  //     print("⚠️ FCM Sync failed: $e");
+  //   }
+  // }
 
   void setLoginStatus(bool status) async {
     isLoggedIn.value = status;
@@ -58,7 +69,7 @@ class AuthController extends GetxController {
         'OTP Generated',
         'Your OTP is send Successfully',
         snackPosition: SnackPosition.BOTTOM,
-        duration: Duration(seconds: 5),
+        duration: const Duration(seconds: 5),
         backgroundColor: Colors.white,
         colorText: Colors.black,
       );
@@ -86,6 +97,12 @@ class AuthController extends GetxController {
           userData.value = response.user;
           await storage.write('user_data', response.user);
         }
+
+        // ✅ Fix: Set login status if NOT a new user (Existing user is now logged in)
+        if (!response.isNewUser) {
+          setLoginStatus(true);
+        }
+        
         return response;
       }
       return null;
@@ -121,6 +138,8 @@ class AuthController extends GetxController {
            userData.value!['image'] = imagePath; // Local preview or handle upload
         }
         await storage.write('user_data', userData.value);
+        
+        // ✅ User is fully registered and logged in now
         setLoginStatus(true);
         return true;
       }

@@ -64,13 +64,10 @@ Future<void> main() async {
     print("⚠️ No Auth Token Found");
   }
 
-  /// 🔔 Notification Service
-  final notificationService =
+  /// 🔔 Notification Service (DON'T AWAIT ❌)
   Get.put(NotificationService(), permanent: true);
 
-  await notificationService.init();
-
-  print("✅ Notification Service Ready");
+  print("✅ Notification Service Registered");
 
   /// 📦 Controllers
   Get.put(AuthController(), permanent: true);
@@ -79,7 +76,14 @@ Future<void> main() async {
 
   print("✅ All Controllers Initialized");
 
+  /// 🚀 Run App FIRST (IMPORTANT)
   runApp(const MyApp());
+
+  /// 🔥 Initialize Notifications AFTER UI LOAD (FIX)
+  Future.delayed(const Duration(seconds: 1), () {
+    print("🚀 Initializing Notification Service (Delayed)");
+    NotificationService.to.init();
+  });
 }
 
 class MyApp extends StatelessWidget {

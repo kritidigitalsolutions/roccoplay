@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:roccoplay/view/premium/paymentPage.dart';
 import 'package:roccoplay/view_model/primium_controller/premium_controller.dart';
 import '../../app/theme/app_colors.dart';
 import '../../view_model/home_controller/home_controller.dart';
 import '../../widgets/expendable_plan_card.dart';
 import '../auth/signInPage.dart';
-import '../homePages/mainHomepage.dart';
 import '../popUp/promo_code_popup.dart';
 import '../popUp/redeem_voucher_page.dart';
 
@@ -43,7 +41,6 @@ class GoPremiumPage extends StatelessWidget {
                             Get.find<HomeController>().selectedIndex.value = 0; // ✅ If opened via navbar
                           }
                         }
-
                     ),
                   ],
                 ),
@@ -94,39 +91,38 @@ class GoPremiumPage extends StatelessWidget {
                   width: double.infinity,
                   height: 50,
                   child: Obx(() {
-                    final sub = controller.subscriptionData.value;
-                    // Check if selected plan is already active
-                    bool isAlreadyPurchased = false;
-                    if (sub != null && sub['status'] == 'active' && controller.plans.isNotEmpty) {
-                      final selectedPlanId = controller.plans[controller.selectedPlanIndex.value].id;
-                      if (sub['plan']['_id'] == selectedPlanId) {
-                        isAlreadyPurchased = true;
-                      }
+                    if (controller.isSubscribing.value) {
+                      return const Center(child: CircularProgressIndicator(color: AppColors.buttonColor));
                     }
+
+                    final bool hasActive = controller.hasActiveSubscription;
 
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isAlreadyPurchased ? Colors.grey : AppColors.buttonColor,
+                        backgroundColor: hasActive ? Colors.grey : AppColors.buttonColor,
                       ),
-                      onPressed: isAlreadyPurchased
-                          ? null // Make unclickable if already purchased
-                          : () {
-                        if (controller.isUserLoggedIn.value) {
-                          Get.bottomSheet(
-                            const PaymentBottomSheet(),
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                          );
-                        } else {
+                      onPressed: () {
+                        if (!controller.isUserLoggedIn.value) {
                           Get.to(() => const SignInPage());
+                          return;
+                        }
+
+                        if (hasActive) {
+                          Get.snackbar("Info", "Already Purchased", 
+                              backgroundColor: Colors.orange, colorText: Colors.white);
+                        } else {
+                          if (controller.plans.isNotEmpty) {
+                            final selectedPlan = controller.plans[controller.selectedPlanIndex.value];
+                            controller.subscribeToPlan(selectedPlan.id!);
+                          }
                         }
                       },
                       child: Text(
-                        isAlreadyPurchased
+                        hasActive
                             ? "Already Purchased"
                             : (controller.isUserLoggedIn.value
-                            ? "Continue with ${controller.selectedPrice.value}"
-                            : "Sign In"),
+                                ? "Continue with ${controller.selectedPrice.value}"
+                                : "Sign In"),
                         style: const TextStyle(
                           color: AppColors.white,
                           fontSize: 20,
