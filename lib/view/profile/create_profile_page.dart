@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import '../../view_model/profile/create_profile_controller.dart';
+import '../../utils/custom_snackbar.dart';
 
 class CreateProfilePage extends StatefulWidget {
   final String phone;
@@ -129,7 +130,7 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
                       : () async {
                           if (nameController.text.trim().isEmpty ||
                               emailController.text.trim().isEmpty) {
-                            Get.snackbar("Error", "Name and Email are required");
+                            CustomSnackbar.show(title: "Error", message: "Name and Email are required", isError: true);
                             return;
                           }
 

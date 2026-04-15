@@ -16,6 +16,7 @@ import '../videoPlayer/video_player.dart';
 import 'cast_crewPage.dart';
 import '../premium/goPremium.dart';
 import '../../view_model/drama_detail_controller/drama_details_controller.dart';
+import '../../utils/custom_snackbar.dart';
 
 class DramaDetailsPage extends StatelessWidget {
   final bool isSignedIn;
@@ -127,7 +128,7 @@ class DramaDetailsPage extends StatelessWidget {
                       if (content.videoUrl != null && content.videoUrl!.isNotEmpty) {
                         Get.to(() => AdvancedVideoPlayer(url: content.videoUrl!, title: content.title));
                       } else {
-                        Get.snackbar("Error", "Video URL not found");
+                        CustomSnackbar.show(title: "Error", message: "Video URL not found", isError: true);
                       }
                     } else {
                       Get.to(() => const GoPremiumPage());
@@ -166,7 +167,7 @@ class DramaDetailsPage extends StatelessWidget {
                     } else if (isPurchased) {
                       // ✅ Direct download if plan is purchased
                       if (isAlreadyDownloaded) {
-                        Get.snackbar("Info", "Already downloaded");
+                        CustomSnackbar.show(title: "Info", message: "Already downloaded");
                       } else {
                         downloadController.downloadVideo(content);
                       }

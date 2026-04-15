@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import '../../data/network/base_api_service.dart';
 import '../../data/repositories/review_repo.dart';
+import '../../utils/custom_snackbar.dart';
 
 class ReviewController extends GetxController {
   final ReviewRepo repo =
@@ -24,7 +25,7 @@ class ReviewController extends GetxController {
   /// 🚀 Submit Review
   Future<void> submitReview() async {
     if (rating.value == 0) {
-      Get.snackbar("Error", "Please select rating");
+      CustomSnackbar.show(title: "Error", message: "Please select rating", isError: true);
       return;
     }
 
@@ -37,7 +38,7 @@ class ReviewController extends GetxController {
       );
 
       if (response['success'] == true) {
-        Get.snackbar("Success", response['message']);
+        CustomSnackbar.show(title: "Success", message: response['message'], isSuccess: true);
 
         /// Reset
         rating.value = 0;
@@ -45,10 +46,10 @@ class ReviewController extends GetxController {
 
         Get.back();
       } else {
-        Get.snackbar("Error", "Something went wrong");
+        CustomSnackbar.show(title: "Error", message: "Something went wrong", isError: true);
       }
     } catch (e) {
-      Get.snackbar("Error", e.toString());
+      CustomSnackbar.show(title: "Error", message: e.toString(), isError: true);
     } finally {
       isLoading.value = false; // ✅ STOP LOADER
     }

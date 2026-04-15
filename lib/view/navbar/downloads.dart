@@ -7,6 +7,7 @@ import '../../view_model/home_controller/home_controller.dart';
 import '../auth/signInPage.dart';
 import '../dramaDetails/dramaDetailsPage.dart';
 import '../videoPlayer/video_player.dart';
+import '../../utils/custom_snackbar.dart';
 
 class DownloadsPage extends StatelessWidget {
   const DownloadsPage({super.key});
@@ -124,11 +125,10 @@ class DownloadsPage extends StatelessWidget {
                             title: item.title,
                           ));
                         } else {
-                          Get.snackbar(
-                            "Error",
-                            "File not found. Please download again.",
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
+                          CustomSnackbar.show(
+                            title: "Error",
+                            message: "File not found. Please download again.",
+                            isError: true,
                           );
                         }
                       },

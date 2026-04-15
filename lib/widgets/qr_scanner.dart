@@ -1,6 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../utils/custom_snackbar.dart';
 
 class QrScannerPage extends StatelessWidget {
   const QrScannerPage({super.key});
@@ -21,14 +21,18 @@ class QrScannerPage extends StatelessWidget {
         ),
       ),
       // body: MobileScanner(
-      //   onDetect:
-      //       (barcode, args) {
-      //     final String? code = barcode.rawValue;
-      //     if (code != null) {
-      //       Navigator.pop(context);
-      //       ScaffoldMessenger.of(context).showSnackBar(
-      //         SnackBar(content: Text("Scanned: $code")),
-      //       );
+      //   onDetect: (capture) {
+      //     final List<Barcode> barcodes = capture.barcodes;
+      //     if (barcodes.isNotEmpty) {
+      //       final String? code = barcodes.first.rawValue;
+      //       if (code != null) {
+      //         Navigator.pop(context);
+      //         CustomSnackbar.show(
+      //           title: "Scanned Successfully",
+      //           message: "QR Code: $code",
+      //           isSuccess: true,
+      //         );
+      //       }
       //     }
       //   },
       // ),

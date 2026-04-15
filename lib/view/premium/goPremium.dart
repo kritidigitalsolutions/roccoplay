@@ -7,6 +7,7 @@ import '../../widgets/expendable_plan_card.dart';
 import '../auth/signInPage.dart';
 import '../popUp/promo_code_popup.dart';
 import '../popUp/redeem_voucher_page.dart';
+import '../../utils/custom_snackbar.dart';
 
 class GoPremiumPage extends StatelessWidget {
   const GoPremiumPage({super.key});
@@ -108,8 +109,7 @@ class GoPremiumPage extends StatelessWidget {
                         }
 
                         if (hasActive) {
-                          Get.snackbar("Info", "Already Purchased", 
-                              backgroundColor: Colors.orange, colorText: Colors.white);
+                          CustomSnackbar.show(title: "Info", message: "Already Purchased");
                         } else {
                           if (controller.plans.isNotEmpty) {
                             final selectedPlan = controller.plans[controller.selectedPlanIndex.value];

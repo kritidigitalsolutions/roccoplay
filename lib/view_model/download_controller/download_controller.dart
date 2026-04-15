@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../data/models/response_model/content_response_model/content_model.dart';
+import '../../utils/custom_snackbar.dart';
 
 class DownloadController extends GetxController {
   final storage = GetStorage();
@@ -60,9 +61,17 @@ class DownloadController extends GetxController {
 
       _saveToStorage();
 
-      Get.snackbar("Downloaded", "${content.title} saved offline ✅");
+      CustomSnackbar.show(
+        title: "Downloaded",
+        message: "${content.title} saved offline ✅",
+        isSuccess: true,
+      );
     } catch (e) {
-      Get.snackbar("Error", "Download failed");
+      CustomSnackbar.show(
+        title: "Error",
+        message: "Download failed",
+        isError: true,
+      );
     } finally {
       isDownloading[content.id] = false;
     }
@@ -78,7 +87,10 @@ class DownloadController extends GetxController {
     downloadedContent.removeWhere((e) => e.id == contentId);
     _saveToStorage();
 
-    Get.snackbar("Deleted", "Download removed");
+    CustomSnackbar.show(
+      title: "Deleted",
+      message: "Download removed",
+    );
   }
 
   void _saveToStorage() {

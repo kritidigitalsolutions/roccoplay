@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import '../../data/network/base_api_service.dart';
 import '../../data/repositories/watchlist_repo.dart';
+import '../../utils/custom_snackbar.dart';
 import '../auth_controller/auth_controller.dart';
 
 class WatchlistController extends GetxController {
@@ -70,13 +71,21 @@ class WatchlistController extends GetxController {
       
       // Fixed: Checking response existence as 201 response might not have "success: true" key
       if (response != null) {
-        Get.snackbar("Success", response['message'] ?? "Added to watchlist");
+        CustomSnackbar.show(
+          title: "Success",
+          message: response['message'] ?? "Added to watchlist",
+          isSuccess: true,
+        );
         // 🔄 Refresh list immediately
         await getWatchlist();
       }
     } catch (e) {
       print("❌ Add Watchlist Error: $e");
-      Get.snackbar("Error", "Failed to add to watchlist");
+      CustomSnackbar.show(
+        title: "Error",
+        message: "Failed to add to watchlist",
+        isError: true,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -90,11 +99,18 @@ class WatchlistController extends GetxController {
 
       if (response != null) {
         watchlist.removeWhere((item) => item['_id'] == watchlistId);
-        Get.snackbar("Removed", "Removed from watchlist");
+        CustomSnackbar.show(
+          title: "Removed",
+          message: "Removed from watchlist",
+        );
       }
     } catch (e) {
       print("❌ Remove Error: $e");
-      Get.snackbar("Error", "Failed to remove from watchlist");
+      CustomSnackbar.show(
+        title: "Error",
+        message: "Failed to remove from watchlist",
+        isError: true,
+      );
     } finally {
       isLoading.value = false;
     }

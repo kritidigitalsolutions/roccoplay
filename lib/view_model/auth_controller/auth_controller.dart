@@ -7,6 +7,7 @@ import '../../data/network/base_api_service.dart';
 import '../../data/models/response_model/auth_response_model/verify_otp_response.dart';
 import '../../utils/app_session.dart';
 import '../../utils/notification_service.dart';
+import '../../utils/custom_snackbar.dart';
 
 class AuthController extends GetxController {
   // ✅ FIX: Use late and initialize in onInit to ensure we get the global instance
@@ -46,37 +47,46 @@ class AuthController extends GetxController {
     }
   }
 
-  // void _syncFCMToken() {
-  //   try {
-  //     if (Get.isRegistered<NotificationService>()) {
-  //       NotificationService.to.uploadToken();
-  //     }
-  //   } catch (e) {
-  //     print("⚠️ FCM Sync failed: $e");
-  //   }
-  // }
+  /// 🔄 Sync FCM and Fetch Notifications after Login
+  void _syncNotificationsAfterLogin() {
+    try {
+      if (Get.isRegistered<NotificationService>()) {
+        print("🔔 Syncing notifications and FCM token after login...");
+        NotificationService.to.uploadToken();
+        NotificationService.to.fetchNotifications();
+      }
+    } catch (e) {
+      print("⚠️ Notification sync failed: $e");
+    }
+  }
 
   void setLoginStatus(bool status) async {
     isLoggedIn.value = status;
     await AppSession.setLogin(status);
+    
+    if (status) {
+      // ✅ Fetch all notifications from API when user logs in
+      _syncNotificationsAfterLogin();
+    }
   }
 
   Future<bool> sendOtp(String identifier) async {
     isLoading.value = true;
     try {
       final response = await repository.sendOtp(identifier);
-      Get.snackbar(
-        'OTP Generated',
-        'Your OTP is send Successfully',
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 5),
-        backgroundColor: Colors.white,
-        colorText: Colors.black,
+      CustomSnackbar.show(
+        title: 'OTP Generated',
+        message: 'Your OTP is send Successfully',
+        isSuccess: true,
       );
       print(response);
       return true;
     } catch (e) {
-      Get.snackbar('Error', e.toString());
+      CustomSnackbar.show(
+        title: 'Error',
+        message: e.toString(),
+        isError: true,
+      );
       return false;
     } finally {
       isLoading.value = false;
@@ -107,7 +117,11 @@ class AuthController extends GetxController {
       }
       return null;
     } catch (e) {
-      Get.snackbar('Error', e.toString());
+      CustomSnackbar.show(
+        title: 'Error',
+        message: e.toString(),
+        isError: true,
+      );
       return null;
     } finally {
       isLoading.value = false;
@@ -173,5 +187,10 @@ class AuthController extends GetxController {
     userData.value = null;
     isLoggedIn.value = false;
     _updateGlobalToken(""); // Clear token in network service
+    
+    // Clear notifications locally on logout
+    if (Get.isRegistered<NotificationService>()) {
+      NotificationService.to.clearNotifications();
+    }
   }
 }

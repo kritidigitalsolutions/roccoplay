@@ -8,6 +8,7 @@ import '../../data/network/base_api_service.dart';
 import '../../data/repositories/premium_repository.dart';
 import '../../utils/app_session.dart';
 import '../../utils/constants.dart';
+import '../../utils/custom_snackbar.dart';
 import '../auth_controller/auth_controller.dart';
 
 class PremiumController extends GetxController {
@@ -120,7 +121,7 @@ class PremiumController extends GetxController {
   Future<void> startPayment(String planId) async {
     // ✅ Check if already has an active plan
     if (hasActiveSubscription) {
-      Get.snackbar("Info", "Already Purchased", backgroundColor: Colors.blue, colorText: Colors.white);
+      CustomSnackbar.show(title: "Info", message: "Already Purchased");
       return;
     }
 
@@ -165,9 +166,9 @@ class PremiumController extends GetxController {
     } catch (e) {
       String errorMsg = e.toString();
       if (errorMsg.contains("already has an active subscription") || errorMsg.contains("already purchased")) {
-         Get.snackbar("Info", "Already Purchased", backgroundColor: Colors.blue, colorText: Colors.white);
+         CustomSnackbar.show(title: "Info", message: "Already Purchased");
       } else {
-        Get.snackbar("Payment Failed", "Something went wrong", backgroundColor: Colors.red, colorText: Colors.white);
+        CustomSnackbar.show(title: "Payment Failed", message: "Something went wrong", isError: true);
       }
     } finally {
       isSubscribing.value = false;
@@ -193,11 +194,11 @@ class PremiumController extends GetxController {
       );
 
       if (verifyResponse != null && verifyResponse['success'] == true) {
-        Get.snackbar("Success", "Payment Success", backgroundColor: Colors.green, colorText: Colors.white);
+        CustomSnackbar.show(title: "Success", message: "Payment Success", isSuccess: true);
         fetchSubscriptionStatus();
       }
     } catch (e) {
-       Get.snackbar("Payment Failed", "Something went wrong", backgroundColor: Colors.red, colorText: Colors.white);
+       CustomSnackbar.show(title: "Payment Failed", message: "Something went wrong", isError: true);
     } finally {
       isSubscribing.value = false;
     }
@@ -205,12 +206,11 @@ class PremiumController extends GetxController {
 
   void _handlePaymentError(PaymentFailureResponse response) {
     isSubscribing.value = false;
-    Get.snackbar("Payment Failed", "Payment Failed", backgroundColor: Colors.red, colorText: Colors.white);
+    CustomSnackbar.show(title: "Payment Failed", message: "Payment Failed", isError: true);
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
-    Get.snackbar("External Wallet", "Wallet: ${response.walletName}",
-        backgroundColor: Colors.blue, colorText: Colors.white);
+    CustomSnackbar.show(title: "External Wallet", message: "Wallet: ${response.walletName}");
   }
 
   /// 🔹 Apply Code Logic
@@ -235,22 +235,19 @@ class PremiumController extends GetxController {
           discountedPrice.value = originalPrice.value - numericValue;
           if (discountedPrice.value < 0) discountedPrice.value = 0;
 
-          Get.snackbar("Success", "Voucher applied: ₹$numericValue Flat Off!",
-              backgroundColor: Colors.green, colorText: Colors.white);
+          CustomSnackbar.show(title: "Success", message: "Voucher applied: ₹$numericValue Flat Off!", isSuccess: true);
         } else {
           // 🏷️ PROMO CODE: Implement "%" Percentage Calculations
           double discountAmount = (originalPrice.value * numericValue) / 100;
           discountedPrice.value = originalPrice.value - discountAmount;
           if (discountedPrice.value < 0) discountedPrice.value = 0;
 
-          Get.snackbar("Success", "Promo applied: $numericValue% Discount Off!",
-              backgroundColor: Colors.green, colorText: Colors.white);
+          CustomSnackbar.show(title: "Success", message: "Promo applied: $numericValue% Discount Off!", isSuccess: true);
         }
 
         selectedPrice.value = "₹${discountedPrice.value.toStringAsFixed(1)}";
       } else {
-        Get.snackbar("Error", "Invalid Code Format",
-            backgroundColor: Colors.red, colorText: Colors.white);
+        CustomSnackbar.show(title: "Error", message: "Invalid Code Format", isError: true);
       }
     } catch (e) {
       isPromoApplied.value = false;
@@ -265,7 +262,7 @@ class PremiumController extends GetxController {
   Future<void> subscribeToPlan(String planId, {String? promoCode}) async {
 
     if (hasActiveSubscription) {
-      Get.snackbar("Info", "Already Purchased", backgroundColor: Colors.blue, colorText: Colors.white);
+      CustomSnackbar.show(title: "Info", message: "Already Purchased");
       return;
     }
 
@@ -279,15 +276,15 @@ class PremiumController extends GetxController {
         final response = await _repository.subscribeToPlan(planId, promoCode: promoCode ?? (isPromoApplied.value ? appliedPromoCode.value : null));
 
         if (response != null && response['success'] == true) {
-          Get.snackbar("Success", "Payment Success", backgroundColor: Colors.green, colorText: Colors.white);
+          CustomSnackbar.show(title: "Success", message: "Payment Success", isSuccess: true);
           fetchSubscriptionStatus();
         }
       } catch (e) {
         String errorMsg = e.toString();
         if (errorMsg.contains("already has an active subscription") || errorMsg.contains("already purchased")) {
-          Get.snackbar("Info", "Already Purchased", backgroundColor: Colors.blue, colorText: Colors.white);
+          CustomSnackbar.show(title: "Info", message: "Already Purchased");
         } else {
-          Get.snackbar("Payment Failed", "Something went wrong", backgroundColor: Colors.red, colorText: Colors.white);
+          CustomSnackbar.show(title: "Payment Failed", message: "Something went wrong", isError: true);
         }
       } finally {
         isSubscribing.value = false;
@@ -300,12 +297,11 @@ class PremiumController extends GetxController {
       isRedeeming.value = true;
       final response = await _repository.redeemVoucher(code);
       if (response != null && response['success'] == true) {
-        Get.snackbar("Success", "Redeemed successfully", backgroundColor: Colors.green, colorText: Colors.white);
+        CustomSnackbar.show(title: "Success", message: "Redeemed successfully", isSuccess: true);
         fetchSubscriptionStatus();
       }
     } catch (e) {
-      Get.snackbar("Error", "Something went wrong",
-          backgroundColor: Colors.red, colorText: Colors.white);
+      CustomSnackbar.show(title: "Error", message: "Something went wrong", isError: true);
     } finally {
       isRedeeming.value = false;
     }

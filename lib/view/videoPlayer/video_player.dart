@@ -30,6 +30,7 @@ class _AdvancedVideoPlayerState
   bool showControls = true;
   bool isPlaying = true;
   bool isLocked = false;
+  bool isExiting = false; // ✅ Added to track exit state
 
   double speed = 1.0;
   String quality = "Auto";
@@ -47,7 +48,7 @@ class _AdvancedVideoPlayerState
 
     /// 🔥 FULLSCREEN LANDSCAPE
     SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.immersive);
+        SystemUiMode.immersiveSticky);
 
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -58,29 +59,50 @@ class _AdvancedVideoPlayerState
     ScreenBrightness().current.then((b) => brightness = b);
   }
 
-  /// 🔥 EXIT PLAYER (MAIN FIX)
-  void _exitPlayer() {
-    /// Restore UI
-    SystemChrome.setEnabledSystemUIMode(
+  /// 🔥 EXIT PLAYER (CLEAN TRANSITION)
+  Future<void> _exitPlayer() async {
+    if (isExiting) return;
+
+    setState(() {
+      isExiting = true; // ✅ Immediately hide UI with a black screen
+      showControls = false;
+    });
+
+    // 1. Restore UI to edge-to-edge
+    await SystemChrome.setEnabledSystemUIMode(
         SystemUiMode.edgeToEdge);
 
-    /// Back to portrait
-    SystemChrome.setPreferredOrientations([
+    // 2. Force orientation back to Portrait
+    await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
     ]);
 
-    Navigator.pop(context);
+    // 3. ⏳ WAIT: Give the device 1.5 seconds to finish the physical rotation
+    // While waiting, the user only sees a black screen (Scaffold background)
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   @override
   void dispose() {
     controller.dispose();
+    
+    // Safety fallback
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    
     super.dispose();
   }
 
   /// 🎮 Gesture Control
   void _onVerticalDrag(DragUpdateDetails details) async {
-    if (isLocked) return;
+    if (isLocked || isExiting) return;
 
     double delta = details.primaryDelta! / 300;
 
@@ -92,13 +114,12 @@ class _AdvancedVideoPlayerState
     } else {
       volume -= delta;
       volume = volume.clamp(0.0, 1.0);
-      // await VolumeController().setVolume(volume);
     }
   }
 
   /// ⏩ Seek
   void _onHorizontalDrag(DragUpdateDetails details) {
-    if (isLocked) return;
+    if (isLocked || isExiting) return;
 
     final position = controller.value.position;
     final duration = controller.value.duration;
@@ -114,7 +135,7 @@ class _AdvancedVideoPlayerState
 
   /// ▶️ Play/Pause
   void _togglePlay() {
-    if (isLocked) return;
+    if (isLocked || isExiting) return;
 
     setState(() {
       if (controller.value.isPlaying) {
@@ -185,18 +206,21 @@ class _AdvancedVideoPlayerState
     if (!controller.value.isInitialized) {
       return const Scaffold(
         backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
       );
     }
 
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) async {
-        _exitPlayer(); // 🔥 system back fix
+        if (didPop) return;
+        _exitPlayer();
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: GestureDetector(
+        body: isExiting 
+          ? const Center(child: CircularProgressIndicator(color: Colors.white)) // ✅ Show loader on black background while rotating
+          : GestureDetector(
           onTap: () {
             if (!isLocked) {
               setState(() => showControls = !showControls);
@@ -237,7 +261,7 @@ class _AdvancedVideoPlayerState
                         IconButton(
                           icon: const Icon(Icons.arrow_back,
                               color: Colors.white),
-                          onPressed: _exitPlayer, // 🔥 FIXED
+                          onPressed: _exitPlayer,
                         ),
                         Expanded(
                           child: Text(

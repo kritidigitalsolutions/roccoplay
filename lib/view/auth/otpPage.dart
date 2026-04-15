@@ -6,6 +6,7 @@ import '../profile/create_profile_page.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import '../../view_model/auth_controller/otp_controller.dart';
 import '../../app/routes/app_routes.dart';
+import '../../utils/custom_snackbar.dart';
 
 class OtpPage extends StatelessWidget {
   final String phoneNumber;
@@ -21,7 +22,7 @@ class OtpPage extends StatelessWidget {
       String otp = otpController.controllers.map((e) => e.text).join();
 
       if (otp.length < 6) {
-        Get.snackbar('Error', 'Please enter 6-digit OTP');
+        CustomSnackbar.show(title: 'Error', message: 'Please enter 6-digit OTP', isError: true);
         return;
       }
 
