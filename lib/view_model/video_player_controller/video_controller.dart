@@ -13,12 +13,11 @@ class VideoController extends GetxController {
   var totalDuration = Duration.zero.obs;
 
   var playbackSpeed = 1.0.obs;
-  var selectedQuality = "Auto".obs;
 
   Timer? _hideTimer;
 
-  /// 🔥 Initialize Video
-  void initializeVideo(String url) async {
+  /// 🔥 INIT
+  Future<void> initializeVideo(String url) async {
     isInitialized.value = false;
 
     videoPlayerController =
@@ -27,33 +26,40 @@ class VideoController extends GetxController {
     await videoPlayerController!.initialize();
 
     isInitialized.value = true;
-    totalDuration.value = videoPlayerController!.value.duration;
+    totalDuration.value =
+        videoPlayerController!.value.duration;
 
     videoPlayerController!.play();
-    isPlaying.value = true;
 
-    /// Listen position updates
+    /// 🔥 LISTENER (REAL-TIME UPDATE)
     videoPlayerController!.addListener(() {
-      currentPosition.value =
-          videoPlayerController!.value.position;
+      final value = videoPlayerController!.value;
+
+      currentPosition.value = value.position;
+      isPlaying.value = value.isPlaying;
+
+      if (value.duration != null) {
+        totalDuration.value = value.duration;
+      }
     });
 
     _startHideTimer();
   }
 
-  /// ▶️ Play / Pause
+  /// ▶️ PLAY / PAUSE
   void togglePlay() {
-    if (videoPlayerController!.value.isPlaying) {
-      videoPlayerController!.pause();
-      isPlaying.value = false;
+    final c = videoPlayerController;
+    if (c == null) return;
+
+    if (c.value.isPlaying) {
+      c.pause();
     } else {
-      videoPlayerController!.play();
-      isPlaying.value = true;
+      c.play();
       _startHideTimer();
     }
   }
 
-  /// 👆 Show / Hide controls
+  /// 👆 CONTROLS
   void toggleControls() {
     showControls.value = !showControls.value;
 
@@ -62,7 +68,7 @@ class VideoController extends GetxController {
     }
   }
 
-  /// ⏱ Auto hide
+  /// ⏱ AUTO HIDE
   void _startHideTimer() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 3), () {
@@ -70,27 +76,33 @@ class VideoController extends GetxController {
     });
   }
 
-  /// ⏩ Seek
-  void seekTo(Duration position) {
-    videoPlayerController?.seekTo(position);
+  /// ⏩ SEEK
+  void seekTo(double value) {
+    final c = videoPlayerController;
+    if (c == null) return;
+
+    final duration = c.value.duration;
+    if (duration.inSeconds == 0) return;
+
+    final newPos = Duration(
+      seconds: (duration.inSeconds * value).toInt(),
+    );
+
+    c.seekTo(newPos);
     _startHideTimer();
   }
 
-  /// ⚡ Speed
+  /// ⚡ SPEED
   void setPlaybackSpeed(double speed) {
     playbackSpeed.value = speed;
     videoPlayerController?.setPlaybackSpeed(speed);
   }
 
-  /// ❌ Dispose
-  void disposeVideo() {
-    _hideTimer?.cancel();
-    videoPlayerController?.dispose();
-  }
-
+  /// ❌ DISPOSE
   @override
   void onClose() {
-    disposeVideo();
+    _hideTimer?.cancel();
+    videoPlayerController?.dispose();
     super.onClose();
   }
 }

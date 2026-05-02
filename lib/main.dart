@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -31,15 +32,18 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  print("🚀 APP STARTING...");
+  /// 🔥 Lock orientations to Portrait by default
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   /// 🔥 Firebase Init
   await Firebase.initializeApp();
   print("✅ Firebase Initialized");
 
   /// 🌙 Background Listener
-  FirebaseMessaging.onBackgroundMessage(
-      _firebaseMessagingBackgroundHandler);
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   /// 💾 Local Storage
   await GetStorage.init();
