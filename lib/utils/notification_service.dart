@@ -87,9 +87,9 @@ class NotificationService extends GetxController {
     print("📡 Uploading FCM Token to Backend...");
     try {
       final BaseApiService apiService = Get.find<BaseApiService>();
-      final response = await apiService.postApi(
+      final response = await apiService.pacthApi(
         AppConstants.updateFcmToken,
-        {'fcmtoken': _currentToken}, // ✅ FIXED KEY NAME TO LOWERCASE 'fcmtoken'
+        {'fcmToken': _currentToken}, // ✅ FIXED KEY NAME TO LOWERCASE 'fcmtoken'
       );
       print("✅ FCM Token Synced: $response");
     } catch (e) {

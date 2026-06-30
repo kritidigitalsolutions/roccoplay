@@ -105,8 +105,8 @@ class _AutoSliderState extends State<AutoSlider> {
                         fit: StackFit.expand,
                         children: [
                           Image.network(
-                            item.banner,
-                            fit: BoxFit.cover,
+                            item.poster,
+                            fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) => Container(
                               color: Colors.grey[900],
                               child: const Icon(Icons.broken_image, color: Colors.white54, size: 50),

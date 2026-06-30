@@ -17,6 +17,7 @@ class ContentModel {
   final String slug;
   final String contentType;
   final bool isComingSoon;
+  final bool isTrending;
   final String? releaseDate;
 
   ContentModel({
@@ -38,6 +39,7 @@ class ContentModel {
     required this.slug,
     required this.contentType,
     this.isComingSoon = false,
+    this.isTrending = false,
     this.releaseDate,
   });
 
@@ -61,8 +63,9 @@ class ContentModel {
           : null,
       category: List<String>.from(json['category'] ?? []),
       slug: json['slug'] ?? '',
-      contentType: json['contentType'] ?? '',
+      contentType: json['type'] ?? '',
       isComingSoon: json['isComingSoon'] ?? false,
+      isTrending: json['isTrending'] ?? false,
       releaseDate: json['releaseDate'],
     );
   }
@@ -87,6 +90,7 @@ class ContentModel {
       'slug': slug,
       'contentType': contentType,
       'isComingSoon': isComingSoon,
+      'isTrending': isTrending,
       'releaseDate': releaseDate,
     };
   }

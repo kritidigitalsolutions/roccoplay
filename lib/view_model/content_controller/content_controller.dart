@@ -28,7 +28,7 @@ class ContentController extends GetxController {
       allContent.assignAll(content);
       
       // Filter trending for slider
-      trendingContent.assignAll(content.where((c) => c.category.contains('trending') && c.isComingSoon == false).toList());
+      trendingContent.assignAll(content.where((c) => (c.isTrending || c.category.contains('trending')) && c.isComingSoon == false).toList());
       
       // Fetch stats for each item to enable sorting by likes
       _fetchAllStats();

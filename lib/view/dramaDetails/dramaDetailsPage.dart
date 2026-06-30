@@ -54,7 +54,7 @@ class DramaDetailsPage extends StatelessWidget {
                   content.banner,
                   height: 300,
                   width: double.infinity,
-                  fit: BoxFit.cover,
+                  fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) => Image.asset(
                     "assets/images/farzi.jpg",
                     height: 300,

@@ -9,9 +9,9 @@ class ContentRepository {
 
   Future<List<ContentModel>> getAllContent() async {
     try {
-      final response = await apiProvider.getApi(AppConstants.baseUrl + '/content');
+      final response = await apiProvider.getApi(AppConstants.getAllContent);
       if (response['success'] == true) {
-        List<dynamic> data = response['data'];
+        List<dynamic> data = response['content'] ?? [];
         return data.map((item) => ContentModel.fromJson(item)).toList();
       }
       return [];

@@ -203,7 +203,7 @@ class MainHomePage extends StatelessWidget {
                     content: contentController.allContent
                         .where(
                           (c) =>
-                              c.category.contains('trending') &&
+                              (c.isTrending || c.category.contains('trending')) &&
                               c.isComingSoon == false,
                         )
                         .toList(),
