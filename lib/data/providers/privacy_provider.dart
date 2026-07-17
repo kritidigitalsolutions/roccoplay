@@ -70,8 +70,7 @@ class PrivacyService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        // 🔥 FIX HERE
-        return data['data'] ?? [];
+        return data['helpData'] ?? [];
       }
     } catch (e) {
       print("ERROR HELP: $e");

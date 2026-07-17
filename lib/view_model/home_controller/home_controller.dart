@@ -1,10 +1,14 @@
 import 'package:get/get.dart';
+import '../../data/network/base_api_service.dart';
 import '../../utils/app_session.dart';
+import '../../utils/constants.dart';
 import '../auth_controller/auth_controller.dart';
 
 class HomeController extends GetxController {
   var selectedIndex = 0.obs;
   var isLoggedIn = false.obs;
+  var companyInfo = Rxn<Map<String, dynamic>>();
+  var isLoadingCompanyInfo = false.obs;
 
   final List<String> webSeriesImages = [
     "assets/images/taskaree.jpg",
@@ -20,6 +24,22 @@ class HomeController extends GetxController {
   void onInit() {
     super.onInit();
     checkLoginStatus();
+    fetchCompanyInfo();
+  }
+
+  Future<void> fetchCompanyInfo() async {
+    try {
+      isLoadingCompanyInfo.value = true;
+      final apiService = Get.find<BaseApiService>();
+      final response = await apiService.getApi(AppConstants.companyInfo);
+      if (response != null && response['success'] == true) {
+        companyInfo.value = response['data'];
+      }
+    } catch (e) {
+      print("Error fetching company info: $e");
+    } finally {
+      isLoadingCompanyInfo.value = false;
+    }
   }
 
   void checkLoginStatus() async {

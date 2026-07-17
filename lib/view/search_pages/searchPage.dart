@@ -180,7 +180,7 @@ class SearchPage extends StatelessWidget {
           const SizedBox(height: 15),
 
           SizedBox(
-            height: 140,
+            height: 200,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: topSeries.length,
@@ -200,10 +200,11 @@ class SearchPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(5),
                       child: Image.network(
                         item.poster,
-                        width: 170,
-                        fit: BoxFit.cover,
+                        width: 140,
+                        height: 200,
+                        fit: BoxFit.fill,
                         errorBuilder: (context, error, stackTrace) =>
-                            Image.asset("assets/images/farzi.jpg", width: 170, fit: BoxFit.cover),
+                            Image.asset("assets/images/farzi.jpg", width: 140, height: 200, fit: BoxFit.fill),
                       ),
                     ),
                   ),

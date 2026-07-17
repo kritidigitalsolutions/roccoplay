@@ -61,28 +61,33 @@ class GoPremiumPage extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              ///  Custom Plan Buttons
-              if (controller.plans.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 15),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: List.generate(controller.plans.length, (index) {
-                        return SizedBox(
-                          width: MediaQuery.of(context).size.width / 3 - 10,
-                          child: _buildPlanButton(controller, controller.plans[index].name, index),
-                        );
-                      }),
-                    ),
-                  ),
-                ),
-
-              /// 🔹 Plans According To Selection
+              /// 🔹 Expandable Plans List
               Expanded(
-                child: controller.plans.isEmpty
-                    ? const Center(child: Text("No plans available", style: TextStyle(color: Colors.white)))
-                    : _buildPlanList(controller),
+                child: Obx(() {
+                  if (controller.plans.isEmpty) {
+                    return const Center(child: Text("No plans available", style: TextStyle(color: Colors.white)));
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    itemCount: controller.plans.length,
+                    itemBuilder: (context, index) {
+                      final plan = controller.plans[index];
+                      return Obx(() {
+                        bool isSelected = controller.selectedPlanIndex.value == index;
+                        
+                        return ExpandablePlanCard(
+                          title: plan.name,
+                          price: "₹${plan.price}",
+                          duration: "/ ${plan.duration} Days",
+                          features: plan.features,
+                          isHighlighted: isSelected,
+                          onTap: () => controller.selectPlan(index),
+                        );
+                      });
+                    },
+                  );
+                }),
               ),
 
               /// 🔴 Sign In / Purchase / Already Purchased Button
@@ -189,56 +194,6 @@ class GoPremiumPage extends StatelessWidget {
         }),
       ),
     );
-  }
-
-  /// 🔴 Plan Button UI
-  Widget _buildPlanButton(PremiumController controller, String text, int index) {
-    return Obx(() {
-      bool isSelected = controller.selectedPlanIndex.value == index;
-      return GestureDetector(
-        onTap: () {
-          controller.selectPlan(index);
-        },
-        child: Container(
-          height: 44,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.buttonColor : Colors.grey[850],
-          ),
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-        ),
-      );
-    });
-  }
-
-  /// 🔹 Plan List
-  Widget _buildPlanList(PremiumController controller) {
-    return Obx(() {
-      if (controller.plans.isEmpty) return const SizedBox.shrink();
-
-      final selectedPlan = controller.plans[controller.selectedPlanIndex.value];
-
-      return ListView(
-        padding: const EdgeInsets.all(15),
-        children: [
-          ExpandablePlanCard(
-            title: selectedPlan.name,
-            price: "₹${selectedPlan.price}",
-            duration: "/ ${selectedPlan.duration} Days",
-            features: selectedPlan.features,
-          ),
-        ],
-      );
-    });
   }
 
   /// 🔹 Sign In Required Popup

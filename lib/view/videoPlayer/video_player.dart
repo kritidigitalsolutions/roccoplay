@@ -118,16 +118,29 @@ class AdvancedVideoPlayer extends StatelessWidget {
         /// ▶️ CENTER PLAY
         Expanded(
           child: Center(
-            child: Obx(() => IconButton(
-              iconSize: 70,
-              icon: Icon(
-                controller.isPlaying.value
-                    ? Icons.pause
-                    : Icons.play_arrow,
-                color: Colors.white,
-              ),
-              onPressed: controller.togglePlay,
-            )),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                IconButton(
+                  iconSize: 40,
+                  icon: const Icon(Icons.replay_10, color: Colors.white),
+                  onPressed: controller.seekBackward,
+                ),
+                Obx(() => IconButton(
+                      iconSize: 70,
+                      icon: Icon(
+                        controller.isPlaying.value ? Icons.pause : Icons.play_arrow,
+                        color: Colors.white,
+                      ),
+                      onPressed: controller.togglePlay,
+                    )),
+                IconButton(
+                  iconSize: 40,
+                  icon: const Icon(Icons.forward_10, color: Colors.white),
+                  onPressed: controller.seekForward,
+                ),
+              ],
+            ),
           ),
         ),
 
@@ -138,13 +151,10 @@ class AdvancedVideoPlayer extends StatelessWidget {
             children: [
               /// 🔥 SEEK BAR
               Obx(() {
-                final total =
-                    controller.totalDuration.value.inSeconds;
-                final current =
-                    controller.currentPosition.value.inSeconds;
+                final total = controller.totalDuration.value.inSeconds;
+                final current = controller.currentPosition.value.inSeconds;
 
-                final progress =
-                total == 0 ? 0.0 : current / total;
+                final progress = total == 0 ? 0.0 : current / total;
 
                 return Slider(
                   value: progress,
@@ -156,31 +166,32 @@ class AdvancedVideoPlayer extends StatelessWidget {
 
               /// ⏱ TIME + OPTIONS
               Obx(() => Row(
-                children: [
-                  Text(
-                    "${_format(controller.currentPosition.value)} / ${_format(controller.totalDuration.value)}",
-                    style: const TextStyle(
-                        color: Colors.white),
-                  ),
-                  const Spacer(),
+                    children: [
+                      Text(
+                        "${_format(controller.currentPosition.value)} / ${_format(controller.totalDuration.value)}",
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      const Spacer(),
 
-                  /// ⚡ SPEED
-                  IconButton(
-                    icon: const Icon(Icons.speed,
-                        color: Colors.white),
-                    onPressed: () =>
-                        _showSpeedDialog(context),
-                  ),
+                      /// ⚡ SPEED
+                      IconButton(
+                        icon: const Icon(Icons.speed, color: Colors.white),
+                        onPressed: () => _showSpeedDialog(context),
+                      ),
 
-                  /// 🎬 QUALITY
-                  IconButton(
-                    icon: const Icon(Icons.hd,
-                        color: Colors.white),
-                    onPressed: () =>
-                        _showQualityDialog(context),
-                  ),
-                ],
-              )),
+                      /// 🎬 QUALITY
+                      IconButton(
+                        icon: const Icon(Icons.hd, color: Colors.white),
+                        onPressed: () => _showQualityDialog(context),
+                      ),
+
+                      /// 🔄 ROTATION
+                      IconButton(
+                        icon: const Icon(Icons.screen_rotation, color: Colors.white),
+                        onPressed: controller.toggleRotation,
+                      ),
+                    ],
+                  )),
             ],
           ),
         ),

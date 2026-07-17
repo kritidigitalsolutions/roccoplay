@@ -192,10 +192,16 @@ class MainHomePage extends StatelessWidget {
 
         /// SCROLL
         Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await contentController.fetchContent();
+            },
+            color: AppColors.buttonColor,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 const SizedBox(height: 15),
 
                 Obx(
@@ -323,12 +329,94 @@ class MainHomePage extends StatelessWidget {
                   ),
                 ),
 
+                const SizedBox(height: 40),
+
+                /// 🔹 COMPANY INFO (Footer)
+                Obx(() {
+                  final info = controller.companyInfo.value;
+                  if (info != null && info['status'] == 'published') {
+                    final addressList = [
+                      info['addressLine1'],
+                      if (info['addressLine2'] != null &&
+                          info['addressLine2'] != "i don't have one")
+                        info['addressLine2'],
+                      info['city'],
+                      info['state'],
+                      "${info['country']} - ${info['postalCode']}"
+                    ];
+
+                    final address = addressList
+                        .where((e) => e != null && e.toString().trim().isNotEmpty)
+                        .join(", ");
+
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(30),
+                          topRight: Radius.circular(30),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Image.asset('assets/images/roccoplay_logo.png', height: 50),
+                          const SizedBox(height: 10),
+                          const Text(
+                            "ROCCO PLAY",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              letterSpacing: 2,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            "Office Address",
+                            style: TextStyle(
+                              color: AppColors.buttonColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            address,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.7),
+                              fontSize: 13,
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                "© ${DateTime.now().year} Rocco Play. All rights reserved.",
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.4),
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                }),
+
                 const SizedBox(height: 100),
               ],
             ),
           ),
         ),
-      ],
+    )],
     );
   }
 }

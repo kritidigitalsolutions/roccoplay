@@ -7,6 +7,7 @@ class ExpandablePlanCard extends StatefulWidget {
   final String duration;
   final List<String> features;
   final bool isHighlighted;
+  final VoidCallback? onTap;
 
   const ExpandablePlanCard({
     Key? key,
@@ -15,6 +16,7 @@ class ExpandablePlanCard extends StatefulWidget {
     required this.duration,
     this.features = const [],
     this.isHighlighted = false,
+    this.onTap,
   }) : super(key: key);
 
   @override
@@ -55,6 +57,7 @@ class _ExpandablePlanCardState extends State<ExpandablePlanCard> {
               setState(() {
                 isExpanded = !isExpanded;
               });
+              if (widget.onTap != null) widget.onTap!();
             },
             child: Padding(
               padding: const EdgeInsets.all(16),

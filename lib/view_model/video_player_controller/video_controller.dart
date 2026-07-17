@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 
@@ -13,12 +14,20 @@ class VideoController extends GetxController {
   var totalDuration = Duration.zero.obs;
 
   var playbackSpeed = 1.0.obs;
+  var isLandscape = false.obs;
 
   Timer? _hideTimer;
 
   /// 🔥 INIT
   Future<void> initializeVideo(String url) async {
     isInitialized.value = false;
+
+    // Allow all orientations when video starts
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
 
     videoPlayerController =
         VideoPlayerController.networkUrl(Uri.parse(url));
@@ -92,6 +101,43 @@ class VideoController extends GetxController {
     _startHideTimer();
   }
 
+  void seekForward() {
+    final c = videoPlayerController;
+    if (c == null) return;
+    final newPos = c.value.position + const Duration(seconds: 10);
+    if (newPos > c.value.duration) {
+      c.seekTo(c.value.duration);
+    } else {
+      c.seekTo(newPos);
+    }
+    _startHideTimer();
+  }
+
+  void seekBackward() {
+    final c = videoPlayerController;
+    if (c == null) return;
+    final newPos = c.value.position - const Duration(seconds: 10);
+    if (newPos < Duration.zero) {
+      c.seekTo(Duration.zero);
+    } else {
+      c.seekTo(newPos);
+    }
+    _startHideTimer();
+  }
+
+  void toggleRotation() {
+    if (isLandscape.value) {
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      isLandscape.value = false;
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      isLandscape.value = true;
+    }
+  }
+
   /// ⚡ SPEED
   void setPlaybackSpeed(double speed) {
     playbackSpeed.value = speed;
@@ -103,6 +149,8 @@ class VideoController extends GetxController {
   void onClose() {
     _hideTimer?.cancel();
     videoPlayerController?.dispose();
+    // Reset to portrait when leaving
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.onClose();
   }
 }
