@@ -84,7 +84,8 @@ class DramaDetailsPage extends StatelessWidget {
                       if (isOver18 == true) {
                         Get.to(() => AdvancedVideoPlayer(
                           url: content.trailerUrl!, 
-                          title: '${content.title} - Trailer'
+                          title: '${content.title} - Trailer',
+                          contentId: '${content.id}_trailer',
                         ));
                       }
                     },
@@ -126,7 +127,11 @@ class DramaDetailsPage extends StatelessWidget {
                       Get.to(() => const SignInPage());
                     } else if (isPurchased || !content.isPremium) {
                       if (content.videoUrl != null && content.videoUrl!.isNotEmpty) {
-                        Get.to(() => AdvancedVideoPlayer(url: content.videoUrl!, title: content.title));
+                        Get.to(() => AdvancedVideoPlayer(
+                          url: content.videoUrl!, 
+                          title: content.title,
+                          contentId: content.id,
+                        ));
                       } else {
                         CustomSnackbar.show(title: "Error", message: "Video URL not found", isError: true);
                       }

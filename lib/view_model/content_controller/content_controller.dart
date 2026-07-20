@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import '../../data/models/response_model/content_response_model/content_model.dart';
+import '../../data/models/response_model/category_model/category_model.dart';
 import '../../data/repositories/content_repository.dart';
 import '../../data/repositories/interaction_repository.dart';
 import '../../data/network/api_network_service.dart';
@@ -11,6 +12,7 @@ class ContentController extends GetxController {
   var isLoading = true.obs;
   var allContent = <ContentModel>[].obs;
   var trendingContent = <ContentModel>[].obs;
+  var categories = <CategoryModel>[].obs;
   
   // Cache for likes: ContentID -> LikeCount
   var contentLikes = <String, int>{}.obs;
@@ -19,6 +21,7 @@ class ContentController extends GetxController {
   void onInit() {
     super.onInit();
     fetchContent();
+    fetchCategories();
   }
 
   Future<void> fetchContent() async {
@@ -34,9 +37,19 @@ class ContentController extends GetxController {
       _fetchAllStats();
       
     } catch (e) {
-      print("Error in ContentController: $e");
+      print("Error in ContentController fetchContent: $e");
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> fetchCategories() async {
+    try {
+      final fetchedCategories = await _repository.getCategories();
+      categories.assignAll(fetchedCategories);
+      categories.sort((a, b) => a.priority.compareTo(b.priority));
+    } catch (e) {
+      print("Error in ContentController fetchCategories: $e");
     }
   }
 

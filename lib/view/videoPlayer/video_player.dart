@@ -7,11 +7,13 @@ import '../../view_model/video_player_controller/video_controller.dart';
 class AdvancedVideoPlayer extends StatelessWidget {
   final String url;
   final String title;
+  final String? contentId;
 
   AdvancedVideoPlayer({
     super.key,
     required this.url,
     required this.title,
+    this.contentId,
   });
 
   final VideoController controller = Get.put(VideoController());
@@ -21,7 +23,7 @@ class AdvancedVideoPlayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    controller.initializeVideo(url);
+    controller.initializeVideo(url, contentId: contentId);
 
     return Scaffold(
       backgroundColor: Colors.black,

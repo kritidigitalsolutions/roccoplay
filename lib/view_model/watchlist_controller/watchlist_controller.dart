@@ -41,7 +41,17 @@ class WatchlistController extends GetxController {
       if (response != null) {
         // Checking for success true or just presence of data
         final List<dynamic> data = response['data'] ?? [];
-        watchlist.assignAll(data.map((e) => e as Map<String, dynamic>).toList());
+        
+        // Filter out content that is not published
+        final filteredData = data.where((item) {
+          final movie = item['movie'];
+          if (movie != null && movie is Map<String, dynamic>) {
+            return movie['isPublished'] != false;
+          }
+          return true;
+        }).map((e) => e as Map<String, dynamic>).toList();
+        
+        watchlist.assignAll(filteredData);
         print("✅ WATCHLIST FETCHED: ${watchlist.length} items");
       }
     } catch (e) {

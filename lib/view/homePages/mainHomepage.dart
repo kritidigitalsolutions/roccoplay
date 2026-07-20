@@ -194,7 +194,10 @@ class MainHomePage extends StatelessWidget {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
-              await contentController.fetchContent();
+              await Future.wait([
+                contentController.fetchContent(),
+                contentController.fetchCategories(),
+              ]);
             },
             color: AppColors.buttonColor,
             child: SingleChildScrollView(
@@ -202,136 +205,86 @@ class MainHomePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                const SizedBox(height: 15),
+                  const SizedBox(height: 15),
 
-                Obx(
-                  () => AutoSlider(
-                    content: contentController.allContent
-                        .where(
-                          (c) =>
-                              (c.isTrending || c.category.contains('trending')) &&
-                              c.isComingSoon == false,
-                        )
-                        .toList(),
-                    isSignedIn: authController.isLoggedIn.value,
-                  ),
-                ),
+                  Obx(() {
+                    if (contentController.isLoading.value &&
+                        contentController.categories.isEmpty) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: CircularProgressIndicator(color: AppColors.buttonColor),
+                        ),
+                      );
+                    }
 
-                const SizedBox(height: 25),
-
-                /// WEB SERIES
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    "Web Series",
-                    style: TextStyle(
-                      color: AppColors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 15),
-
-                Obx(
-                  () => SizedBox(
-                    height: 170,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: contentController.allContent
-                          .where(
-                            (c) =>
-                                c.contentType == 'series' &&
-                                c.isComingSoon == false,
-                          )
-                          .length,
-                      itemBuilder: (context, index) {
-                        final item = contentController.allContent
-                            .where(
-                              (c) =>
-                                  c.contentType == 'series' &&
-                                  c.isComingSoon == false,
-                            )
-                            .toList()[index];
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: GestureDetector(
-                            onTap: () {
-                              Get.to(
-                                () => DramaDetailsPage(
-                                  isSignedIn: authController.isLoggedIn.value,
-                                  content: item,
-                                ),
-                              );
-                            },
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(15),
-                              child: Image.network(
-                                item.poster,
-                                width: 130,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Image.asset(
-                                      "assets/images/farzi.jpg",
-                                      width: 130,
-                                      fit: BoxFit.cover,
-                                    ),
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        /// 1. 🔥 TOP SLIDER (Trending)
+                        if (contentController.trendingContent.isNotEmpty)
+                          Column(
+                            children: [
+                              AutoSlider(
+                                content: contentController.trendingContent,
+                                isSignedIn: authController.isLoggedIn.value,
                               ),
-                            ),
+                              const SizedBox(height: 25),
+                            ],
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
 
-                const SizedBox(height: 10),
+                        /// 2. 🔹 OTHER CATEGORIES
+                        ...contentController.categories
+                            .where((cat) => cat.slug != 'trending')
+                            .map((category) {
+                          final categoryContent = contentController.allContent
+                              .where((c) =>
+                                  c.category.contains(category.slug) &&
+                                  c.isComingSoon == false)
+                              .toList();
 
-                Obx(
-                  () => Top10List(
-                    content: contentController.allContent
-                        .where(
-                          (c) =>
-                              c.category.contains('top10') &&
-                              c.isComingSoon == false,
-                        )
-                        .toList(),
-                    isSignedIn: authController.isLoggedIn.value,
-                  ),
-                ),
+                          if (categoryContent.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
 
-                const SizedBox(height: 10),
+                          if (category.slug == 'top10') {
+                            return Column(
+                              children: [
+                                Top10List(
+                                  content: categoryContent,
+                                  isSignedIn: authController.isLoggedIn.value,
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                            );
+                          } else {
+                            return Column(
+                              children: [
+                                HomeSliderSection(
+                                  title: category.name,
+                                  content: categoryContent,
+                                  isSignedIn: authController.isLoggedIn.value,
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                            );
+                          }
+                        }),
 
-                Obx(
-                  () => HomeSliderSection(
-                    title: "Movies",
-                    content: contentController.allContent
-                        .where(
-                          (c) =>
-                              c.contentType == 'movie' &&
-                              c.isComingSoon == false,
-                        )
-                        .toList(),
-                    isSignedIn: authController.isLoggedIn.value,
-                  ),
-                ),
+                        /// 3. 🔹 COMING SOON
+                        ComingSoonSection(
+                          content: contentController.allContent
+                              .where((c) => c.isComingSoon == true)
+                              .toList(),
+                          isSignedIn: authController.isLoggedIn.value,
+                        ),
+                      ],
+                    );
+                  }),
 
-                const SizedBox(height: 10),
+                  const SizedBox(height: 40),
 
-                Obx(
-                  () => ComingSoonSection(
-                    content: contentController.allContent
-                        .where((c) => c.isComingSoon == true)
-                        .toList(),
-                    isSignedIn: authController.isLoggedIn.value,
-                  ),
-                ),
-
-                const SizedBox(height: 40),
-
-                /// 🔹 COMPANY INFO (Footer)
+                  /// 🔹 COMPANY INFO (Footer)
                 Obx(() {
                   final info = controller.companyInfo.value;
                   if (info != null && info['status'] == 'published') {

@@ -19,6 +19,7 @@ class ContentModel {
   final bool isComingSoon;
   final bool isTrending;
   final String? releaseDate;
+  final bool isPublished;
 
   ContentModel({
     required this.id,
@@ -41,6 +42,7 @@ class ContentModel {
     this.isComingSoon = false,
     this.isTrending = false,
     this.releaseDate,
+    this.isPublished = true,
   });
 
   factory ContentModel.fromJson(Map<String, dynamic> json) {
@@ -67,6 +69,7 @@ class ContentModel {
       isComingSoon: json['isComingSoon'] ?? false,
       isTrending: json['isTrending'] ?? false,
       releaseDate: json['releaseDate'],
+      isPublished: json['isPublished'] ?? true,
     );
   }
 
@@ -92,6 +95,7 @@ class ContentModel {
       'isComingSoon': isComingSoon,
       'isTrending': isTrending,
       'releaseDate': releaseDate,
+      'isPublished': isPublished,
     };
   }
 }

@@ -123,6 +123,7 @@ class DownloadsPage extends StatelessWidget {
                           Get.to(() => AdvancedVideoPlayer(
                             url: localPath,
                             title: item.title,
+                            contentId: item.id,
                           ));
                         } else {
                           CustomSnackbar.show(

@@ -26,6 +26,7 @@ class AppConstants {
 
   /// content
   static const String getAllContent = '$baseUrl/content';
+  static const String getCategories = '$baseUrl/categories';
 
   /// payment
   static const String createOrder = '$baseUrl/payment/create-order';

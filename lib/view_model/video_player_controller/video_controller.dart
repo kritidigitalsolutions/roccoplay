@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:video_player/video_player.dart';
 
 class VideoController extends GetxController {
   VideoPlayerController? videoPlayerController;
+  final storage = GetStorage();
 
   var isInitialized = false.obs;
   var isPlaying = false.obs;
@@ -15,12 +17,15 @@ class VideoController extends GetxController {
 
   var playbackSpeed = 1.0.obs;
   var isLandscape = false.obs;
+  String? _contentId;
 
   Timer? _hideTimer;
+  Timer? _saveTimer;
 
   /// 🔥 INIT
-  Future<void> initializeVideo(String url) async {
+  Future<void> initializeVideo(String url, {String? contentId}) async {
     isInitialized.value = false;
+    _contentId = contentId;
 
     // Allow all orientations when video starts
     SystemChrome.setPreferredOrientations([
@@ -38,6 +43,17 @@ class VideoController extends GetxController {
     totalDuration.value =
         videoPlayerController!.value.duration;
 
+    // Resume logic
+    if (_contentId != null) {
+      int? savedSeconds = storage.read<int>('resume_pos_$_contentId');
+      if (savedSeconds != null && savedSeconds > 0) {
+        // Don't resume if it's at the very end (e.g., last 5 seconds)
+        if (savedSeconds < totalDuration.value.inSeconds - 5) {
+          await videoPlayerController!.seekTo(Duration(seconds: savedSeconds));
+        }
+      }
+    }
+
     videoPlayerController!.play();
 
     /// 🔥 LISTENER (REAL-TIME UPDATE)
@@ -53,6 +69,22 @@ class VideoController extends GetxController {
     });
 
     _startHideTimer();
+    _startSaveTimer();
+  }
+
+  /// 💾 SAVE POSITION
+  void _savePosition() {
+    if (_contentId != null && videoPlayerController != null) {
+      final pos = videoPlayerController!.value.position.inSeconds;
+      storage.write('resume_pos_$_contentId', pos);
+    }
+  }
+
+  void _startSaveTimer() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _savePosition();
+    });
   }
 
   /// ▶️ PLAY / PAUSE
@@ -62,6 +94,7 @@ class VideoController extends GetxController {
 
     if (c.value.isPlaying) {
       c.pause();
+      _savePosition();
     } else {
       c.play();
       _startHideTimer();
@@ -147,7 +180,9 @@ class VideoController extends GetxController {
   /// ❌ DISPOSE
   @override
   void onClose() {
+    _savePosition();
     _hideTimer?.cancel();
+    _saveTimer?.cancel();
     videoPlayerController?.dispose();
     // Reset to portrait when leaving
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
