@@ -132,13 +132,14 @@ class AuthController extends GetxController {
     required String name,
     required String email,
     required String phone,
+    required String age,
     String? imagePath,
   }) async {
     try {
       isLoading.value = true;
       // Note: Image upload logic should be handled here or in repository if API supports multipart.
       // For now, continuing with existing logic while making imagePath optional.
-      final response = await repository.createProfile(phone: phone, name: name, email: email);
+      final response = await repository.createProfile(phone: phone, name: name, email: email, age: age);
 
       if (response != null) {
         String? token = response['token'];
@@ -147,7 +148,7 @@ class AuthController extends GetxController {
           _updateGlobalToken(token); // ✅ Sync token to global service
         }
 
-        userData.value = response['user'] ?? {"name": name, "email": email, "phone": phone};
+        userData.value = response['user'] ?? {"name": name, "email": email, "phone": phone, "age": age};
         if (imagePath != null && userData.value != null) {
            userData.value!['image'] = imagePath; // Local preview or handle upload
         }

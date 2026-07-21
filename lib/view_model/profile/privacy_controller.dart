@@ -52,6 +52,22 @@ class PrivacyController extends GetxController {
     isLoadingHelp.value = true;
     final data = await PrivacyService.getHelpData();
     helpData.assignAll(data);
+    await fetchSupportContactInfo(); // Fetch support info too
     isLoadingHelp.value = false;
+  }
+
+  var supportNumber = "9876543210".obs; // Default values
+  var supportEmail = "support@roccoplay.com".obs;
+
+  Future<void> fetchSupportContactInfo() async {
+    final numberData = await PrivacyService.getSupportNumber();
+    if (numberData != null && numberData['success'] == true) {
+      supportNumber.value = numberData['supportNumber'] ?? numberData['contactNumber'] ?? supportNumber.value;
+    }
+
+    final emailData = await PrivacyService.getSupportEmail();
+    if (emailData != null && emailData['success'] == true) {
+      supportEmail.value = emailData['supportEmail'] ?? emailData['email'] ?? supportEmail.value;
+    }
   }
 }

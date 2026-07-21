@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../data/network/base_api_service.dart';
 import '../../data/repositories/review_repo.dart';
@@ -9,17 +10,12 @@ class ReviewController extends GetxController {
 
   /// ⭐ States
   var rating = 0.obs;
-  var comment = ''.obs;
-  var isLoading = false.obs; // ✅ ADD THIS
+  var isLoading = false.obs;
+  final commentController = TextEditingController();
 
   /// ⭐ Update Rating
   void updateRating(int value) {
     rating.value = value;
-  }
-
-  /// ✍️ Update Comment
-  void updateComment(String value) {
-    comment.value = value;
   }
 
   /// 🚀 Submit Review
@@ -30,28 +26,40 @@ class ReviewController extends GetxController {
     }
 
     try {
-      isLoading.value = true; // ✅ USE HERE
+      isLoading.value = true;
 
       final response = await repo.submitRating(
         rating: rating.value,
-        review: comment.value,
+        review: commentController.text.trim(),
       );
 
-      if (response['success'] == true) {
-        CustomSnackbar.show(title: "Success", message: response['message'], isSuccess: true);
+      if (response != null && (response['success'] == true || response['status'] == 'success')) {
+        CustomSnackbar.show(
+          title: "Success", 
+          message: response['message'] ?? "Thank you for your review!", 
+          isSuccess: true
+        );
 
-        /// Reset
+        /// Reset fields
         rating.value = 0;
-        comment.value = "";
-
-        Get.back();
+        commentController.clear();
       } else {
-        CustomSnackbar.show(title: "Error", message: "Something went wrong", isError: true);
+        CustomSnackbar.show(
+          title: "Error", 
+          message: response?['message'] ?? "Something went wrong", 
+          isError: true
+        );
       }
     } catch (e) {
       CustomSnackbar.show(title: "Error", message: e.toString(), isError: true);
     } finally {
-      isLoading.value = false; // ✅ STOP LOADER
+      isLoading.value = false;
     }
+  }
+
+  @override
+  void onClose() {
+    commentController.dispose();
+    super.onClose();
   }
 }

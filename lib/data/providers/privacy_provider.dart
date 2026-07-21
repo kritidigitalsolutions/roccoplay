@@ -77,4 +77,30 @@ class PrivacyService {
     }
     return [];
   }
+
+  /// get support number
+  static Future<Map<String, dynamic>?> getSupportNumber() async {
+    try {
+      final response = await http.get(Uri.parse(AppConstants.supportNumber));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      print("ERROR SUPPORT NUMBER: $e");
+    }
+    return null;
+  }
+
+  /// get support email
+  static Future<Map<String, dynamic>?> getSupportEmail() async {
+    try {
+      final response = await http.get(Uri.parse(AppConstants.supportEmail));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      print("ERROR SUPPORT EMAIL: $e");
+    }
+    return null;
+  }
 }

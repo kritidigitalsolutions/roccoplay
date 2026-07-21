@@ -4,27 +4,36 @@ import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../view_model/video_player_controller/video_controller.dart';
 
-class AdvancedVideoPlayer extends StatelessWidget {
+class AdvancedVideoPlayer extends StatefulWidget {
   final String url;
   final String title;
   final String? contentId;
 
-  AdvancedVideoPlayer({
+  const AdvancedVideoPlayer({
     super.key,
     required this.url,
     required this.title,
     this.contentId,
   });
 
-  final VideoController controller = Get.put(VideoController());
+  @override
+  State<AdvancedVideoPlayer> createState() => _AdvancedVideoPlayerState();
+}
 
+class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
+  late final VideoController controller;
   final RxBool isLocked = false.obs;
   final RxString quality = "Auto".obs;
 
   @override
-  Widget build(BuildContext context) {
-    controller.initializeVideo(url, contentId: contentId);
+  void initState() {
+    super.initState();
+    controller = Get.put(VideoController());
+    controller.initializeVideo(widget.url, contentId: widget.contentId);
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Obx(() {
@@ -45,12 +54,8 @@ class AdvancedVideoPlayer extends StatelessWidget {
               /// 🎬 VIDEO
               Center(
                 child: AspectRatio(
-                  aspectRatio: controller
-                      .videoPlayerController!
-                      .value
-                      .aspectRatio,
-                  child: VideoPlayer(
-                      controller.videoPlayerController!),
+                  aspectRatio: controller.videoPlayerController!.value.aspectRatio,
+                  child: VideoPlayer(controller.videoPlayerController!),
                 ),
               ),
 
@@ -59,23 +64,19 @@ class AdvancedVideoPlayer extends StatelessWidget {
                 left: 10,
                 top: MediaQuery.of(context).size.height / 2,
                 child: Obx(() => IconButton(
-                  icon: Icon(
-                    isLocked.value
-                        ? Icons.lock
-                        : Icons.lock_open,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {
-                    isLocked.value = !isLocked.value;
-                    controller.showControls.value =
-                    !isLocked.value;
-                  },
-                )),
+                      icon: Icon(
+                        isLocked.value ? Icons.lock : Icons.lock_open,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        isLocked.value = !isLocked.value;
+                        controller.showControls.value = !isLocked.value;
+                      },
+                    )),
               ),
 
               /// 🎮 CONTROLS
-              Obx(() => controller.showControls.value &&
-                  !isLocked.value
+              Obx(() => controller.showControls.value && !isLocked.value
                   ? _controls(context)
                   : const SizedBox()),
             ],
@@ -94,23 +95,20 @@ class AdvancedVideoPlayer extends StatelessWidget {
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back,
-                    color: Colors.white),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () => Get.back(),
               ),
               Expanded(
                 child: Text(
-                  title,
-                  style: const TextStyle(
-                      color: Colors.white),
+                  widget.title,
+                  style: const TextStyle(color: Colors.white),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.share,
-                    color: Colors.white),
+                icon: const Icon(Icons.share, color: Colors.white),
                 onPressed: () {
-                  Share.share(url);
+                  Share.share(widget.url);
                 },
               ),
             ],
@@ -190,7 +188,7 @@ class AdvancedVideoPlayer extends StatelessWidget {
                       /// 🔄 ROTATION
                       IconButton(
                         icon: const Icon(Icons.screen_rotation, color: Colors.white),
-                        onPressed: controller.toggleRotation,
+                        onPressed: () => controller.toggleRotation(MediaQuery.of(context).orientation),
                       ),
                     ],
                   )),
@@ -203,8 +201,7 @@ class AdvancedVideoPlayer extends StatelessWidget {
 
   /// ⏱ FORMAT
   String _format(Duration d) {
-    String two(int n) =>
-        n.toString().padLeft(2, "0");
+    String two(int n) => n.toString().padLeft(2, "0");
     return "${two(d.inMinutes)}:${two(d.inSeconds % 60)}";
   }
 
@@ -233,7 +230,7 @@ class AdvancedVideoPlayer extends StatelessWidget {
       context: context,
       builder: (_) => SimpleDialog(
         title: const Text("Quality"),
-        children: ["Auto", "1080p", "720p", "480p"].map((q) {
+        children: ["Auto", "1080p", "720p", "480p","360","240"].map((q) {
           return SimpleDialogOption(
             onPressed: () {
               quality.value = q;

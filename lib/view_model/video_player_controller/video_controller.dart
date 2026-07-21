@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -18,12 +19,16 @@ class VideoController extends GetxController {
   var playbackSpeed = 1.0.obs;
   var isLandscape = false.obs;
   String? _contentId;
+  String? _currentUrl;
 
   Timer? _hideTimer;
   Timer? _saveTimer;
 
   /// 🔥 INIT
   Future<void> initializeVideo(String url, {String? contentId}) async {
+    if (_currentUrl == url && isInitialized.value) return;
+    _currentUrl = url;
+    
     isInitialized.value = false;
     _contentId = contentId;
 
@@ -158,8 +163,8 @@ class VideoController extends GetxController {
     _startHideTimer();
   }
 
-  void toggleRotation() {
-    if (isLandscape.value) {
+  void toggleRotation(Orientation currentOrientation) {
+    if (currentOrientation == Orientation.landscape) {
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
       isLandscape.value = false;
     } else {

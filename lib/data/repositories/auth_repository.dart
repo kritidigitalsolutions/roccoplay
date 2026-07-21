@@ -39,12 +39,14 @@ class AuthRepository {
     required String phone,
     required String name,
     required String email,
+    required String age,
   }) async {
     try {
       final response = await apiProvider.postApi(AppConstants.createProfile, {
         'phone': phone,
         'name': name,
         'email': email,
+        'age': age,
       });
       return response;
     } catch (e) {

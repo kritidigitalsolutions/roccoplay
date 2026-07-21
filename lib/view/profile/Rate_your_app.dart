@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
-import '../../view_model/profile/review_controller.dart';
 import '../../view_model/review_controller/review_controller.dart';
 
 class ReviewPage extends StatelessWidget {
@@ -26,14 +25,12 @@ class ReviewPage extends StatelessWidget {
           onPressed: () => Get.back(),
         ),
       ),
-
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-
               const SizedBox(height: 20),
 
               /// ⭐ Title
@@ -63,28 +60,27 @@ class ReviewPage extends StatelessWidget {
 
               /// ⭐ Rating Stars
               Obx(() => Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  return IconButton(
-                    splashRadius: 25,
-                    icon: Icon(
-                      index < controller.rating.value
-                          ? Icons.star
-                          : Icons.star_border,
-                      color: Colors.amber,
-                      size: 40,
-                    ),
-                    onPressed: () =>
-                        controller.updateRating(index + 1),
-                  );
-                }),
-              )),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        splashRadius: 25,
+                        icon: Icon(
+                          index < controller.rating.value
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: Colors.amber,
+                          size: 40,
+                        ),
+                        onPressed: () => controller.updateRating(index + 1),
+                      );
+                    }),
+                  )),
 
               const SizedBox(height: 30),
 
               /// 📝 Review Input
               TextField(
-                onChanged: controller.updateComment,
+                controller: controller.commentController,
                 maxLines: 4,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
@@ -104,37 +100,37 @@ class ReviewPage extends StatelessWidget {
 
               /// 🚀 Submit Button with Loader
               Obx(() => SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.buttonColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.buttonColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: controller.isLoading.value
+                          ? null
+                          : controller.submitReview,
+                      child: controller.isLoading.value
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              "Submit Review",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                     ),
-                  ),
-                  onPressed: controller.isLoading.value
-                      ? null
-                      : controller.submitReview,
-                  child: controller.isLoading.value
-                      ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                      : const Text(
-                    "Submit Review",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              )),
+                  )),
 
               const SizedBox(height: 20),
             ],

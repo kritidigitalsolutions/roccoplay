@@ -21,7 +21,7 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
   }
 
   Future<void> _makeCall() async {
-    final Uri url = Uri.parse('tel:+919876543210');
+    final Uri url = Uri.parse('tel:${controller.supportNumber.value}');
     if (!await launchUrl(url)) {
       Get.snackbar("Error", "Could not launch dialer",
           colorText: Colors.white, backgroundColor: Colors.red);
@@ -29,7 +29,7 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
   }
 
   Future<void> _sendEmail() async {
-    final Uri url = Uri.parse('mailto:support@roccoplay.com?subject=Help Support&body=Hi Rocco Play Team,');
+    final Uri url = Uri.parse('mailto:${controller.supportEmail.value}?subject=Help Support&body=Hi Rocco Play Team,');
     if (!await launchUrl(url)) {
       Get.snackbar("Error", "Could not launch email app",
           colorText: Colors.white, backgroundColor: Colors.red);
@@ -54,13 +54,13 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
           /// 🔹 CONTACT OPTIONS
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Row(
+            child: Obx(() => Row(
               children: [
                 Expanded(
                   child: _buildContactCard(
                     icon: Icons.call,
                     title: "Call Us",
-                    subtitle: "9876543210",
+                    subtitle: controller.supportNumber.value,
                     onTap: _makeCall,
                   ),
                 ),
@@ -69,12 +69,12 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
                   child: _buildContactCard(
                     icon: Icons.email,
                     title: "Email Us",
-                    subtitle: "support@roccoplay.com",
+                    subtitle: controller.supportEmail.value,
                     onTap: _sendEmail,
                   ),
                 ),
               ],
-            ),
+            )),
           ),
 
           const Padding(

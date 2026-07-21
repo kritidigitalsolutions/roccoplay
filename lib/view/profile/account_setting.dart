@@ -41,6 +41,8 @@ class AccountSettingsPage extends StatelessWidget {
                   _buildInfoRow(Icons.phone, "Phone", authController.userData.value?['phone'] ?? 'N/A'),
                   const SizedBox(height: 12),
                   _buildInfoRow(Icons.email, "Email", authController.userData.value?['email'] ?? 'N/A'),
+                  const SizedBox(height: 12),
+                  _buildInfoRow(Icons.cake, "Age", authController.userData.value?['age']?.toString() ?? 'N/A'),
                 ],
               ),
             )),

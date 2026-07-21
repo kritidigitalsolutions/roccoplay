@@ -17,6 +17,7 @@ class CreateProfilePage extends StatefulWidget {
 class _CreateProfilePageState extends State<CreateProfilePage> {
   late final TextEditingController nameController;
   late final TextEditingController emailController;
+  late final TextEditingController ageController;
   late final AuthController authController;
   late final CreateProfileController createProfileController;
 
@@ -25,6 +26,7 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
     super.initState();
     nameController = TextEditingController();
     emailController = TextEditingController();
+    ageController = TextEditingController();
     authController = Get.find<AuthController>();
     createProfileController = Get.put(CreateProfileController());
   }
@@ -33,6 +35,7 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
   void dispose() {
     nameController.dispose();
     emailController.dispose();
+    ageController.dispose();
     super.dispose();
   }
 
@@ -112,6 +115,25 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
                 ),
               ),
 
+              const SizedBox(height: 15),
+
+              /// Age Field
+              TextField(
+                controller: ageController,
+                style: const TextStyle(color: AppColors.white),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: "Age",
+                  hintStyle: const TextStyle(color: Colors.grey),
+                  filled: true,
+                  fillColor: Colors.grey[900],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 30),
 
               /// Save Button
@@ -129,8 +151,20 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
                       ? null
                       : () async {
                           if (nameController.text.trim().isEmpty ||
-                              emailController.text.trim().isEmpty) {
-                            CustomSnackbar.show(title: "Error", message: "Name and Email are required", isError: true);
+                              emailController.text.trim().isEmpty ||
+                              ageController.text.trim().isEmpty) {
+                            CustomSnackbar.show(title: "Error", message: "All fields are required", isError: true);
+                            return;
+                          }
+
+                          int? age = int.tryParse(ageController.text.trim());
+                          if (age == null) {
+                            CustomSnackbar.show(title: "Error", message: "Please enter a valid age", isError: true);
+                            return;
+                          }
+
+                          if (age < 18) {
+                            CustomSnackbar.show(title: "Warning", message: "You are under age", isError: true);
                             return;
                           }
 
@@ -138,6 +172,7 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
                             name: nameController.text.trim(),
                             email: emailController.text.trim(),
                             phone: widget.phone,
+                            age: ageController.text.trim(),
                             imagePath: createProfileController.selectedImage.value?.path,
                           );
 

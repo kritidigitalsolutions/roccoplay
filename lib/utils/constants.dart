@@ -1,6 +1,6 @@
 class AppConstants {
-  static const String baseUrl = 'http://192.168.1.17:8000/api';
-  // static const String baseUrl = 'https://api.roccoplay.in/api';
+  // static const String baseUrl = 'http://192.168.1.17:8000/api';
+  static const String baseUrl = 'https://api.roccoplay.in/api';
 
   // Auth Endpoints
   static const String sendOtp = '$baseUrl/auth/send-otp';
@@ -23,6 +23,8 @@ class AppConstants {
   static const String termsAndConditionsUrl = '$baseUrl/legal/terms-conditions';
   static const String refundPolicy = '$baseUrl/legal/refund-policy';
   static const String helpSupport = '$baseUrl/help';
+  static const String supportNumber = '$baseUrl/help/support/number';
+  static const String supportEmail = '$baseUrl/help/support/email';
 
   /// content
   static const String getAllContent = '$baseUrl/content';

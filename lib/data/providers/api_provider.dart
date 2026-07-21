@@ -34,6 +34,7 @@ class ApiProvider extends GetConnect {
     required String phone,
     required String name,
     required String email,
+    required String age,
     String? imagePath,
   }) async {
     try {
@@ -41,6 +42,7 @@ class ApiProvider extends GetConnect {
         "phone": phone,
         "name": name,
         "email": email,
+        "age": age,
       };
 
       if (imagePath != null) {
