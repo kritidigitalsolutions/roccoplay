@@ -24,34 +24,36 @@ class CustomBottomNavbar extends StatelessWidget {
     double iconSize = width * 0.055;
     double fontSize = width * 0.03;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: width * 0.05,
-        right: width * 0.05,
-        bottom: height * 0.025,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(width * 0.07),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            height: navHeight,
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.45),
-              borderRadius: BorderRadius.circular(width * 0.07),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.06),
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: width * 0.05,
+          right: width * 0.05,
+          bottom: height * 0.01, // Reduced bottom padding since SafeArea adds its own
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(width * 0.07),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              height: navHeight,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.45),
+                borderRadius: BorderRadius.circular(width * 0.07),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.06),
+                ),
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(Icons.home, "Home", 0, iconSize, fontSize),
-                _buildNavItem(Icons.search, "Search", 1, iconSize, fontSize),
-                _buildNavItem(Icons.workspace_premium, "Plans", 2, iconSize, fontSize),
-                _buildNavItem(Icons.download, "Downloads", 3, iconSize, fontSize),
-                _buildNavItem(Icons.menu, "More", 4, iconSize, fontSize),
-              ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNavItem(Icons.home, "Home", 0, iconSize, fontSize),
+                  _buildNavItem(Icons.search, "Search", 1, iconSize, fontSize),
+                  _buildNavItem(Icons.workspace_premium, "Plans", 2, iconSize, fontSize),
+                  _buildNavItem(Icons.download, "Downloads", 3, iconSize, fontSize),
+                  _buildNavItem(Icons.menu, "More", 4, iconSize, fontSize),
+                ],
+              ),
             ),
           ),
         ),

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import '../../data/network/base_api_service.dart';
 import '../../data/repositories/watchlist_repo.dart';
@@ -41,12 +42,16 @@ class WatchlistController extends GetxController {
       if (response != null) {
         // Checking for success true or just presence of data
         final List<dynamic> data = response['data'] ?? [];
+        debugPrint("📥 RAW WATCHLIST DATA: $data");
         
         // Filter out content that is not published
         final filteredData = data.where((item) {
           final movie = item['movie'];
           if (movie != null && movie is Map<String, dynamic>) {
             return movie['isPublished'] != false;
+          } else if (movie != null && movie is String) {
+             // If it's just an ID, we assume it's published for now as we can't check without fetching
+             return true;
           }
           return true;
         }).map((e) => e as Map<String, dynamic>).toList();
@@ -66,10 +71,12 @@ class WatchlistController extends GetxController {
     return watchlist.any((item) {
       final movie = item['movie'];
       if (movie != null && movie is Map) {
-        return movie['_id'] == contentId;
+        // Checking both _id and id just in case
+        final id = movie['_id'] ?? movie['id'];
+        return id.toString() == contentId.toString();
       }
-      // In some cases movie might be just ID if not populated, but your API seems to return full object
-      return movie == contentId;
+      // In some cases movie might be just ID if not populated
+      return movie.toString() == contentId.toString();
     });
   }
 
@@ -79,23 +86,32 @@ class WatchlistController extends GetxController {
       isLoading.value = true;
       final response = await repo.addToWatchlist(contentId);
       
-      // Fixed: Checking response existence as 201 response might not have "success: true" key
       if (response != null) {
         CustomSnackbar.show(
           title: "Success",
           message: response['message'] ?? "Added to watchlist",
           isSuccess: true,
         );
-        // 🔄 Refresh list immediately
+        // 🔄 Refresh list immediately to keep UI in sync
         await getWatchlist();
       }
     } catch (e) {
       print("❌ Add Watchlist Error: $e");
-      CustomSnackbar.show(
-        title: "Error",
-        message: "Failed to add to watchlist",
-        isError: true,
-      );
+      // Handle the case where it might already be in watchlist (safety check)
+      if (e.toString().contains("Already in watchlist")) {
+        await getWatchlist(); // Refresh to sync
+        CustomSnackbar.show(
+          title: "Info",
+          message: "Already in your watchlist",
+          isSuccess: true,
+        );
+      } else {
+        CustomSnackbar.show(
+          title: "Error",
+          message: "Failed to add to watchlist",
+          isError: true,
+        );
+      }
     } finally {
       isLoading.value = false;
     }
@@ -133,9 +149,10 @@ class WatchlistController extends GetxController {
         final watchlistItem = watchlist.firstWhere((item) {
           final movie = item['movie'];
           if (movie != null && movie is Map) {
-            return movie['_id'] == contentId;
+            final id = movie['_id'] ?? movie['id'];
+            return id.toString() == contentId.toString();
           }
-          return movie == contentId;
+          return movie.toString() == contentId.toString();
         });
         
         final String? watchlistId = watchlistItem['_id'];
@@ -144,6 +161,9 @@ class WatchlistController extends GetxController {
         }
       } catch (e) {
         print("Error finding item to remove: $e");
+        // Fallback: if we can't find it locally but isInWatchlist was true, 
+        // it might be a sync issue. Let's refresh.
+        await getWatchlist();
       }
     } else {
       await addToWatchlist(contentId);

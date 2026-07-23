@@ -4,6 +4,7 @@ import 'package:roccoplay/view_model/auth_controller/auth_controller.dart';
 import 'package:roccoplay/view_model/download_controller/download_controller.dart';
 import 'package:roccoplay/view_model/primium_controller/premium_controller.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../utils/share_helper.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../data/models/response_model/content_response_model/content_model.dart';
@@ -33,6 +34,13 @@ class DramaDetailsPage extends StatelessWidget {
     final PremiumController premiumController = Get.put(PremiumController());
     final InteractionController interactionController = Get.put(InteractionController());
     final DownloadController downloadController = Get.put(DownloadController());
+
+    // Refresh subscription status on page entry
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (authController.isLoggedIn.value) {
+        premiumController.fetchSubscriptionStatus();
+      }
+    });
 
     // Filter "You May Also Like"
     final List<ContentModel> relatedContent = contentController.allContent.where((item) {
@@ -80,7 +88,7 @@ class DramaDetailsPage extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                     ),
                     onPressed: () async {
-                      final bool? isOver18 = await Get.dialog<bool>(const AgeRestrictionPopup());
+                      final bool? isOver18 = await Get.dialog<bool>(AgeRestrictionPopup());
                       if (isOver18 == true) {
                         Get.to(() => AdvancedVideoPlayer(
                           url: content.trailerUrl!, 
@@ -110,6 +118,7 @@ class DramaDetailsPage extends StatelessWidget {
             const SizedBox(height: 20),
 
             /// 🔐 DYNAMIC WATCH BUTTON
+            if (content.contentType == "movie")
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Obx(() {
@@ -122,27 +131,19 @@ class DramaDetailsPage extends StatelessWidget {
                     backgroundColor: AppColors.buttonColor,
                     minimumSize: const Size(double.infinity, 50),
                   ),
-                  onPressed: () {
-                    if (!userLoggedIn) {
-                      Get.to(() => const SignInPage());
-                    } else if (isPurchased || !content.isPremium) {
-                      if (content.videoUrl != null && content.videoUrl!.isNotEmpty) {
-                        Get.to(() => AdvancedVideoPlayer(
-                          url: content.videoUrl!, 
-                          title: content.title,
-                          contentId: content.id,
-                        ));
-                      } else {
-                        CustomSnackbar.show(title: "Error", message: "Video URL not found", isError: true);
-                      }
-                    } else {
-                      Get.to(() => const GoPremiumPage());
-                    }
-                  },
+                  onPressed: () => _handlePlayback(
+                    context: context,
+                    url: content.videoUrl,
+                    title: content.title,
+                    id: content.id,
+                    isPremium: content.isPremium,
+                    isPurchased: isPurchased,
+                    userLoggedIn: userLoggedIn,
+                  ),
                   child: Text(
                     !userLoggedIn 
                         ? "Sign In to Watch" 
-                        : (isPurchased || !content.isPremium ? "Watch Video" : "Subscribe to Watch"),
+                        : (isPurchased || !content.isPremium ? "Watch Movie" : "Subscribe to Watch"),
                     style: const TextStyle(color: Colors.white),
                   ),
                 );
@@ -152,6 +153,7 @@ class DramaDetailsPage extends StatelessWidget {
             const SizedBox(height: 12),
             
             /// ⬇ DYNAMIC DOWNLOAD BUTTON (Logic Fixed)
+            if (content.contentType == "movie")
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Obx(() {
@@ -236,13 +238,24 @@ class DramaDetailsPage extends StatelessWidget {
                         onTap: watchlistController.isLoading.value
                             ? null
                             : () => watchlistController.toggleWatchlist(content.id.toString()),
-                        child: Icon(
-                          watchlistController.isInWatchlist(content.id.toString())
-                              ? Icons.bookmark
-                              : Icons.bookmark_border,
-                          color: Colors.white,
-                          size: 30,
-                        ),
+                        child: watchlistController.isLoading.value
+                            ? const SizedBox(
+                                height: 30,
+                                width: 30,
+                                child: CircularProgressIndicator(
+                                  color: AppColors.buttonColor,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                watchlistController.isInWatchlist(content.id.toString())
+                                    ? Icons.bookmark
+                                    : Icons.bookmark_border,
+                                color: watchlistController.isInWatchlist(content.id.toString())
+                                    ? AppColors.buttonColor
+                                    : Colors.white,
+                                size: 30,
+                              ),
                       ),
                       const SizedBox(height: 5),
                       const Text("Watchlist", style: TextStyle(color: Colors.white, fontSize: 12)),
@@ -265,12 +278,149 @@ class DramaDetailsPage extends StatelessWidget {
                     icon: Icons.share,
                     label: "Share",
                     onTap: () {
-                      Share.share("Check out ${content.title} on RoccoPlay App 🎬🔥");
+                      ShareHelper.shareContent(
+                        title: content.title,
+                        slug: content.slug,
+                        imageUrl: content.poster,
+                      );
                     },
                   ),
                 ],
               )),
             ),
+
+            const SizedBox(height: 25),
+
+            /// 📺 EPISODES SECTION
+            if (content.contentType == "series" && content.seasons != null && content.seasons!.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text("Episodes", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(height: 10),
+              
+              /// Season Selector
+              if (content.seasons!.length > 1)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Obx(() => DropdownButton<int>(
+                    value: controller.selectedSeason.value,
+                    dropdownColor: Colors.black,
+                    underline: Container(height: 1, color: AppColors.buttonColor),
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    onChanged: (val) => controller.setSeason(val!),
+                    items: List.generate(content.seasons!.length, (index) {
+                      return DropdownMenuItem(
+                        value: index,
+                        child: Text("Season ${content.seasons![index].seasonNumber}"),
+                      );
+                    }),
+                  )),
+                ),
+
+              const SizedBox(height: 15),
+
+              /// Episodes List
+              Obx(() {
+                final seasonIndex = controller.selectedSeason.value;
+                final season = content.seasons![seasonIndex];
+                final sub = premiumController.subscriptionData.value;
+                final bool isPurchased = sub != null && sub['status'] == 'active';
+                final bool userLoggedIn = authController.isLoggedIn.value;
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: season.episodes.length,
+                  itemBuilder: (context, index) {
+                    final ep = season.episodes[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                      child: ListTile(
+                        onTap: () => _handlePlayback(
+                          context: context,
+                          url: ep.videoUrl,
+                          title: ep.title,
+                          id: ep.id,
+                          isPremium: content.isPremium,
+                          isPurchased: isPurchased,
+                          userLoggedIn: userLoggedIn,
+                        ),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            ep.thumbnail,
+                            width: 100,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => Image.asset("assets/images/farzi.jpg", width: 100, height: 60, fit: BoxFit.cover),
+                          ),
+                        ),
+                        title: Text(ep.title, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                        subtitle: Text(ep.duration ?? "", style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            /// ⬇ EPISODE DOWNLOAD
+                            Obx(() {
+                              final bool isDownloaded = downloadController.isDownloaded(ep.id);
+                              final bool downloading = downloadController.isDownloading[ep.id] ?? false;
+                              final double progress = downloadController.downloadProgress[ep.id] ?? 0;
+
+                              if (downloading) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 10),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      SizedBox(
+                                        height: 25,
+                                        width: 25,
+                                        child: CircularProgressIndicator(
+                                          value: progress,
+                                          color: AppColors.buttonColor,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      Text(
+                                        "${(progress * 100).toInt()}%",
+                                        style: const TextStyle(color: Colors.white, fontSize: 8),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+
+                              if (isDownloaded) {
+                                return const Padding(
+                                  padding: EdgeInsets.only(right: 10),
+                                  child: Icon(Icons.check_circle, color: Colors.green, size: 24),
+                                );
+                              }
+
+                              return IconButton(
+                                icon: const Icon(Icons.download_for_offline_outlined, color: Colors.white70),
+                                onPressed: () {
+                                  if (!userLoggedIn) {
+                                    Get.to(() => const SignInPage());
+                                  } else if (isPurchased || !content.isPremium) {
+                                    downloadController.downloadEpisode(content, ep);
+                                  } else {
+                                    _showSubscriptionDialog(context);
+                                  }
+                                },
+                              );
+                            }),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.play_circle_fill, color: AppColors.buttonColor),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }),
+            ],
 
             const SizedBox(height: 25),
 
@@ -374,6 +524,43 @@ class DramaDetailsPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// 🎬 Handle Playback Logic
+  void _handlePlayback({
+    required BuildContext context,
+    required String? url,
+    required String title,
+    required String id,
+    required bool isPremium,
+    required bool isPurchased,
+    required bool userLoggedIn,
+  }) async {
+    if (!userLoggedIn) {
+      Get.to(() => const SignInPage());
+      return;
+    }
+
+    if (isPremium && !isPurchased) {
+      Get.to(() => const GoPremiumPage());
+      return;
+    }
+
+    if (url == null || url.isEmpty) {
+      CustomSnackbar.show(title: "Error", message: "Video URL not found", isError: true);
+      return;
+    }
+
+    // Show Age Restriction Popup instead of Pre-play
+    final bool? proceed = await Get.dialog<bool>(AgeRestrictionPopup());
+
+    if (proceed == true) {
+      Get.to(() => AdvancedVideoPlayer(
+            url: url,
+            title: title,
+            contentId: id,
+          ));
+    }
   }
 
   void _showSubscriptionDialog(BuildContext context) {

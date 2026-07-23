@@ -88,11 +88,11 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
 
   /// 🎮 CONTROLS
   Widget _controls(BuildContext context) {
-    return Column(
-      children: [
-        /// 🔝 TOP BAR
-        SafeArea(
-          child: Row(
+    return SafeArea(
+      child: Column(
+        children: [
+          /// 🔝 TOP BAR
+          Row(
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -108,12 +108,13 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
               IconButton(
                 icon: const Icon(Icons.share, color: Colors.white),
                 onPressed: () {
-                  Share.share(widget.url);
+                  final String shareText = "Watching ${widget.title} on RoccoPlay App 🎬🔥\n\n"
+                      "Watch here: ${widget.url}";
+                  Share.share(shareText);
                 },
               ),
             ],
           ),
-        ),
 
         /// ▶️ CENTER PLAY
         Expanded(
@@ -196,7 +197,7 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
           ),
         ),
       ],
-    );
+    ),);
   }
 
   /// ⏱ FORMAT

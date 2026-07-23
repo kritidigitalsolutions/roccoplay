@@ -6,6 +6,7 @@ import '../../view_model/auth_controller/auth_controller.dart';
 import '../../view_model/watchlist_controller/watchlist_controller.dart';
 import '../dramaDetails/dramaDetailsPage.dart';
 import '../homePages/mainHomepage.dart';
+import '../../view_model/content_controller/content_controller.dart';
 
 class WatchlistPage extends StatelessWidget {
   const WatchlistPage({super.key});
@@ -15,6 +16,7 @@ class WatchlistPage extends StatelessWidget {
     // Controller initialize करें (अगर पहले से नहीं है)
     final WatchlistController controller = Get.put(WatchlistController());
     final AuthController authController = Get.find<AuthController>();
+    final ContentController contentController = Get.find<ContentController>();
 
     return Scaffold(
       backgroundColor: AppColors.black,
@@ -52,20 +54,40 @@ class WatchlistPage extends StatelessWidget {
             String year = "";
             ContentModel? contentItem;
 
-            if (movieData != null && movieData is Map<String, dynamic>) {
-              contentItem = ContentModel.fromJson(movieData);
-              title = contentItem.title;
-              poster = contentItem.poster;
-              year = contentItem.releaseYear.toString();
+            if (movieData != null) {
+              if (movieData is Map<String, dynamic>) {
+                // First try to find in allContent to get full model
+                final String movieId = movieData['_id'] ?? movieData['id'] ?? '';
+                try {
+                  contentItem = contentController.allContent.firstWhere((c) => c.id == movieId);
+                } catch (e) {
+                  // If not found in allContent, create from movieData
+                  contentItem = ContentModel.fromJson(movieData);
+                }
+              } else if (movieData is String) {
+                // If movie is just an ID
+                try {
+                  contentItem = contentController.allContent.firstWhere((c) => c.id == movieData);
+                } catch (e) {
+                  debugPrint("Could not find movie with id $movieData in allContent");
+                }
+              }
+
+              if (contentItem != null) {
+                title = contentItem.title;
+                poster = contentItem.poster;
+                year = contentItem.releaseYear.toString();
+              }
             }
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 12),
+              margin: const EdgeInsets.only(bottom: 12, left: 10, right: 10),
               decoration: BoxDecoration(
                 color: Colors.grey.shade900,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 onTap: () {
                   if (contentItem != null) {
                     Get.to(() => DramaDetailsPage(
@@ -76,29 +98,40 @@ class WatchlistPage extends StatelessWidget {
                 },
                 leading: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: poster.isNotEmpty
-                      ? Image.network(
-                          poster,
-                          width: 50,
-                          height: 70,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.movie, color: Colors.white),
-                        )
-                      : const Icon(Icons.movie, color: Colors.white, size: 50),
+                  child: AspectRatio(
+                    aspectRatio: 2/3,
+                    child: poster.isNotEmpty
+                        ? Image.network(
+                            poster,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Center(child: Icon(Icons.movie, color: Colors.white)),
+                          )
+                        : const Center(child: Icon(Icons.movie, color: Colors.white)),
+                  ),
                 ),
                 title: Text(
                   title,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
-                subtitle: Text(
-                  year != "0" ? "Year: $year" : "Watchlist Item",
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Text(
+                      year != "0" ? year : "Watchlist Item",
+                      style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                  ],
                 ),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                   onPressed: () {
-                    controller.removeFromWatchlist(watchlistId);
+                    if (watchlistId.isNotEmpty) {
+                      controller.removeFromWatchlist(watchlistId);
+                    }
                   },
                 ),
               ),

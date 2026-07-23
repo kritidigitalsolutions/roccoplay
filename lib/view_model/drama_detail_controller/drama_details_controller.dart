@@ -4,8 +4,9 @@ class DramaDetailsController extends GetxController {
   var isWatchlist = false.obs;
   var isLiked = false.obs;
   var isDisliked = false.obs;
+  var selectedSeason = 0.obs;
 
-  void toggleWatchlist() => isWatchlist.value = !isWatchlist.value;
+  void setSeason(int index) => selectedSeason.value = index;
 
   void toggleLike() {
     isLiked.value = !isLiked.value;

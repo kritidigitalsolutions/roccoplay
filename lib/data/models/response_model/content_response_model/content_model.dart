@@ -20,6 +20,7 @@ class ContentModel {
   final bool isTrending;
   final String? releaseDate;
   final bool isPublished;
+  final List<Season>? seasons;
 
   ContentModel({
     required this.id,
@@ -43,6 +44,7 @@ class ContentModel {
     this.isTrending = false,
     this.releaseDate,
     this.isPublished = true,
+    this.seasons,
   });
 
   factory ContentModel.fromJson(Map<String, dynamic> json) {
@@ -70,6 +72,9 @@ class ContentModel {
       isTrending: json['isTrending'] ?? false,
       releaseDate: json['releaseDate'],
       isPublished: json['isPublished'] ?? true,
+      seasons: json['seasons'] != null
+          ? List<Season>.from(json['seasons'].map((x) => Season.fromJson(x)))
+          : null,
     );
   }
 
@@ -96,6 +101,74 @@ class ContentModel {
       'isTrending': isTrending,
       'releaseDate': releaseDate,
       'isPublished': isPublished,
+      'seasons': seasons?.map((e) => e.toJson()).toList(),
+    };
+  }
+}
+
+class Season {
+  final int seasonNumber;
+  final List<Episode> episodes;
+
+  Season({required this.seasonNumber, required this.episodes});
+
+  factory Season.fromJson(Map<String, dynamic> json) {
+    return Season(
+      seasonNumber: json['seasonNumber'] ?? 0,
+      episodes: json['episodes'] != null
+          ? List<Episode>.from(json['episodes'].map((x) => Episode.fromJson(x)))
+          : [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'seasonNumber': seasonNumber,
+      'episodes': episodes.map((e) => e.toJson()).toList(),
+    };
+  }
+}
+
+class Episode {
+  final String id;
+  final String title;
+  final String description;
+  final String videoUrl;
+  final String thumbnail;
+  final String? duration;
+  final int episodeNumber;
+
+  Episode({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.videoUrl,
+    required this.thumbnail,
+    this.duration,
+    required this.episodeNumber,
+  });
+
+  factory Episode.fromJson(Map<String, dynamic> json) {
+    return Episode(
+      id: json['_id'] ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      videoUrl: json['videoUrl'] ?? '',
+      thumbnail: json['thumbnail'] ?? '',
+      duration: json['duration'],
+      episodeNumber: json['episodeNumber'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'title': title,
+      'description': description,
+      'videoUrl': videoUrl,
+      'thumbnail': thumbnail,
+      'duration': duration,
+      'episodeNumber': episodeNumber,
     };
   }
 }

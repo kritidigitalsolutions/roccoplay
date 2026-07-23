@@ -1,6 +1,6 @@
 class AppConstants {
-  // static const String baseUrl = 'http://192.168.1.17:8000/api';
-  static const String baseUrl = 'https://api.roccoplay.in/api';
+  static const String baseUrl = 'http://192.168.1.17:8000/api';
+  // static const String baseUrl = 'https://api.roccoplay.in/api';
 
   // Auth Endpoints
   static const String sendOtp = '$baseUrl/auth/send-otp';
