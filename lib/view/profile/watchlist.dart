@@ -46,7 +46,8 @@ class WatchlistPage extends StatelessWidget {
           itemBuilder: (context, index) {
             final item = controller.watchlist[index];
             final watchlistId = item['_id'] ?? '';
-            final movieData = item['movie'];
+            final movieData = item['movie'] ?? item['item'];
+            final String itemType = (item['itemModel'] ?? '').toString().toLowerCase();
 
             // UI variables
             String title = "Unknown Title";
@@ -62,6 +63,10 @@ class WatchlistPage extends StatelessWidget {
                   contentItem = contentController.allContent.firstWhere((c) => c.id == movieId);
                 } catch (e) {
                   // If not found in allContent, create from movieData
+                  // Ensure it has a contentType if we know it from itemModel
+                  if (movieData['type'] == null && itemType.isNotEmpty) {
+                    movieData['type'] = itemType == 'movie' ? 'movie' : 'series';
+                  }
                   contentItem = ContentModel.fromJson(movieData);
                 }
               } else if (movieData is String) {
@@ -76,7 +81,7 @@ class WatchlistPage extends StatelessWidget {
               if (contentItem != null) {
                 title = contentItem.title;
                 poster = contentItem.poster;
-                year = contentItem.releaseYear.toString();
+                year = contentItem.releaseYear != 0 ? contentItem.releaseYear.toString() : "";
               }
             }
 
@@ -121,7 +126,7 @@ class WatchlistPage extends StatelessWidget {
                   children: [
                     const SizedBox(height: 4),
                     Text(
-                      year != "0" ? year : "Watchlist Item",
+                      year.isNotEmpty && year != "0" ? year : "Watchlist Item",
                       style: const TextStyle(color: Colors.white54, fontSize: 12),
                     ),
                   ],

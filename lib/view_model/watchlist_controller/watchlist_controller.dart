@@ -46,7 +46,7 @@ class WatchlistController extends GetxController {
         
         // Filter out content that is not published
         final filteredData = data.where((item) {
-          final movie = item['movie'];
+          final movie = item['movie'] ?? item['item'];
           if (movie != null && movie is Map<String, dynamic>) {
             return movie['isPublished'] != false;
           } else if (movie != null && movie is String) {
@@ -69,7 +69,7 @@ class WatchlistController extends GetxController {
   /// ✅ CHECK if a content ID is in the watchlist
   bool isInWatchlist(String contentId) {
     return watchlist.any((item) {
-      final movie = item['movie'];
+      final movie = item['movie'] ?? item['item'];
       if (movie != null && movie is Map) {
         // Checking both _id and id just in case
         final id = movie['_id'] ?? movie['id'];
@@ -147,7 +147,7 @@ class WatchlistController extends GetxController {
     if (isInWatchlist(contentId)) {
       try {
         final watchlistItem = watchlist.firstWhere((item) {
-          final movie = item['movie'];
+          final movie = item['movie'] ?? item['item'];
           if (movie != null && movie is Map) {
             final id = movie['_id'] ?? movie['id'];
             return id.toString() == contentId.toString();
