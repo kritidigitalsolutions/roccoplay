@@ -52,30 +52,39 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
       body: Column(
         children: [
           /// 🔹 CONTACT OPTIONS
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Obx(() => Row(
-              children: [
-                Expanded(
-                  child: _buildContactCard(
-                    icon: Icons.call,
-                    title: "Call Us",
-                    subtitle: controller.supportNumber.value,
-                    onTap: _makeCall,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildContactCard(
-                    icon: Icons.email,
-                    title: "Email Us",
-                    subtitle: controller.supportEmail.value,
-                    onTap: _sendEmail,
-                  ),
-                ),
-              ],
-            )),
-          ),
+          Obx(() {
+            final showNumber = !controller.isNumberHide.value;
+            final showEmail = !controller.isEmailHide.value;
+
+            if (!showNumber && !showEmail) return const SizedBox.shrink();
+
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  if (showNumber)
+                    Expanded(
+                      child: _buildContactCard(
+                        icon: Icons.call,
+                        title: "Call Us",
+                        subtitle: controller.supportNumber.value,
+                        onTap: _makeCall,
+                      ),
+                    ),
+                  if (showNumber && showEmail) const SizedBox(width: 12),
+                  if (showEmail)
+                    Expanded(
+                      child: _buildContactCard(
+                        icon: Icons.email,
+                        title: "Email Us",
+                        subtitle: controller.supportEmail.value,
+                        onTap: _sendEmail,
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
 
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.0),

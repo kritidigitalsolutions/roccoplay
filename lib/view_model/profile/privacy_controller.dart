@@ -56,18 +56,46 @@ class PrivacyController extends GetxController {
     isLoadingHelp.value = false;
   }
 
-  var supportNumber = "9876543210".obs; // Default values
-  var supportEmail = "support@roccoplay.com".obs;
+  var supportNumber = "".obs;
+  var supportEmail = "".obs;
+  var isNumberHide = true.obs; // Default to true to avoid flashing empty cards
+  var isEmailHide = true.obs;
+
+  bool _parseBool(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is String) {
+      return value.toLowerCase() == 'true' || value == '1';
+    }
+    if (value is int) {
+      return value == 1;
+    }
+    return false;
+  }
 
   Future<void> fetchSupportContactInfo() async {
-    final numberData = await PrivacyService.getSupportNumber();
-    if (numberData != null && numberData['success'] == true) {
-      supportNumber.value = numberData['supportNumber'] ?? numberData['contactNumber'] ?? supportNumber.value;
+    try {
+      final numberData = await PrivacyService.getSupportNumber();
+      if (numberData != null && _parseBool(numberData['success'])) {
+        supportNumber.value = numberData['supportNumber'] ??
+            numberData['contactNumber'] ??
+            supportNumber.value;
+        isNumberHide.value = _parseBool(numberData['isHide']);
+      }
+    } catch (e) {
+      print("Error fetching support number: $e");
     }
 
-    final emailData = await PrivacyService.getSupportEmail();
-    if (emailData != null && emailData['success'] == true) {
-      supportEmail.value = emailData['supportEmail'] ?? emailData['email'] ?? supportEmail.value;
+    try {
+      final emailData = await PrivacyService.getSupportEmail();
+      if (emailData != null && _parseBool(emailData['success'])) {
+        supportEmail.value = emailData['supportEmail'] ??
+            emailData['email'] ??
+            supportEmail.value;
+        isEmailHide.value = _parseBool(emailData['isHide']);
+      }
+    } catch (e) {
+      print("Error fetching support email: $e");
     }
   }
 }

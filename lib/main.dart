@@ -16,6 +16,7 @@ import 'data/network/base_api_service.dart';
 import 'utils/app_session.dart';
 import 'utils/notification_service.dart';
 import 'view_model/auth_controller/auth_controller.dart';
+import 'view_model/primium_controller/premium_controller.dart';
 
 /// 🌙 Background Handler
 @pragma('vm:entry-point')
@@ -75,6 +76,7 @@ Future<void> main() async {
 
   /// 📦 Controllers
   Get.put(AuthController(), permanent: true);
+  Get.put(PremiumController(), permanent: true);
   Get.put(InteractionController(), permanent: true);
   Get.put(WatchlistController(), permanent: true);
 

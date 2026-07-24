@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
 import '../../view_model/content_controller/content_controller.dart';
+import '../../view_model/primium_controller/premium_controller.dart';
 import '../navbar/bottomNavbar.dart';
 import '../dramaDetails/dramaDetailsPage.dart';
 import 'auto_slider.dart';
@@ -26,6 +27,7 @@ class MainHomePage extends StatelessWidget {
     final ContentController contentController = Get.put(ContentController());
     final HomeController controller = Get.put(HomeController());
     final AuthController authController = Get.find<AuthController>();
+    final PremiumController premiumController = Get.find<PremiumController>();
     final notificationService = NotificationService.to;
 
     return PopScope(
@@ -54,6 +56,7 @@ class MainHomePage extends StatelessWidget {
                       controller,
                       authController,
                       contentController,
+                      premiumController,
                       notificationService,
                     ),
                     const SearchPage(),
@@ -111,6 +114,7 @@ class MainHomePage extends StatelessWidget {
     HomeController controller,
     AuthController authController,
     ContentController contentController,
+    PremiumController premiumController,
     NotificationService notificationService,
   ) {
     return Column(
@@ -167,23 +171,26 @@ class MainHomePage extends StatelessWidget {
                     );
                   }),
                   const SizedBox(width: 8),
-                  SizedBox(
-                    width: 110,
-                    height: 28,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Get.to(() => const GoPremiumPage());
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.buttonColor,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                  Obx(() {
+                    final bool hasActive = premiumController.hasActiveSubscription;
+                    return SizedBox(
+                      width: 110,
+                      height: 28,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Get.to(() => const GoPremiumPage());
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: hasActive ? Colors.green : AppColors.buttonColor,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        child: Text(
+                          hasActive ? "Premium Active" : "Go Premium",
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                        ),
                       ),
-                      child: const Text(
-                        "Go Premium",
-                        style: TextStyle(color: Colors.white, fontSize: 10),
-                      ),
-                    ),
-                  ),
+                    );
+                  }),
                 ],
               ),
             ],
@@ -194,10 +201,17 @@ class MainHomePage extends StatelessWidget {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
-              await Future.wait([
+              List<Future> refreshTasks = [
                 contentController.fetchContent(),
                 contentController.fetchCategories(),
-              ]);
+              ];
+              
+              if (authController.isLoggedIn.value) {
+                refreshTasks.add(authController.getProfile());
+                refreshTasks.add(premiumController.fetchSubscriptionStatus());
+              }
+              
+              await Future.wait(refreshTasks);
             },
             color: AppColors.buttonColor,
             child: SingleChildScrollView(
