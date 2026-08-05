@@ -332,6 +332,16 @@ class PremiumController extends GetxController {
         );
 
         if (response != null && response['success'] == true) {
+          MetaEventService.instance.paymentComplete(
+            planId: planId,
+            amount: 0.0,
+            currency: 'INR',
+          );
+          FirebaseAnalyticsService.instance.paymentComplete(
+            planId: planId,
+            amount: 0.0,
+            currency: 'INR',
+          );
           CustomSnackbar.show(
             title: "Success",
             message: "Payment Success",
@@ -362,6 +372,25 @@ class PremiumController extends GetxController {
       isRedeeming.value = true;
       final response = await _repository.redeemVoucher(code);
       if (response != null && response['success'] == true) {
+        final planId =
+            response['planId'] ??
+            response['plan_id'] ??
+            response['data']?['planId'] ??
+            'voucher_redeem';
+        final double amount =
+            double.tryParse((response['amount'] ?? 0.0).toString()) ?? 0.0;
+
+        MetaEventService.instance.paymentComplete(
+          planId: planId.toString(),
+          amount: amount,
+          currency: 'INR',
+        );
+        FirebaseAnalyticsService.instance.paymentComplete(
+          planId: planId.toString(),
+          amount: amount,
+          currency: 'INR',
+        );
+
         CustomSnackbar.show(
           title: "Success",
           message: "Redeemed successfully",

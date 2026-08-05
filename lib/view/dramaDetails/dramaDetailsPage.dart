@@ -302,7 +302,7 @@ class DramaDetailsPage extends StatelessWidget {
             const SizedBox(height: 15),
 
             /// 📲 Banner Ad after description
-            const BannerAdWidget(),
+            Center(child: const BannerAdWidget()),
 
             const SizedBox(height: 20),
 
@@ -599,7 +599,7 @@ class DramaDetailsPage extends StatelessWidget {
             if (content.contentType == "series")
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
-                child: BannerAdWidget(),
+                child: Center(child: BannerAdWidget()),
               ),
 
             /// 🎭 Cast & Crew
@@ -794,7 +794,10 @@ class DramaDetailsPage extends StatelessWidget {
 
     if (proceed == true) {
       MetaEventService.instance.videoPlay(contentId: id, contentName: title);
-      FirebaseAnalyticsService.instance.videoPlay(contentId: id, contentName: title);
+      FirebaseAnalyticsService.instance.videoPlay(
+        contentId: id,
+        contentName: title,
+      );
       Get.to(() => AdvancedVideoPlayer(url: url, title: title, contentId: id));
     }
   }

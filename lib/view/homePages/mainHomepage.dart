@@ -232,7 +232,7 @@ class MainHomePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const BannerAdWidget(),
+                  Center(child: const BannerAdWidget()),
                   const SizedBox(height: 15),
 
                   Obx(() {
@@ -315,7 +315,7 @@ class MainHomePage extends StatelessWidget {
                               if ((index + 1) % 2 == 0) {
                                 return [
                                   categoryWidget,
-                                  const BannerAdWidget(),
+                                  Center(child: const BannerAdWidget()),
                                   const SizedBox(height: 10),
                                 ];
                               }

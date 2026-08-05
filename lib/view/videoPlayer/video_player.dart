@@ -27,8 +27,8 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
   final RxBool isLocked = false.obs;
   final RxString quality = "Auto".obs;
 
-  // 🔥 Har kitne seconds pe mid-roll ad aana chahiye (5 min)
-  static const int _adIntervalSeconds = 5 * 60;
+  // 🔥 Har kitne seconds pe mid-roll ad aana chahiye (12 min)
+  static const int _adIntervalSeconds = 12 * 60;
 
   // Kaunse marks pe ad already dikha diya hai (dobara na dikhe)
   final Set<int> _shownAdMarks = {};
@@ -71,7 +71,7 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
       }
     });
 
-    // 🔥 Video ki actual position track karke 5-5 min pe ad trigger karo
+    // 🔥 Video ki actual position track karke 12-12 min pe ad trigger karo
     _positionWorker = ever(controller.currentPosition, _checkMidRollAd);
   }
 
@@ -84,7 +84,7 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
     super.dispose();
   }
 
-  /// 🔥 5-5 min ke ad marks nikalo (end ke 10 sec ke andar mark skip karo)
+  /// 🔥 12-12 min ke ad marks nikalo (end ke 10 sec ke andar mark skip karo)
   List<int> _calculateAdMarks(int totalSeconds) {
     final List<int> marks = [];
     int t = _adIntervalSeconds;
@@ -134,7 +134,7 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
     );
   }
 
-  /// 🔥 Video position 5-min mark cross kare to mid-roll ad
+  /// 🔥 Video position 12-min mark cross kare to mid-roll ad
   void _checkMidRollAd(Duration pos) {
     if (_adMarkSeconds.isEmpty || _isAdPlaying) return;
     for (final mark in _adMarkSeconds) {
@@ -161,74 +161,92 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
     );
   }
 
-  /// 🔥 Back / manual pause pe bhi ad dikhane ke baad turant reload karo
+  /// 🔥 Back / manual pause pe bhi ad dikhane ke baad turant reload karo.
+  /// ✅ FIX: pehle video pause karo, phir hi ad dikhao — taaki ad ke dauran
+  /// video/audio background me na chalta rahe.
   void _showAdThen(VoidCallback onAdClosedAction) {
     if (_isAdPlaying) return;
     _isAdPlaying = true;
+    _pauseVideoForAd(); // 👈 ye line missing thi, isi wajah se back-button ad ke waqt video chalta rehta tha
 
     InterstitialAdHelper.showAd(
       onAdClosed: () {
         _isAdPlaying = false;
-        onAdClosedAction();
+        onAdClosedAction(); // ye Get.back() karega, isliye resume karne ki zaroorat nahi
         InterstitialAdHelper.loadAd();
       },
     );
   }
 
+  /// 🔥 Common "leave screen" handler — UI back button aur hardware back
+  /// button dono isi function se guzarte hain, taaki dono jagah ad chale.
+  void _handleBackPressed() {
+    _showAdThen(() => Get.back());
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Obx(() {
-        if (!controller.isInitialized.value) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return PopScope(
+      // ❌ System ko default pop kabhi mat karne do — hum khud control karenge
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        // 📱 Ye tab call hota hai jab mobile ka HARDWARE back button dabaya jaaye
+        _handleBackPressed();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Obx(() {
+          if (!controller.isInitialized.value) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-        return GestureDetector(
-          onTap: () {
-            if (!isLocked.value) {
-              controller.toggleControls();
-            }
-          },
-          child: Stack(
-            children: [
-              /// 🎬 VIDEO
-              Center(
-                child: AspectRatio(
-                  aspectRatio:
-                      controller.videoPlayerController!.value.aspectRatio,
-                  child: VideoPlayer(controller.videoPlayerController!),
-                ),
-              ),
-
-              /// 🔒 LOCK BUTTON
-              Positioned(
-                left: 10,
-                top: MediaQuery.of(context).size.height / 2,
-                child: Obx(
-                  () => IconButton(
-                    icon: Icon(
-                      isLocked.value ? Icons.lock : Icons.lock_open,
-                      color: Colors.white,
-                    ),
-                    onPressed: () {
-                      isLocked.value = !isLocked.value;
-                      controller.showControls.value = !isLocked.value;
-                    },
+          return GestureDetector(
+            onTap: () {
+              if (!isLocked.value) {
+                controller.toggleControls();
+              }
+            },
+            child: Stack(
+              children: [
+                /// 🎬 VIDEO
+                Center(
+                  child: AspectRatio(
+                    aspectRatio:
+                        controller.videoPlayerController!.value.aspectRatio,
+                    child: VideoPlayer(controller.videoPlayerController!),
                   ),
                 ),
-              ),
 
-              /// 🎮 CONTROLS
-              Obx(
-                () => controller.showControls.value && !isLocked.value
-                    ? _controls(context)
-                    : const SizedBox(),
-              ),
-            ],
-          ),
-        );
-      }),
+                /// 🔒 LOCK BUTTON
+                Positioned(
+                  left: 10,
+                  top: MediaQuery.of(context).size.height / 2,
+                  child: Obx(
+                    () => IconButton(
+                      icon: Icon(
+                        isLocked.value ? Icons.lock : Icons.lock_open,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        isLocked.value = !isLocked.value;
+                        controller.showControls.value = !isLocked.value;
+                      },
+                    ),
+                  ),
+                ),
+
+                /// 🎮 CONTROLS
+                Obx(
+                  () => controller.showControls.value && !isLocked.value
+                      ? _controls(context)
+                      : const SizedBox(),
+                ),
+              ],
+            ),
+          );
+        }),
+      ),
     );
   }
 
@@ -244,7 +262,7 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () {
                   // 🔥 Back/Close pe Interstitial Ad show karo, phir reload
-                  _showAdThen(() => Get.back());
+                  _handleBackPressed();
                 },
               ),
               Expanded(
