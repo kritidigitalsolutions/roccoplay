@@ -315,7 +315,11 @@ class MainHomePage extends StatelessWidget {
                               if ((index + 1) % 2 == 0) {
                                 return [
                                   categoryWidget,
-                                  Center(child: const BannerAdWidget()),
+                                  Center(
+                                    child: BannerAdWidget(
+                                      key: ValueKey('home_category_ad_$index'),
+                                    ),
+                                  ),
                                   const SizedBox(height: 10),
                                 ];
                               }

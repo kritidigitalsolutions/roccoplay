@@ -9,9 +9,13 @@ class BannerAdWidget extends StatefulWidget {
   State<BannerAdWidget> createState() => _BannerAdWidgetState();
 }
 
-class _BannerAdWidgetState extends State<BannerAdWidget> {
+class _BannerAdWidgetState extends State<BannerAdWidget> with AutomaticKeepAliveClientMixin {
   BannerAd? banner;
   bool isLoaded = false;
+  static DateTime? _lastLoadTime;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -19,7 +23,25 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
     loadBanner();
   }
 
-  void loadBanner() {
+  Future<void> loadBanner() async {
+    final now = DateTime.now();
+    int delayMs = 0;
+    if (_lastLoadTime != null) {
+      final diffMs = now.difference(_lastLoadTime!).inMilliseconds;
+      if (diffMs < 1500) {
+        delayMs = 1500 - diffMs;
+      }
+    }
+    
+    _lastLoadTime = now.add(Duration(milliseconds: delayMs));
+
+    if (delayMs > 0) {
+      debugPrint("⏳ Throttling banner ad request: delaying by ${delayMs}ms");
+      await Future.delayed(Duration(milliseconds: delayMs));
+    }
+
+    if (!mounted) return;
+
     banner = BannerAd(
       adUnitId: AdHelper.bannerAdUnitId,
       size: AdSize.banner,
@@ -28,21 +50,22 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           debugPrint("Banner Loaded");
-
-          setState(() {
-            isLoaded = true;
-          });
+          if (mounted) {
+            setState(() {
+              isLoaded = true;
+            });
+          }
         },
 
         onAdFailedToLoad: (ad, error) {
           debugPrint("Banner Failed: ${error.message}");
-
           ad.dispose();
-
-          setState(() {
-            banner = null;
-            isLoaded = false;
-          });
+          if (mounted) {
+            setState(() {
+              banner = null;
+              isLoaded = false;
+            });
+          }
         },
       ),
     );
@@ -52,6 +75,8 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     if (!isLoaded || banner == null) {
       return const SizedBox();
     }
@@ -67,7 +92,6 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   @override
   void dispose() {
     banner?.dispose();
-
     super.dispose();
   }
 }

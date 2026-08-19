@@ -18,9 +18,13 @@ class NativeAdWidget extends StatefulWidget {
   State<NativeAdWidget> createState() => _NativeAdWidgetState();
 }
 
-class _NativeAdWidgetState extends State<NativeAdWidget> {
+class _NativeAdWidgetState extends State<NativeAdWidget> with AutomaticKeepAliveClientMixin {
   NativeAd? _nativeAd;
   bool _isLoaded = false;
+  static DateTime? _lastLoadTime;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -28,7 +32,25 @@ class _NativeAdWidgetState extends State<NativeAdWidget> {
     _loadNativeAd();
   }
 
-  void _loadNativeAd() {
+  Future<void> _loadNativeAd() async {
+    final now = DateTime.now();
+    int delayMs = 0;
+    if (_lastLoadTime != null) {
+      final diffMs = now.difference(_lastLoadTime!).inMilliseconds;
+      if (diffMs < 1500) {
+        delayMs = 1500 - diffMs;
+      }
+    }
+    
+    _lastLoadTime = now.add(Duration(milliseconds: delayMs));
+
+    if (delayMs > 0) {
+      debugPrint("⏳ Throttling native ad request: delaying by ${delayMs}ms");
+      await Future.delayed(Duration(milliseconds: delayMs));
+    }
+
+    if (!mounted) return;
+
     _nativeAd = NativeAd(
       adUnitId: AdHelper.nativeAdUnitId,
       request: const AdRequest(),
@@ -81,6 +103,8 @@ class _NativeAdWidgetState extends State<NativeAdWidget> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     if (!_isLoaded || _nativeAd == null) {
       return const SizedBox.shrink();
     }

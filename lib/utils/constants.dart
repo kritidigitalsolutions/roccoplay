@@ -1,10 +1,11 @@
 class AppConstants {
-  // static const String baseUrl = 'http://192.168.1.9:8000/api';
-  static const String baseUrl = 'https://api.roccoplay.in/api';
+  static const String baseUrl = 'http://192.168.1.21:8000/api';
+  // static const String baseUrl = 'https://api.roccoplay.in/api';
 
   // Auth Endpoints
   static const String sendOtp = '$baseUrl/auth/send-otp';
   static const String verifyOtp = '$baseUrl/auth/verify-otp';
+
   /// user profile
   static const String getProfile = '$baseUrl/user/profile';
   static const String createProfile = '$baseUrl/user/profile-info';
@@ -14,8 +15,10 @@ class AppConstants {
 
   /// notifications
   static const String getNotifications = '$baseUrl/notifications';
-  static String markNotificationRead(String id) => '$baseUrl/notifications/$id/read';
-  static const String markAllNotificationsRead = '$baseUrl/notifications/read-all';
+  static String markNotificationRead(String id) =>
+      '$baseUrl/notifications/$id/read';
+  static const String markAllNotificationsRead =
+      '$baseUrl/notifications/read-all';
   static String deleteNotification(String id) => '$baseUrl/notifications/$id';
 
   /// legal
@@ -33,6 +36,13 @@ class AppConstants {
   /// payment
   static const String createOrder = '$baseUrl/payment/create-order';
   static const String verifyPayment = '$baseUrl/payment/verify';
+  static const String paymentGateways = '$baseUrl/payment/gateways';
+  static const String initiateZaakpay = '$baseUrl/payment/zaakpay/initiate';
+  static String zaakpayStatus(String orderId) =>
+      '$baseUrl/payment/zaakpay/status/$orderId';
+  static const String initiateHdfc = '$baseUrl/payment/hdfc/initiate';
+  static String hdfcStatus(String orderId) =>
+      '$baseUrl/payment/hdfc/status/$orderId';
 
   /// watchlist
   static const String addWatchlist = '$baseUrl/watchlist';
@@ -45,11 +55,13 @@ class AppConstants {
 
   /// review
   static const String rateApp = '$baseUrl/rating/rate';
+
   /// plans
   static const String planList = '$baseUrl/plan';
   static const String buyPlan = '$baseUrl/subscription/subscribe';
   static const String planCheck = '$baseUrl/subscription/status';
   static const String cancelPlan = '$baseUrl/subscription/status';
+
   /// company
   static const String companyInfo = '$baseUrl/companyInfo';
 
