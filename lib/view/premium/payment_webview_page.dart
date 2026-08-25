@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../app/theme/app_colors.dart';
 
 class PaymentWebViewPage extends StatefulWidget {
   final String paymentUrl;
   final String orderId;
-  final Map<String, dynamic> params;
+  final Map<String, dynamic>? params;
 
   const PaymentWebViewPage({
     super.key,
     required this.paymentUrl,
     required this.orderId,
-    required this.params,
+    this.params,
   });
 
   @override
@@ -41,37 +42,62 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
           },
           onPageStarted: (String url) {
             debugPrint("🔍 WebView Page Started: $url");
+            _checkRedirect(url);
           },
           onPageFinished: (String url) {
             _checkRedirect(url);
           },
-          onNavigationRequest: (NavigationRequest request) {
+          onNavigationRequest: (NavigationRequest request) async {
             debugPrint("🔍 WebView Navigation Request: ${request.url}");
+            if (_checkRedirect(request.url)) {
+              return NavigationDecision.prevent;
+            }
+
+            // Handle UPI and third-party app schemes (upi://, intent://, tez://, phonepe://, paytmmp://, etc.)
+            if (!request.url.startsWith('http://') &&
+                !request.url.startsWith('https://')) {
+              try {
+                final uri = Uri.parse(request.url);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else {
+                  debugPrint("Cannot launch URL scheme: ${request.url}");
+                }
+              } catch (e) {
+                debugPrint("Error launching external app: $e");
+              }
+              return NavigationDecision.prevent;
+            }
+
             return NavigationDecision.navigate;
           },
         ),
       );
 
-    _loadPaymentForm();
+    _loadPayment();
   }
 
-  void _loadPaymentForm() {
-    // Generate HTML with auto-submitting form containing post parameters
-    // This is the most reliable way to submit a POST form in WKWebView / WebView
-    final buffer = StringBuffer();
-    buffer.write('<html><head><title>Redirecting...</title></head>');
-    buffer.write('<body onload="document.forms[0].submit()">');
-    buffer.write('<form action="${widget.paymentUrl}" method="POST">');
-    
-    widget.params.forEach((key, value) {
-      buffer.write('<input type="hidden" name="$key" value="${_escapeHtml(value.toString())}"/>');
-    });
-    
-    buffer.write('</form>');
-    buffer.write('</body></html>');
+  void _loadPayment() {
+    if (widget.params != null && widget.params!.isNotEmpty) {
+      final buffer = StringBuffer();
+      buffer.write('<html><head><title>Redirecting...</title></head>');
+      buffer.write('<body onload="document.forms[0].submit()">');
+      buffer.write('<form action="${widget.paymentUrl}" method="POST">');
 
-    final htmlContent = buffer.toString();
-    _controller.loadHtmlString(htmlContent);
+      widget.params!.forEach((key, value) {
+        buffer.write(
+          '<input type="hidden" name="$key" value="${_escapeHtml(value.toString())}"/>',
+        );
+      });
+
+      buffer.write('</form>');
+      buffer.write('</body></html>');
+
+      final htmlContent = buffer.toString();
+      _controller.loadHtmlString(htmlContent);
+    } else {
+      _controller.loadRequest(Uri.parse(widget.paymentUrl));
+    }
   }
 
   String _escapeHtml(String value) {
@@ -93,14 +119,20 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
     }
 
     // Check if the URL contains the callback redirect pattern
-    if (url.contains('/payment/zaakpay/callback') || url.contains('/zaakpay/response') || url.contains('zaakpay/callback') ||
-        url.contains('/payment/hdfc/callback') || url.contains('hdfc/callback') || url.contains('/hdfc/response')) {
+    if (url.contains('/payment/zaakpay/callback') ||
+        url.contains('/zaakpay/response') ||
+        url.contains('zaakpay/callback') ||
+        url.contains('/payment/hdfc/callback') ||
+        url.contains('hdfc/callback') ||
+        url.contains('/hdfc/response')) {
       if (mounted) {
         setState(() {
           _isRedirected = true;
         });
       }
-      debugPrint("🎯 Callback URL fully loaded onPageFinished! Closing WebView and returning success.");
+      debugPrint(
+        "🎯 Callback URL reached! Closing WebView and returning success.",
+      );
       Get.back(result: true);
       return true;
     }
@@ -129,7 +161,10 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
             Get.dialog(
               AlertDialog(
                 backgroundColor: Colors.grey[900],
-                title: const Text("Cancel Payment?", style: TextStyle(color: Colors.white)),
+                title: const Text(
+                  "Cancel Payment?",
+                  style: TextStyle(color: Colors.white),
+                ),
                 content: const Text(
                   "Are you sure you want to cancel the payment process?",
                   style: TextStyle(color: Colors.white70),
@@ -137,14 +172,20 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
                 actions: [
                   TextButton(
                     onPressed: () => Get.back(),
-                    child: const Text("No", style: TextStyle(color: Colors.grey)),
+                    child: const Text(
+                      "No",
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ),
                   TextButton(
                     onPressed: () {
                       Get.back(); // Close dialog
                       Get.back(result: false); // Close WebView
                     },
-                    child: const Text("Yes, Cancel", style: TextStyle(color: Colors.pinkAccent)),
+                    child: const Text(
+                      "Yes, Cancel",
+                      style: TextStyle(color: Colors.pinkAccent),
+                    ),
                   ),
                 ],
               ),
@@ -157,7 +198,9 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
                 child: LinearProgressIndicator(
                   value: _loadingProgress,
                   backgroundColor: Colors.transparent,
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.pinkAccent),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    Colors.pinkAccent,
+                  ),
                 ),
               )
             : null,
@@ -185,10 +228,7 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
                     const SizedBox(height: 8),
                     const Text(
                       "Please do not close this screen or press back.",
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.white54, fontSize: 14),
                     ),
                   ],
                 ),

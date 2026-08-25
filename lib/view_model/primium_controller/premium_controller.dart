@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:roccoplay/utils/service/meta_event_service.dart';
 import 'package:roccoplay/utils/service/firebase_analytics_service.dart';
-import '../../app/theme/app_colors.dart';
 import '../../data/models/response_model/plan_response/plan_model.dart';
 import '../../data/network/base_api_service.dart';
 import '../../data/repositories/premium_repository.dart';
@@ -612,8 +611,8 @@ class PremiumController extends GetxController {
         final orderId = response['orderId'] as String?;
         var params = response['params'] as Map<String, dynamic>?;
 
-        if (paymentUrl != null && orderId != null && params != null) {
-          if (params.containsKey('returnUrl')) {
+        if (paymentUrl != null && orderId != null) {
+          if (params != null && params.containsKey('returnUrl')) {
             String returnUrl = params['returnUrl'] ?? '';
             if (returnUrl.contains('localhost')) {
               try {
@@ -640,7 +639,7 @@ class PremiumController extends GetxController {
             () => PaymentWebViewPage(
               paymentUrl: paymentUrl,
               orderId: orderId,
-              params: params!,
+              params: params,
             ),
           );
 
