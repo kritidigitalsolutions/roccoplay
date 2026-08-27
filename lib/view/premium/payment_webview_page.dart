@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -30,7 +31,7 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
+      ..setBackgroundColor(Colors.white)
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -125,15 +126,21 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
         url.contains('/payment/hdfc/callback') ||
         url.contains('hdfc/callback') ||
         url.contains('/hdfc/response')) {
-      if (mounted) {
-        setState(() {
-          _isRedirected = true;
+      if (!_isRedirected) {
+        if (mounted) {
+          setState(() {
+            _isRedirected = true;
+          });
+        }
+        debugPrint(
+          "🎯 Callback URL reached! Closing WebView and returning success.",
+        );
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            Get.back(result: true);
+          }
         });
       }
-      debugPrint(
-        "🎯 Callback URL reached! Closing WebView and returning success.",
-      );
-      Get.back(result: true);
       return true;
     }
     return false;
@@ -144,13 +151,21 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.grey[950],
+        backgroundColor: AppColors.background,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: AppColors.background,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
         title: const Text(
           "Secure Payment",
           style: TextStyle(
             color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
           ),
         ),
         centerTitle: true,

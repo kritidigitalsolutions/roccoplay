@@ -11,6 +11,7 @@ import '../../utils/constants.dart';
 import '../../utils/custom_snackbar.dart';
 import '../auth_controller/auth_controller.dart';
 import '../../view/premium/payment_webview_page.dart';
+import '../../view/premium/payment_success_page.dart';
 
 class PremiumController extends GetxController {
   late final PremiumRepository _repository;
@@ -685,12 +686,64 @@ class PremiumController extends GetxController {
     }
   }
 
+  /// 🔹 Helper to show full-screen verification loader
+  void _showHdfcVerificationDialog() {
+    if (Get.isDialogOpen != true) {
+      Get.dialog(
+        PopScope(
+          canPop: false,
+          child: Dialog(
+            backgroundColor: const Color(0xFF16161F),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(color: Colors.pinkAccent),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "Verifying Payment...",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Confirming transaction with HDFC Bank in real-time. Please do not close the app.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        barrierDismissible: false,
+      );
+    }
+  }
+
+  void _closeHdfcVerificationDialog() {
+    if (Get.isDialogOpen == true) {
+      Get.back();
+    }
+  }
+
   /// 🔹 Verify HDFC Payment on Backend (with retry logic)
   Future<void> verifyHdfcPayment(String orderId, String planId) async {
     isSubscribing.value = true;
+    _showHdfcVerificationDialog();
     final apiService = Get.find<BaseApiService>();
 
-    int maxAttempts = 3;
+    int maxAttempts = 4;
     int delaySeconds = 2;
     dynamic verifyResponse;
     bool isSuccess = false;
@@ -720,39 +773,54 @@ class PremiumController extends GetxController {
       }
     }
 
+    _closeHdfcVerificationDialog();
+
     try {
       if (isSuccess && verifyResponse != null) {
-        final amount = plans[selectedPlanIndex.value].price;
+        final plan = plans.isNotEmpty && selectedPlanIndex.value < plans.length
+            ? plans[selectedPlanIndex.value]
+            : null;
+        final num amount = plan?.price ?? (verifyResponse['data']?['amount'] ?? 0);
+        final planName = plan?.name ?? "VIP Subscription";
+        final transactionId = verifyResponse['data']?['transactionId'] ??
+            verifyResponse['data']?['bankRefNo'] ??
+            verifyResponse['transactionId']?.toString();
 
         MetaEventService.instance.paymentComplete(
           planId: planId,
           amount: amount.toDouble(),
-          currency: 'IN',
+          currency: 'INR',
         );
         FirebaseAnalyticsService.instance.paymentComplete(
           planId: planId,
           amount: amount.toDouble(),
-          currency: 'IN',
-        );
-
-        CustomSnackbar.show(
-          title: "Success",
-          message: "Payment Success",
-          isSuccess: true,
+          currency: 'INR',
         );
 
         fetchSubscriptionStatus();
+
+        // 🎯 Navigate directly to dedicated Real-Time Payment Success Page
+        Get.off(
+          () => PaymentSuccessPage(
+            orderId: orderId,
+            amount: amount,
+            planName: planName,
+            paymentMode: "HDFC Bank (SmartGateway)",
+            transactionId: transactionId,
+            timestamp: DateTime.now(),
+          ),
+        );
       } else {
         CustomSnackbar.show(
           title: "Payment Failed",
           message:
               verifyResponse?['message'] ??
-              "Payment verification failed after $maxAttempts attempts",
+              "Payment verification could not be confirmed. Please check your account or contact support.",
           isError: true,
         );
       }
     } catch (e) {
-      print("HDFC verification final failed: $e");
+      debugPrint("HDFC verification final failed: $e");
       CustomSnackbar.show(
         title: "Payment Failed",
         message: "Something went wrong during verification",
