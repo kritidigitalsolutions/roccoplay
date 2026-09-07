@@ -1,4 +1,5 @@
 import 'package:facebook_app_events/facebook_app_events.dart';
+import 'package:flutter/foundation.dart';
 
 class MetaEventService {
   MetaEventService._();
@@ -10,6 +11,7 @@ class MetaEventService {
   /// Meta Event: App Install / App Open
   /// (Facebook SDK detects first-time install automatically when this fires)
   Future<void> activateApp() async {
+    if (kIsWeb) return;
     try {
       await _facebookAppEvents.activateApp();
     } catch (_) {}
@@ -17,6 +19,7 @@ class MetaEventService {
 
   /// Meta Event: Login Success
   Future<void> login({String method = "mobile"}) async {
+    if (kIsWeb) return;
     try {
       await _facebookAppEvents.logEvent(
         name: "login",
@@ -27,6 +30,7 @@ class MetaEventService {
 
   /// Meta Event: Registration Complete
   Future<void> register({String method = "mobile"}) async {
+    if (kIsWeb) return;
     try {
       await _facebookAppEvents.logEvent(
         name: "CompleteRegistration",
@@ -37,6 +41,7 @@ class MetaEventService {
 
   /// Meta Event: Logout
   Future<void> logout() async {
+    if (kIsWeb) return;
     try {
       await _facebookAppEvents.logEvent(name: "logout");
     } catch (_) {}
@@ -48,6 +53,7 @@ class MetaEventService {
     required int amount,
     required String currency,
   }) async {
+    if (kIsWeb) return;
     try {
       await _facebookAppEvents.logEvent(
         name: "InitiatedCheckout",
@@ -62,6 +68,7 @@ class MetaEventService {
     required String currency,
     required String planId,
   }) async {
+    if (kIsWeb) return;
     try {
       await _facebookAppEvents.logPurchase(amount: amount, currency: currency);
       await _facebookAppEvents.logEvent(
@@ -76,6 +83,7 @@ class MetaEventService {
     required String contentId,
     required String contentName,
   }) async {
+    if (kIsWeb) return;
     try {
       await _facebookAppEvents.logEvent(
         name: "video_play",
@@ -89,6 +97,7 @@ class MetaEventService {
     required String contentId,
     required String contentName,
   }) async {
+    if (kIsWeb) return;
     try {
       await _facebookAppEvents.logEvent(
         name: "download",
@@ -102,6 +111,7 @@ class MetaEventService {
     required String contentId,
     required String contentName,
   }) async {
+    if (kIsWeb) return;
     try {
       await _facebookAppEvents.logEvent(
         name: "Liked",

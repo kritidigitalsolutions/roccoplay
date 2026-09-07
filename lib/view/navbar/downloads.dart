@@ -1,10 +1,12 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'dart:io' if (dart.library.html) 'package:roccoplay/utils/io_stub.dart' as io;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:roccoplay/view_model/download_controller/download_controller.dart';
 import 'package:roccoplay/widgets/ad_widget/native_ad_widget.dart';
 
+import '../../app/routes/app_routes.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import '../../view_model/home_controller/home_controller.dart';
 import '../auth/signInPage.dart';
@@ -43,7 +45,7 @@ class DownloadsPage extends StatelessWidget {
           return _baseEmptyView(
             title: "Please sign in to view your downloads",
             buttonText: "Sign In",
-            onTap: () => Get.to(() => const SignInPage()),
+            onTap: () => Get.toNamed(AppRoutes.signIn),
           );
         }
 
@@ -80,11 +82,9 @@ class DownloadsPage extends StatelessWidget {
 
                       /// 🎬 OPEN DETAILS PAGE
                       onTap: () {
-                        Get.to(
-                          () => DramaDetailsPage(
-                            isSignedIn: authController.isLoggedIn.value,
-                            content: item,
-                          ),
+                        Get.toNamed(
+                          AppRoutes.dramaDetails,
+                          arguments: item,
                         );
                       },
 
@@ -132,20 +132,23 @@ class DownloadsPage extends StatelessWidget {
                               size: 28,
                             ),
                             onPressed: () {
-                              if (localPath != null &&
-                                  File(localPath).existsSync()) {
-                                Get.to(
-                                  () => AdvancedVideoPlayer(
-                                    url: localPath,
-                                    title: item.title,
-                                    contentId: item.id,
-                                  ),
+                              if (!kIsWeb &&
+                                  localPath != null &&
+                                  (io.File(localPath) as dynamic).existsSync()) {
+                                Get.toNamed(
+                                  AppRoutes.advancedVideoPlayer,
+                                  arguments: {
+                                    'url': localPath,
+                                    'title': item.title,
+                                    'contentId': item.id,
+                                  },
                                 );
                               } else {
                                 CustomSnackbar.show(
                                   title: "Error",
-                                  message:
-                                      "File not found. Please download again.",
+                                  message: kIsWeb
+                                      ? "Offline play is not supported on web."
+                                      : "File not found. Please download again.",
                                   isError: true,
                                 );
                               }

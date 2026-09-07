@@ -1,19 +1,20 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:roccoplay/utils/service/meta_event_service.dart';
 import 'package:roccoplay/utils/service/firebase_analytics_service.dart';
 import 'package:roccoplay/widgets/ad_widget/banner_ad_widget.dart';
+import '../../app/routes/app_routes.dart';
 import '../../app/theme/app_colors.dart';
 import '../../view_model/content_controller/content_controller.dart';
 import '../../view_model/primium_controller/premium_controller.dart';
 import '../navbar/bottomNavbar.dart';
+import '../navbar/downloads.dart';
 import 'auto_slider.dart';
 import 'coming_soon.dart';
-import '../navbar/downloads.dart';
 import '../../widgets/home_slider_section.dart';
 import '../search_pages/searchPage.dart';
 import 'top_10_list.dart';
-import '../auth/signInPage.dart';
 import '../premium/goPremium.dart';
 import '../profile/profilePage.dart';
 import '../../view_model/home_controller/home_controller.dart';
@@ -32,84 +33,239 @@ class MainHomePage extends StatelessWidget {
     final PremiumController premiumController = Get.find<PremiumController>();
     final notificationService = NotificationService.to;
 
-    return PopScope(
-      canPop: false, // ❌ direct pop disable
-      onPopInvoked: (didPop) {
-        final controller = Get.find<HomeController>();
+    return LayoutBuilder(builder: (context, constraints) {
+      bool isWeb = constraints.maxWidth > 800;
 
-        if (controller.selectedIndex.value != 0) {
-          controller.selectedIndex.value = 0; // ✅ Home pe le jao
-        } else {
-          Navigator.of(context).pop(); // ✅ App exit
-        }
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.black,
-        body: Stack(
-          children: [
-            /// ✅ PAGE CONTENT
-            SafeArea(
-              child: Obx(
-                () => IndexedStack(
-                  index: controller.selectedIndex.value,
+      return PopScope(
+        canPop: false, // ❌ direct pop disable
+        onPopInvoked: (didPop) {
+          final controller = Get.find<HomeController>();
+
+          if (controller.selectedIndex.value != 0) {
+            controller.selectedIndex.value = 0; // ✅ Home pe le jao
+          } else {
+            Navigator.of(context).pop(); // ✅ App exit
+          }
+        },
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Container(
+            decoration: isWeb
+                ? const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0xFF0F0F1A),
+                        AppColors.black,
+                      ],
+                    ),
+                  )
+                : const BoxDecoration(color: AppColors.black),
+            child: Column(
+              children: [
+              /// ✅ WEB TOP NAVBAR
+              if (isWeb) _buildWebTopNavbar(controller, authController, premiumController, notificationService),
+
+              Expanded(
+                child: Stack(
                   children: [
-                    _buildHomeContent(
-                      context,
-                      controller,
-                      authController,
-                      contentController,
-                      premiumController,
-                      notificationService,
-                    ),
-                    const SearchPage(),
-                    const GoPremiumPage(),
-                    const DownloadsPage(),
+                    /// ✅ PAGE CONTENT
+                    SafeArea(
+                      child: Obx(
+                        () => IndexedStack(
+                          index: controller.selectedIndex.value,
+                          children: [
+                            _buildHomeContent(
+                              context,
+                              controller,
+                              authController,
+                              contentController,
+                              premiumController,
+                              notificationService,
+                              isWeb,
+                            ),
+                            const SearchPage(),
+                            const GoPremiumPage(),
+                            const DownloadsPage(),
 
-                    /// ✅ ONLY PROFILE HERE
-                    ProfilePage(
-                      onLogout: () {
-                        MetaEventService.instance.logout();
-                        FirebaseAnalyticsService.instance.logout();
-                        controller.logout();
-                        authController.setLoginStatus(false);
-                      },
+                            /// ✅ ONLY PROFILE HERE
+                            ProfilePage(
+                              onLogout: () {
+                                MetaEventService.instance.logout();
+                                FirebaseAnalyticsService.instance.logout();
+                                controller.logout();
+                                authController.setLoginStatus(false);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
+
+                    /// ✅ BOTTOM NAVBAR (Mobile Only)
+                    if (!isWeb)
+                      Obx(() {
+                        int selectedIndex = controller.selectedIndex.value;
+                        bool isLoggedIn = authController.isLoggedIn.value;
+
+                        if (selectedIndex != 2) {
+                          return Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: CustomBottomNavbar(
+                              selectedIndex: selectedIndex,
+                              onItemTapped: (index) {
+                                /// 🔥 LOGIN GUARD
+                                if (index == 4 && !isLoggedIn) {
+                                  Get.toNamed(AppRoutes.signIn);
+                                  return;
+                                }
+
+                                controller.onItemTapped(index);
+                              },
+                              isLoggedIn: isLoggedIn,
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      }),
                   ],
                 ),
               ),
-            ),
+            ],
+          ),
+        ),
+      ));
+    });
+  }
 
-            /// ✅ BOTTOM NAVBAR
-            Obx(() {
-              int selectedIndex = controller.selectedIndex.value;
-              bool isLoggedIn = authController.isLoggedIn.value;
-
-              if (selectedIndex != 2) {
-                return Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: CustomBottomNavbar(
-                    selectedIndex: selectedIndex,
-                    onItemTapped: (index) {
-                      /// 🔥 LOGIN GUARD
-                      if (index == 4 && !isLoggedIn) {
-                        Get.to(() => const SignInPage());
-                        return;
-                      }
-
-                      controller.onItemTapped(index);
-                    },
-                    isLoggedIn: isLoggedIn,
-                  ),
-                );
-              }
-              return const SizedBox.shrink();
-            }),
-          ],
+  /// 🔹 WEB TOP NAVBAR
+  Widget _buildWebTopNavbar(
+    HomeController controller,
+    AuthController authController,
+    PremiumController premiumController,
+    NotificationService notificationService,
+  ) {
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.6),
+            border: const Border(bottom: BorderSide(color: Colors.white10, width: 1)),
+          ),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => controller.selectedIndex.value = 0,
+                child: Image.asset('assets/images/roccoplay_logo.png', height: 45),
+              ),
+              const Spacer(),
+              _webSearchIcon(controller),
+              const SizedBox(width: 15),
+              _notificationIcon(notificationService),
+              const SizedBox(width: 20),
+              _premiumButton(premiumController),
+              const SizedBox(width: 20),
+                  Obx(() {
+                    bool isLoggedIn = authController.isLoggedIn.value;
+                    return IconButton(
+                      icon: Icon(
+                        isLoggedIn ? Icons.account_circle : Icons.login,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        if (isLoggedIn) {
+                          controller.selectedIndex.value = 4; // Profile
+                        } else {
+                          Get.toNamed(AppRoutes.signIn);
+                        }
+                      },
+                    );
+                  }),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _webSearchIcon(HomeController controller) {
+    return Obx(() {
+      bool isSelected = controller.selectedIndex.value == 1;
+      return IconButton(
+        onPressed: () => controller.selectedIndex.value = 1,
+        icon: Icon(
+          Icons.search,
+          color: isSelected ? AppColors.buttonColor : Colors.white,
+          size: 28,
+        ),
+      );
+    });
+  }
+
+  /// 🔹 NOTIFICATION ICON
+  Widget _notificationIcon(NotificationService notificationService) {
+    return Obx(() {
+      int unreadCount = notificationService.notifications
+          .where((n) => n['isRead'] == false)
+          .length;
+      return Stack(
+        children: [
+          IconButton(
+            onPressed: () => Get.toNamed(AppRoutes.notifications),
+            icon: const Icon(
+              Icons.notifications_outlined,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          if (unreadCount > 0)
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                child: Text(
+                  unreadCount > 9 ? '9+' : '$unreadCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      );
+    });
+  }
+
+  /// 🔹 PREMIUM BUTTON
+  Widget _premiumButton(PremiumController premiumController) {
+    return Obx(() {
+      final bool hasActive = premiumController.hasActiveSubscription;
+      return ElevatedButton(
+        onPressed: () => Get.toNamed(AppRoutes.goPremium),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: hasActive ? Colors.green : AppColors.buttonColor,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        ),
+        child: Text(
+          hasActive ? "Premium Active" : "Subscribe Now",
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+        ),
+      );
+    });
   }
 
   /// 🔹 HOME CONTENT
@@ -120,95 +276,32 @@ class MainHomePage extends StatelessWidget {
     ContentController contentController,
     PremiumController premiumController,
     NotificationService notificationService,
+    bool isWeb,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// HEADER
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Image.asset('assets/images/roccoplay_logo.png', height: 40),
-              Row(
-                children: [
-                  Obx(() {
-                    int unreadCount = notificationService.notifications
-                        .where((n) => n['isRead'] == false)
-                        .length;
-                    return Stack(
-                      children: [
-                        IconButton(
-                          onPressed: () async {
-                            Get.to(() => const NotificationPage());
-                          },
-                          icon: const Icon(
-                            Icons.notifications_outlined,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ),
-                        if (unreadCount > 0)
-                          Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 16,
-                                minHeight: 16,
-                              ),
-                              child: Text(
-                                unreadCount > 9 ? '9+' : '$unreadCount',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                      ],
-                    );
-                  }),
-                  const SizedBox(width: 8),
-                  Obx(() {
-                    final bool hasActive =
-                        premiumController.hasActiveSubscription;
-                    return SizedBox(
-                      width: 110,
-                      height: 28,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Get.to(() => const GoPremiumPage());
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: hasActive
-                              ? Colors.green
-                              : AppColors.buttonColor,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                        ),
-                        child: Text(
-                          hasActive ? "Premium Active" : "Go Premium",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ],
+        /// HEADER (Mobile Only)
+        if (!isWeb)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                GestureDetector(
+                  onTap: () => controller.selectedIndex.value = 0,
+                  child: Image.asset('assets/images/roccoplay_logo.png', height: 40),
+                ),
+                Row(
+                  children: [
+                    _notificationIcon(notificationService),
+                    const SizedBox(width: 8),
+                    _premiumButton(premiumController),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
 
         /// SCROLL
         Expanded(
@@ -293,6 +386,7 @@ class MainHomePage extends StatelessWidget {
                                       content: categoryContent,
                                       isSignedIn:
                                           authController.isLoggedIn.value,
+                                      isHorizontal: isWeb && (index % 2 == 0),
                                     ),
                                     const SizedBox(height: 10),
                                   ],
@@ -305,6 +399,7 @@ class MainHomePage extends StatelessWidget {
                                       content: categoryContent,
                                       isSignedIn:
                                           authController.isLoggedIn.value,
+                                      isHorizontal: isWeb && (index % 2 == 0),
                                     ),
                                     const SizedBox(height: 10),
                                   ],
@@ -408,6 +503,27 @@ class MainHomePage extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                TextButton(
+                                  onPressed: () => Get.toNamed(AppRoutes.privacyPolicy),
+                                  child: const Text(
+                                    "Privacy Policy",
+                                    style: TextStyle(color: Colors.blue, fontSize: 12),
+                                  ),
+                                ),
+                                const Text(" | ", style: TextStyle(color: Colors.white24)),
+                                TextButton(
+                                  onPressed: () => Get.toNamed(AppRoutes.termsAndConditions),
+                                  child: const Text(
+                                    "Terms & Conditions",
+                                    style: TextStyle(color: Colors.blue, fontSize: 12),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [

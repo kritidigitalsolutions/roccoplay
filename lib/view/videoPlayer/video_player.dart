@@ -201,24 +201,36 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          return GestureDetector(
-            onTap: () {
-              if (!isLocked.value) {
+          return MouseRegion(
+            onHover: (_) {
+              if (!controller.showControls.value && !isLocked.value) {
                 controller.toggleControls();
               }
             },
-            child: Stack(
-              children: [
-                /// 🎬 VIDEO
-                Center(
-                  child: AspectRatio(
-                    aspectRatio:
-                        controller.videoPlayerController!.value.aspectRatio,
-                    child: VideoPlayer(controller.videoPlayerController!),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (!isLocked.value) {
+                  controller.toggleControls();
+                }
+              },
+              child: Stack(
+                children: [
+                  /// 🎬 VIDEO
+                  Center(
+                    child: AspectRatio(
+                      aspectRatio:
+                          controller.videoPlayerController!.value.aspectRatio,
+                      child: VideoPlayer(controller.videoPlayerController!),
+                    ),
                   ),
-                ),
+                  
+                  /// Transparent Layer to catch clicks on Web specifically
+                  Positioned.fill(
+                    child: Container(color: Colors.transparent),
+                  ),
 
-                /// 🔒 LOCK BUTTON
+                  /// 🔒 LOCK BUTTON
                 Positioned(
                   left: 10,
                   top: MediaQuery.of(context).size.height / 2,
@@ -244,7 +256,7 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
                 ),
               ],
             ),
-          );
+          ));
         }),
       ),
     );

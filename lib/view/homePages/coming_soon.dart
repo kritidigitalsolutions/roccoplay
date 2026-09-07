@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:roccoplay/app/routes/app_routes.dart';
 import 'package:roccoplay/app/theme/app_colors.dart';
 import 'package:roccoplay/data/models/response_model/content_response_model/content_model.dart';
 import '../dramaDetails/dramaDetailsPage.dart';
@@ -67,7 +68,7 @@ class ComingSoonSection extends StatelessWidget {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(15),
                   onTap: () {
-                    Get.to(() => DramaDetailsPage(isSignedIn: isSignedIn, content: item));
+                    Get.toNamed(AppRoutes.dramaDetails, arguments: item);
                   },
                   child: Stack(
                     children: [

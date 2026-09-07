@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:roccoplay/app/routes/app_routes.dart';
 import 'package:roccoplay/view_model/auth_controller/auth_controller.dart';
 import 'package:roccoplay/view_model/content_controller/content_controller.dart';
 import 'package:roccoplay/view_model/search_controller/search_controller.dart';
@@ -33,73 +34,81 @@ class SearchPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              /// SEARCH BAR
-              Padding(
-                padding: const EdgeInsets.all(15),
-                child: TextField(
-                  controller: controller.searchController,
-                  onChanged: (value) => controller.updateSearchQuery(value),
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: "Search for movies, shows & more",
-                    hintStyle: const TextStyle(color: Colors.white54),
-                    filled: true,
-                    fillColor: Colors.grey[900],
-                    prefixIcon: const Icon(Icons.search, color: Colors.white),
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Obx(() => controller.searchQuery.value.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, color: Colors.white),
-                                onPressed: controller.clearSearch,
-                              )
-                            : const SizedBox.shrink()),
-                        IconButton(
-                          icon: const Icon(Icons.mic, color: Colors.white),
-                          onPressed: () async {
-                            final result = await Get.to(() => const VoiceListeningPage());
-                            if (result != null && result is String) {
-                              controller.searchController.text = result;
-                              controller.updateSearchQuery(result);
-                            }
-                          },
+        child: LayoutBuilder(builder: (context, constraints) {
+          bool isWeb = constraints.maxWidth > 800;
+          return Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: isWeb ? 800 : double.infinity),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// SEARCH BAR
+                    Padding(
+                      padding: const EdgeInsets.all(15),
+                      child: TextField(
+                        controller: controller.searchController,
+                        onChanged: (value) => controller.updateSearchQuery(value),
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: "Search for movies, shows & more",
+                          hintStyle: const TextStyle(color: Colors.white54),
+                          filled: true,
+                          fillColor: Colors.grey[900],
+                          prefixIcon: const Icon(Icons.search, color: Colors.white),
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Obx(() => controller.searchQuery.value.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, color: Colors.white),
+                                      onPressed: controller.clearSearch,
+                                    )
+                                  : const SizedBox.shrink()),
+                              IconButton(
+                                icon: const Icon(Icons.mic, color: Colors.white),
+                                onPressed: () async {
+                                  final result = await Get.toNamed(AppRoutes.searchWithMic);
+                                  if (result != null && result is String) {
+                                    controller.searchController.text = result;
+                                    controller.updateSearchQuery(result);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
+
+                    /// SEARCH RESULTS OR DEFAULT VIEW
+                    Obx(() {
+                      if (controller.searchQuery.value.isNotEmpty) {
+                        return Column(
+                          children: [
+                            const BannerAdWidget(),
+                            _buildSearchResults(controller, authController),
+                          ],
+                        );
+                      } else {
+                        return Column(
+                          children: [
+                            const BannerAdWidget(),
+                            _buildDefaultSearchView(context, contentController, authController, isWeb),
+                          ],
+                        );
+                      }
+                    }),
+                  ],
                 ),
               ),
-
-              /// SEARCH RESULTS OR DEFAULT VIEW
-              Obx(() {
-                if (controller.searchQuery.value.isNotEmpty) {
-                  return Column(
-                    children: [
-                      const BannerAdWidget(),
-                      _buildSearchResults(controller, authController),
-                    ],
-                  );
-                } else {
-                  return Column(
-                    children: [
-                      const BannerAdWidget(),
-                      _buildDefaultSearchView(context, contentController, authController),
-                    ],
-                  );
-                }
-              }),
-            ],
-          ),
-        ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -127,10 +136,10 @@ class SearchPage extends StatelessWidget {
         final item = controller.searchResults[index];
         return ListTile(
           onTap: () {
-            Get.to(() => DramaDetailsPage(
-                  isSignedIn: authController.isLoggedIn.value,
-                  content: item,
-                ));
+            Get.toNamed(
+              AppRoutes.dramaDetails,
+              arguments: item,
+            );
           },
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(5),
@@ -158,7 +167,7 @@ class SearchPage extends StatelessWidget {
   }
 
   /// 🔥 DEFAULT VIEW (Top Series, Artists)
-  Widget _buildDefaultSearchView(BuildContext context, ContentController contentController, AuthController authController) {
+  Widget _buildDefaultSearchView(BuildContext context, ContentController contentController, AuthController authController, bool isWeb) {
     // 1. Filter series and release items (not coming soon)
     final List<ContentModel> topSeries = contentController.allContent
         .where((item) => item.contentType == 'series' && item.isComingSoon == false)
@@ -191,7 +200,7 @@ class SearchPage extends StatelessWidget {
           const SizedBox(height: 15),
 
           SizedBox(
-            height: 200,
+            height: isWeb ? 260 : 200,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: topSeries.length,
@@ -202,20 +211,20 @@ class SearchPage extends StatelessWidget {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(5),
                     onTap: () {
-                      Get.to(() => DramaDetailsPage(
-                            isSignedIn: authController.isLoggedIn.value,
-                            content: item,
-                          ));
+                      Get.toNamed(
+                        AppRoutes.dramaDetails,
+                        arguments: item,
+                      );
                     },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(5),
                       child: Image.network(
                         item.poster,
-                        width: 140,
-                        height: 200,
-                        fit: BoxFit.fill,
+                        width: isWeb ? 180 : 140,
+                        height: isWeb ? 260 : 200,
+                        fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) =>
-                            Image.asset("assets/images/farzi.jpg", width: 140, height: 200, fit: BoxFit.fill),
+                            Image.asset("assets/images/farzi.jpg", width: isWeb ? 180 : 140, height: isWeb ? 260 : 200, fit: BoxFit.cover),
                       ),
                     ),
                   ),
@@ -232,7 +241,7 @@ class SearchPage extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 15),
           child: InkWell(
             onTap: () {
-              Get.to(() =>  TopArtistsPage());
+              Get.toNamed(AppRoutes.artist);
             },
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -266,10 +275,13 @@ class SearchPage extends StatelessWidget {
             itemBuilder: (context, index) {
               return GestureDetector(
                 onTap: () {
-                  Get.to(() => CastDetailsPage(
-                        castName: cast[index]['name']!,
-                        castImage: cast[index]['image']!,
-                      ));
+                  Get.toNamed(
+                    AppRoutes.castDetails,
+                    arguments: {
+                      'name': cast[index]['name']!,
+                      'image': cast[index]['image']!,
+                    },
+                  );
                 },
                 child: Padding(
                   padding: const EdgeInsets.only(left: 16),

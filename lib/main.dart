@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -26,27 +28,51 @@ import 'widgets/ad_widget/interstitial_ad_helper.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  if (!kIsWeb) {
+    await Firebase.initializeApp();
+  }
 }
 
 Future<void> main() async {
+  if (kIsWeb) {
+    usePathUrlStrategy();
+  }
   WidgetsFlutterBinding.ensureInitialized();
 
-  await MobileAds.instance.initialize();
-  await MetaEventService.instance.activateApp();
+  if (!kIsWeb) {
+    await MobileAds.instance.initialize();
+    await MetaEventService.instance.activateApp();
+  }
 
   /// Lock orientations to Portrait by default
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  if (!kIsWeb) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
 
   ///  Firebase Init
-  await Firebase.initializeApp();
+  if (kIsWeb) {
+    // TODO: User must provide Web Firebase Options here if not using flutterfire configure
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyBzFeViX8VMVO_p4xsvdOT__d2TEkHz1O4",
+        appId: "1:930297722663:web:your_web_app_id", // Placeholder
+        messagingSenderId: "930297722663",
+        projectId: "roccoplay",
+        storageBucket: "roccoplay.firebasestorage.app",
+      ),
+    );
+  } else {
+    await Firebase.initializeApp();
+  }
   await FirebaseAnalyticsService.instance.activateApp();
 
   ///  Background Listener
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  if (!kIsWeb) {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
 
   ///  Local Storage
   await GetStorage.init();
@@ -82,10 +108,12 @@ Future<void> main() async {
   });
 
   /// 🔥 Ads Preload
-  Future.delayed(const Duration(seconds: 2), () {
-    AppOpenAdHelper.loadAd();
-    InterstitialAdHelper.loadAd();
-  });
+  if (!kIsWeb) {
+    Future.delayed(const Duration(seconds: 2), () {
+      AppOpenAdHelper.loadAd();
+      InterstitialAdHelper.loadAd();
+    });
+  }
 }
 
 class MyApp extends StatefulWidget {
@@ -111,7 +139,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   /// 🔥 App foreground me aane pe App Open Ad show karo
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (!kIsWeb && state == AppLifecycleState.resumed) {
       AppOpenAdHelper.showAdIfAvailable();
     }
   }

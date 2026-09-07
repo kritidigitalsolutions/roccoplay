@@ -35,30 +35,36 @@ class NotificationPage extends StatelessWidget {
               : const SizedBox.shrink()),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () => notificationService.fetchNotifications(),
-        color: AppColors.buttonColor,
-        child: Obx(() {
-          if (notificationService.isLoading.value &&
-              notificationService.notifications.isEmpty) {
-            return const Center(
-                child: CircularProgressIndicator(color: AppColors.buttonColor));
-          }
+      body: LayoutBuilder(builder: (context, constraints) {
+        bool isWeb = constraints.maxWidth > 800;
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: isWeb ? 700 : double.infinity),
+            child: RefreshIndicator(
+              onRefresh: () => notificationService.fetchNotifications(),
+              color: AppColors.buttonColor,
+              child: Obx(() {
+                if (notificationService.isLoading.value && notificationService.notifications.isEmpty) {
+                  return const Center(child: CircularProgressIndicator(color: AppColors.buttonColor));
+                }
 
-          if (notificationService.notifications.isEmpty) {
-            return _buildEmptyState();
-          }
+                if (notificationService.notifications.isEmpty) {
+                  return _buildEmptyState();
+                }
 
-          return ListView.builder(
-            itemCount: notificationService.notifications.length,
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            itemBuilder: (context, index) {
-              final notification = notificationService.notifications[index];
-              return _buildNotificationItem(context, notification, index, notificationService);
-            },
-          );
-        }),
-      ),
+                return ListView.builder(
+                  itemCount: notificationService.notifications.length,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  itemBuilder: (context, index) {
+                    final notification = notificationService.notifications[index];
+                    return _buildNotificationItem(context, notification, index, notificationService);
+                  },
+                );
+              }),
+            ),
+          ),
+        );
+      }),
     );
   }
 

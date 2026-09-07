@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'dart:io' if (dart.library.html) 'package:roccoplay/utils/io_stub.dart' as io;
 import '../../app/theme/app_colors.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import '../../view_model/profile/create_profile_controller.dart';
@@ -49,149 +51,160 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
         title: const Text("Create Profile", style: TextStyle(color: AppColors.white)),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const SizedBox(height: 30),
+      body: LayoutBuilder(builder: (context, constraints) {
+        bool isWeb = constraints.maxWidth > 800;
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: isWeb ? 500 : double.infinity),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  const SizedBox(height: 30),
 
-              /// Profile Image (Optional)
-              GestureDetector(
-                onTap: createProfileController.pickImage,
-                child: Obx(() => CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.grey[900],
-                  backgroundImage: createProfileController.selectedImage.value != null
-                      ? FileImage(createProfileController.selectedImage.value!)
-                      : null,
-                  child: createProfileController.selectedImage.value == null
-                      ? const Icon(Icons.camera_alt, size: 40, color: Colors.white54)
-                      : null,
-                )),
-              ),
+                  /// Profile Image (Optional)
+                  GestureDetector(
+                    onTap: createProfileController.pickImage,
+                    child: Obx(() {
+                      ImageProvider? imageProvider;
+                      if (createProfileController.selectedImage.value != null) {
+                        if (kIsWeb && createProfileController.imageBytes.value != null) {
+                          imageProvider = MemoryImage(createProfileController.imageBytes.value!);
+                        } else if (!kIsWeb) {
+                          imageProvider = FileImage(io.File(createProfileController.selectedImage.value!.path) as dynamic);
+                        }
+                      }
 
-              TextButton(
-                onPressed: createProfileController.pickImage,
-                child: const Text(
-                  "Choose Profile Picture",
-                  style: TextStyle(color: AppColors.buttonColor),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              /// Name Field
-              TextField(
-                controller: nameController,
-                style: const TextStyle(color: AppColors.white),
-                decoration: InputDecoration(
-                  hintText: "Name",
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.grey[900],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
+                      return CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.grey[900],
+                        backgroundImage: imageProvider,
+                        child: imageProvider == null ? const Icon(Icons.camera_alt, size: 40, color: Colors.white54) : null,
+                      );
+                    }),
                   ),
-                ),
-              ),
 
-              const SizedBox(height: 15),
-
-              /// Email Field
-              TextField(
-                controller: emailController,
-                style: const TextStyle(color: AppColors.white),
-                decoration: InputDecoration(
-                  hintText: "Email",
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.grey[900],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 15),
-
-              /// Age Field
-              TextField(
-                controller: ageController,
-                style: const TextStyle(color: AppColors.white),
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  hintText: "Age",
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.grey[900],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              /// Save Button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: Obx(() => ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.buttonColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                  TextButton(
+                    onPressed: createProfileController.pickImage,
+                    child: const Text(
+                      "Choose Profile Picture",
+                      style: TextStyle(color: AppColors.buttonColor),
                     ),
                   ),
-                  onPressed: authController.isLoading.value
-                      ? null
-                      : () async {
-                          if (nameController.text.trim().isEmpty ||
-                              emailController.text.trim().isEmpty ||
-                              ageController.text.trim().isEmpty) {
-                            CustomSnackbar.show(title: "Error", message: "All fields are required", isError: true);
-                            return;
-                          }
 
-                          int? age = int.tryParse(ageController.text.trim());
-                          if (age == null) {
-                            CustomSnackbar.show(title: "Error", message: "Please enter a valid age", isError: true);
-                            return;
-                          }
+                  const SizedBox(height: 20),
 
-                          if (age < 18) {
-                            CustomSnackbar.show(title: "Warning", message: "You are under age", isError: true);
-                            return;
-                          }
+                  /// Name Field
+                  TextField(
+                    controller: nameController,
+                    style: const TextStyle(color: AppColors.white),
+                    decoration: InputDecoration(
+                      hintText: "Name",
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      filled: true,
+                      fillColor: Colors.grey[900],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
 
-                          bool success = await authController.updateAndSaveProfile(
-                            name: nameController.text.trim(),
-                            email: emailController.text.trim(),
-                            phone: widget.phone,
-                            age: ageController.text.trim(),
-                            imagePath: createProfileController.selectedImage.value?.path,
-                          );
+                  const SizedBox(height: 15),
 
-                          if (success) {
-                            Get.offAllNamed('/'); // Navigate to home
-                          }
-                        },
-                  child: authController.isLoading.value
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          "Save",
-                          style: TextStyle(color: AppColors.white, fontSize: 16),
-                        ),
-                )),
-              )
-            ],
+                  /// Email Field
+                  TextField(
+                    controller: emailController,
+                    style: const TextStyle(color: AppColors.white),
+                    decoration: InputDecoration(
+                      hintText: "Email",
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      filled: true,
+                      fillColor: Colors.grey[900],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  /// Age Field
+                  TextField(
+                    controller: ageController,
+                    style: const TextStyle(color: AppColors.white),
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: "Age",
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      filled: true,
+                      fillColor: Colors.grey[900],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  /// Save Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: Obx(() => ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.buttonColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: authController.isLoading.value
+                              ? null
+                              : () async {
+                                  if (nameController.text.trim().isEmpty || emailController.text.trim().isEmpty || ageController.text.trim().isEmpty) {
+                                    CustomSnackbar.show(title: "Error", message: "All fields are required", isError: true);
+                                    return;
+                                  }
+
+                                  int? age = int.tryParse(ageController.text.trim());
+                                  if (age == null) {
+                                    CustomSnackbar.show(title: "Error", message: "Please enter a valid age", isError: true);
+                                    return;
+                                  }
+
+                                  if (age < 18) {
+                                    CustomSnackbar.show(title: "Warning", message: "You are under age", isError: true);
+                                    return;
+                                  }
+
+                                  bool success = await authController.updateAndSaveProfile(
+                                    name: nameController.text.trim(),
+                                    email: emailController.text.trim(),
+                                    phone: widget.phone,
+                                    age: ageController.text.trim(),
+                                    imagePath: createProfileController.selectedImage.value?.path,
+                                  );
+
+                                  if (success) {
+                                    Get.offAllNamed('/'); // Navigate to home
+                                  }
+                                },
+                          child: authController.isLoading.value
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text(
+                                  "Save",
+                                  style: TextStyle(color: AppColors.white, fontSize: 16),
+                                ),
+                        )),
+                  )
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }

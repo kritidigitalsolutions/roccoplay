@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:roccoplay/utils/helper/ad_helper.dart';
@@ -33,6 +34,7 @@ class _NativeAdWidgetState extends State<NativeAdWidget> with AutomaticKeepAlive
   }
 
   Future<void> _loadNativeAd() async {
+    if (kIsWeb) return;
     final now = DateTime.now();
     int delayMs = 0;
     if (_lastLoadTime != null) {

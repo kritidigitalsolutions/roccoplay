@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -48,25 +49,29 @@ class NotificationService extends GetxController {
       uploadToken();
     });
 
-    /// 🔔 Initialize Local Notifications
-    const AndroidInitializationSettings androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initSettings =
-        InitializationSettings(android: androidSettings);
+    /// 🔔 Initialize Local Notifications (SKIP ON WEB)
+    if (!kIsWeb) {
+      const AndroidInitializationSettings androidSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const InitializationSettings initSettings =
+          InitializationSettings(android: androidSettings);
 
-    await _localNotificationsPlugin.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Handle notification click here
-        print("Notification clicked: ${response.payload}");
-      },
-    );
+      await _localNotificationsPlugin.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          // Handle notification click here
+          print("Notification clicked: ${response.payload}");
+        },
+      );
+    }
 
     /// 📩 Foreground Messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       print("📩 Foreground Message Received: ${message.notification?.title}");
       _handleMessage(message);
-      _showLocalNotification(message);
+      if (!kIsWeb) {
+        _showLocalNotification(message);
+      }
     });
 
     /// 📲 Notification Click (App in background)

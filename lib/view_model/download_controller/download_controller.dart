@@ -1,8 +1,9 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:path_provider/path_provider.dart';
+import 'dart:io' if (dart.library.html) 'package:roccoplay/utils/io_stub.dart' as io;
 import '../../data/models/response_model/content_response_model/content_model.dart';
 import '../../utils/custom_snackbar.dart';
 
@@ -40,7 +41,16 @@ class DownloadController extends GetxController {
       isDownloading[content.id] = true;
       downloadProgress[content.id] = 0;
 
-      Directory dir = await getApplicationDocumentsDirectory();
+      if (kIsWeb) {
+        CustomSnackbar.show(
+          title: "Not Supported",
+          message: "Downloads are not supported on web.",
+          isError: true,
+        );
+        return;
+      }
+
+      final dir = await getApplicationDocumentsDirectory();
       String filePath = "${dir.path}/${content.id}.mp4";
 
       await dio.download(
@@ -84,7 +94,16 @@ class DownloadController extends GetxController {
       isDownloading[episode.id] = true;
       downloadProgress[episode.id] = 0;
 
-      Directory dir = await getApplicationDocumentsDirectory();
+      if (kIsWeb) {
+        CustomSnackbar.show(
+          title: "Not Supported",
+          message: "Downloads are not supported on web.",
+          isError: true,
+        );
+        return;
+      }
+
+      final dir = await getApplicationDocumentsDirectory();
       String filePath = "${dir.path}/${episode.id}.mp4";
 
       await dio.download(
@@ -143,8 +162,13 @@ class DownloadController extends GetxController {
 
   void removeDownload(String contentId) {
     // delete file also
-    if (localPaths.containsKey(contentId)) {
-      File(localPaths[contentId]!).deleteSync();
+    if (!kIsWeb && localPaths.containsKey(contentId)) {
+      final file = io.File(localPaths[contentId]!);
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+      localPaths.remove(contentId);
+    } else if (kIsWeb) {
       localPaths.remove(contentId);
     }
 

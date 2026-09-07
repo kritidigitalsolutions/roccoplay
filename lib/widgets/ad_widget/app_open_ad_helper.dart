@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:roccoplay/utils/helper/ad_helper.dart';
@@ -21,6 +22,7 @@ class AppOpenAdHelper {
 
   /// 🔄 Load App Open Ad
   static void loadAd() {
+    if (kIsWeb) return;
     if (_isLoaded && !_isAdExpired) return;
 
     AppOpenAd.load(
@@ -43,6 +45,7 @@ class AppOpenAdHelper {
 
   /// 📢 Show App Open Ad
   static void showAdIfAvailable() {
+    if (kIsWeb) return;
     // 🔥 Jab kisi screen ne suppress kar rakha ho (jaise video player), App Open Ad skip
     if (suppressed) {
       debugPrint("⏭️ App Open Ad suppressed (current screen doesn't allow it)");

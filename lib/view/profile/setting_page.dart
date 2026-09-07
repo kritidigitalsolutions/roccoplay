@@ -23,49 +23,57 @@ class SettingsPage extends StatelessWidget {
           onPressed: () => Get.back(),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        children: [
-          _buildSectionHeader("Notifications"),
-          Obx(
-            () => _buildSwitchTile(
-              "Push Notifications",
-              controller.isPushNotificationsEnabled.value,
-              controller.togglePushNotifications,
-            ),
-          ),
-          const SizedBox(height: 20),
-          _buildSectionHeader("Playback"),
-          Obx(
-            () => _buildSwitchTile(
-              "Auto Play",
-              controller.isAutoPlayEnabled.value,
-              controller.toggleAutoPlay,
-            ),
-          ),
-          Obx(
-            () => _buildSwitchTile(
-              "WiFi Only",
-              controller.isWiFiOnlyEnabled.value,
-              controller.toggleWiFiOnly,
-            ),
-          ),
-          const SizedBox(height: 20),
-          _buildSectionHeader("Account"),
-          _buildActionTile("Language", "English", () {}),
-          _buildActionTile("App Version", "1.0.0", null),
+      body: LayoutBuilder(builder: (context, constraints) {
+        bool isWeb = constraints.maxWidth > 800;
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: isWeb ? 600 : double.infinity),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              children: [
+                _buildSectionHeader("Notifications"),
+                Obx(
+                  () => _buildSwitchTile(
+                    "Push Notifications",
+                    controller.isPushNotificationsEnabled.value,
+                    controller.togglePushNotifications,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildSectionHeader("Playback"),
+                Obx(
+                  () => _buildSwitchTile(
+                    "Auto Play",
+                    controller.isAutoPlayEnabled.value,
+                    controller.toggleAutoPlay,
+                  ),
+                ),
+                Obx(
+                  () => _buildSwitchTile(
+                    "WiFi Only",
+                    controller.isWiFiOnlyEnabled.value,
+                    controller.toggleWiFiOnly,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildSectionHeader("Account"),
+                _buildActionTile("Language", "English", () {}),
+                _buildActionTile("App Version", "1.0.0", null),
 
-          NativeAdWidget(
-            adType: TemplateType.small,
-            constraints: BoxConstraints(
-              minWidth: MediaQuery.of(context).size.width,
-              minHeight: 80,
-              maxWidth: MediaQuery.of(context).size.width,
-              maxHeight: 100,
+                NativeAdWidget(
+                  adType: TemplateType.small,
+                  constraints: BoxConstraints(
+                    minWidth: isWeb ? 600 : constraints.maxWidth,
+                    minHeight: 80,
+                    maxWidth: isWeb ? 600 : constraints.maxWidth,
+                    maxHeight: 100,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      }),
     );
   }
 

@@ -68,142 +68,149 @@ class OtpPage extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 60),
-              const Text(
-                "Verify OTP",
-                style: TextStyle(
-                  color: AppColors.white,
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Enter the OTP sent to $phoneNumber",
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.white, fontSize: 14),
-              ),
-              const SizedBox(height: 40),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(
-                  6,
-                  (index) => SizedBox(
-                    width: 45,
-                    height: 55,
-                    child: TextField(
-                      controller: otpController.controllers[index],
-                      focusNode: otpController.focusNodes[index],
-                      keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
+        child: LayoutBuilder(builder: (context, constraints) {
+          bool isWeb = constraints.maxWidth > 800;
+          return Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: isWeb ? 500 : double.infinity),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Verify OTP",
+                      style: TextStyle(
                         color: AppColors.white,
-                        fontSize: 20,
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
                       ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(1),
-                      ],
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: AppColors.grey,
-                        contentPadding: EdgeInsets.zero,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (value.isNotEmpty && index < 5) {
-                          FocusScope.of(
-                            context,
-                          ).requestFocus(otpController.focusNodes[index + 1]);
-                        }
-                        if (value.isEmpty && index > 0) {
-                          FocusScope.of(
-                            context,
-                          ).requestFocus(otpController.focusNodes[index - 1]);
-                        }
-                        if (value.length == 1 && index == 5) {
-                          FocusScope.of(context).unfocus();
-                          verifyOtp();
-                        }
-                      },
                     ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: Obx(
-                  () => ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.buttonColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    const SizedBox(height: 10),
+                    Text(
+                      "Enter the OTP sent to $phoneNumber",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.white, fontSize: 14),
                     ),
-                    onPressed: authController.isLoading.value
-                        ? null
-                        : verifyOtp,
-                    child: authController.isLoading.value
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            "Verify",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: AppColors.white,
+                    const SizedBox(height: 40),
+
+                    Center(
+                      child: SizedBox(
+                        width: isWeb ? 350 : double.infinity,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: List.generate(
+                            6,
+                            (index) => SizedBox(
+                              width: isWeb ? 45 : 40,
+                              height: 55,
+                              child: TextField(
+                                controller: otpController.controllers[index],
+                                focusNode: otpController.focusNodes[index],
+                                keyboardType: TextInputType.number,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  LengthLimitingTextInputFormatter(1),
+                                ],
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: AppColors.grey,
+                                  contentPadding: EdgeInsets.zero,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                onChanged: (value) {
+                                  if (value.isNotEmpty && index < 5) {
+                                    FocusScope.of(
+                                      context,
+                                    ).requestFocus(otpController.focusNodes[index + 1]);
+                                  }
+                                  if (value.isEmpty && index > 0) {
+                                    FocusScope.of(
+                                      context,
+                                    ).requestFocus(otpController.focusNodes[index - 1]);
+                                  }
+                                  if (value.length == 1 && index == 5) {
+                                    FocusScope.of(context).unfocus();
+                                    verifyOtp();
+                                  }
+                                },
+                              ),
                             ),
                           ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              Center(
-                child: Obx(
-                  () => TextButton(
-                    onPressed:
-                        (otpController.isResendButtonDisabled.value ||
-                            authController.isLoading.value)
-                        ? null
-                        : () async {
-                            bool success = await authController.sendOtp(
-                              phoneNumber,
-                            );
-                            if (success) {
-                              otpController.startTimer();
-                            }
-                          },
-                    child: Text(
-                      otpController.isResendButtonDisabled.value
-                          ? 'Resend OTP in ${otpController.countdown.value}s'
-                          : 'Resend OTP',
-                      style: TextStyle(
-                        color: otpController.isResendButtonDisabled.value
-                            ? Colors.grey
-                            : AppColors.buttonColor,
+                        ),
                       ),
                     ),
-                  ),
+
+                    const SizedBox(height: 40),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: Obx(
+                        () => ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.buttonColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: authController.isLoading.value ? null : verifyOtp,
+                          child: authController.isLoading.value
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text(
+                                  "Verify",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: AppColors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Center(
+                      child: Obx(
+                        () => TextButton(
+                          onPressed: (otpController.isResendButtonDisabled.value || authController.isLoading.value)
+                              ? null
+                              : () async {
+                                  bool success = await authController.sendOtp(
+                                    phoneNumber,
+                                  );
+                                  if (success) {
+                                    otpController.startTimer();
+                                  }
+                                },
+                          child: Text(
+                            otpController.isResendButtonDisabled.value
+                                ? 'Resend OTP in ${otpController.countdown.value}s'
+                                : 'Resend OTP',
+                            style: TextStyle(
+                              color: otpController.isResendButtonDisabled.value ? Colors.grey : AppColors.buttonColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        }),
       ),
     );
   }

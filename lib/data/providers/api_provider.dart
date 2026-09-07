@@ -1,6 +1,7 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../utils/constants.dart';
+import 'dart:io' if (dart.library.html) 'package:roccoplay/utils/io_stub.dart' as io;
 
 class ApiProvider extends GetConnect {
   @override
@@ -46,12 +47,18 @@ class ApiProvider extends GetConnect {
       };
 
       if (imagePath != null) {
-        final file = File(imagePath);
-        if (file.existsSync()) {
-          body["profileImage"] = MultipartFile(
-            file.readAsBytesSync(),
-            filename: imagePath.split('/').last,
-          );
+        if (!kIsWeb) {
+          final file = io.File(imagePath);
+          if ((file as dynamic).existsSync()) {
+            body["profileImage"] = MultipartFile(
+              (file as dynamic).readAsBytesSync(),
+              filename: imagePath.split('/').last,
+            );
+          }
+        } else {
+          // On Web, imagePath might be a Blob URL or we might need to handle bytes differently.
+          // For now, if it's just a path string, we might not be able to read it as a File.
+          // In a real web app, we'd pass bytes to this method.
         }
       }
 

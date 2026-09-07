@@ -30,86 +30,94 @@ class _RedeemVoucherPageState extends State<RedeemVoucherPage> {
       ),
 
       /// 🔴 BODY
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Obx(
-              () => Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  /// 🔹 Logo
-                  Image.asset(
-                    "assets/images/roccoplay_logo.png",
-                    height: 80,
-                    width: 80,
-                    fit: BoxFit.contain,
+      body: LayoutBuilder(builder: (context, constraints) {
+        bool isWeb = constraints.maxWidth > 800;
+        return Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isWeb ? 500 : double.infinity),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[900],
+                    borderRadius: BorderRadius.circular(15),
                   ),
+                  child: Obx(
+                    () => Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        /// 🔹 Logo
+                        Image.asset(
+                          "assets/images/roccoplay_logo.png",
+                          height: 80,
+                          width: 80,
+                          fit: BoxFit.contain,
+                        ),
 
-                  const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                  /// 🔹 Instruction Text
-                  const Text(
-                    "Please enter the voucher code below",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.white, fontSize: 14),
-                  ),
+                        /// 🔹 Instruction Text
+                        const Text(
+                          "Please enter the voucher code below",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.white, fontSize: 14),
+                        ),
 
-                  const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                  /// 🔹 TextField
-                  TextField(
-                    controller: voucherController,
-                    style: const TextStyle(color: AppColors.white),
-                    decoration: const InputDecoration(
-                      hintText: "Enter Voucher Code",
-                      hintStyle: TextStyle(color: AppColors.grey),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: AppColors.grey),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: AppColors.buttonColor),
-                      ),
+                        /// 🔹 TextField
+                        TextField(
+                          controller: voucherController,
+                          style: const TextStyle(color: AppColors.white),
+                          decoration: const InputDecoration(
+                            hintText: "Enter Voucher Code",
+                            hintStyle: TextStyle(color: AppColors.grey),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: AppColors.grey),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: AppColors.buttonColor),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        /// 🔴 Apply Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 45,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.buttonColor,
+                            ),
+                            onPressed: controller.isRedeeming.value
+                                ? null
+                                : () => controller.redeemVoucher(
+                                      voucherController.text.trim(),
+                                    ),
+                            child: controller.isRedeeming.value
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : const Text(
+                                    "Apply",
+                                    style: TextStyle(
+                                      color: AppColors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  /// 🔴 Apply Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 45,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.buttonColor,
-                      ),
-                      onPressed: controller.isRedeeming.value
-                          ? null
-                          : () => controller.redeemVoucher(
-                              voucherController.text.trim(),
-                            ),
-                      child: controller.isRedeeming.value
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                              "Apply",
-                              style: TextStyle(
-                                color: AppColors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }

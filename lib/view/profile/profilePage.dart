@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../app/routes/app_routes.dart';
 import 'package:roccoplay/view/profile/privacy_policy_page.dart';
 import 'package:roccoplay/view/profile/setting_page.dart';
 import 'package:roccoplay/view/profile/terms_condition_page.dart';
@@ -33,73 +34,124 @@ class ProfilePage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.pink, width: 1.5),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
+      body: LayoutBuilder(builder: (context, constraints) {
+        bool isWeb = constraints.maxWidth > 800;
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: isWeb ? 600 : double.infinity),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: isWeb ? 24 : 0),
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.pink, width: 1.5),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
                         children: [
-                          // Profile Image from API
-                          Obx(() {
-                            final user = authController.userData.value;
-                            final imageUrl =
-                                user?['avatar'] ??
-                                user?['image'] ??
-                                user?['profileImage'];
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                // Profile Image from API
+                                Obx(() {
+                                  final user = authController.userData.value;
+                                  final imageUrl = user?['avatar'] ?? user?['image'] ?? user?['profileImage'];
 
-                            return CircleAvatar(
-                              radius: 25,
-                              backgroundColor: Colors.grey[800],
-                              backgroundImage:
-                                  (imageUrl != null && imageUrl.isNotEmpty)
-                                  ? NetworkImage(imageUrl)
-                                  : null,
-                              child: (imageUrl == null || imageUrl.isEmpty)
-                                  ? const Icon(
-                                      Icons.person,
-                                      color: AppColors.white,
-                                      size: 30,
-                                    )
-                                  : null,
-                            );
-                          }),
+                                  return CircleAvatar(
+                                    radius: isWeb ? 35 : 25,
+                                    backgroundColor: Colors.grey[800],
+                                    backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                                    child: (imageUrl == null || imageUrl.isEmpty)
+                                        ? Icon(
+                                            Icons.person,
+                                            color: AppColors.white,
+                                            size: isWeb ? 40 : 30,
+                                          )
+                                        : null,
+                                  );
+                                }),
 
-                          const SizedBox(width: 12),
+                                const SizedBox(width: 15),
 
-                          // Name and Phone from API
-                          Expanded(
+                                // Name and Phone from API
+                                Expanded(
+                                  child: Obx(() {
+                                    final user = authController.userData.value;
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          user?['name'] ?? "User Name",
+                                          style: TextStyle(
+                                            color: AppColors.white,
+                                            fontSize: isWeb ? 20 : 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          user?['phone'] ?? "No Phone",
+                                          style: const TextStyle(
+                                            color: AppColors.grey,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const Divider(color: Colors.grey, height: 1),
+
+                          // ---------- DYNAMIC PLAN SECTION ----------
+                          Padding(
+                            padding: const EdgeInsets.all(16),
                             child: Obx(() {
-                              final user = authController.userData.value;
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              final sub = premiumController.subscriptionData.value;
+                              final bool hasActiveSub = sub != null && sub['status'] == 'active';
+
+                              return Row(
                                 children: [
                                   Text(
-                                    user?['name'] ?? "User Name",
+                                    hasActiveSub ? (sub['plan']?['name'] ?? "Active Plan") : "No Active Plans",
                                     style: const TextStyle(
                                       color: AppColors.white,
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    user?['phone'] ?? "No Phone",
-                                    style: const TextStyle(
-                                      color: AppColors.grey,
-                                      fontSize: 14,
+                                  const Spacer(),
+                                  if (!hasActiveSub)
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.buttonColor,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      onPressed: () => Get.toNamed(AppRoutes.goPremium),
+                                      child: const Text(
+                                        "SUBSCRIBE NOW",
+                                        style: TextStyle(
+                                          color: AppColors.white,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    const Icon(
+                                      Icons.verified,
+                                      color: Colors.green,
+                                      size: 24,
                                     ),
-                                  ),
                                 ],
                               );
                             }),
@@ -107,146 +159,95 @@ class ProfilePage extends StatelessWidget {
                         ],
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 10),
+                  const BannerAdWidget(),
+                  const SizedBox(height: 10),
 
-                    const Divider(color: Colors.grey, height: 1),
+                  buildMenuItem(
+                    context,
+                    Icons.person_outline,
+                    "My Account",
+                    AppRoutes.accountSetting,
+                  ),
+                  buildMenuItem(
+                    context,
+                    Icons.bookmark_border,
+                    "Watchlist",
+                    AppRoutes.watchList,
+                  ),
+                  buildMenuItem(
+                    context,
+                    Icons.settings_outlined,
+                    "Settings",
+                    AppRoutes.settings,
+                  ),
+                  buildMenuItem(
+                    context,
+                    Icons.rate_review,
+                    "Rate Our App",
+                    AppRoutes.review,
+                  ),
+                  buildMenuItem(
+                    context,
+                    Icons.info_outline,
+                    "Terms & Conditions",
+                    AppRoutes.termsAndConditions,
+                  ),
+                  buildMenuItem(
+                    context,
+                    Icons.privacy_tip,
+                    "Privacy Policy",
+                    AppRoutes.privacyPolicy,
+                  ),
+                  buildMenuItem(
+                    context,
+                    Icons.currency_rupee,
+                    "Refund Policy",
+                    AppRoutes.refundPolicy,
+                  ),
+                  buildMenuItem(
+                    context,
+                    Icons.help_outline,
+                    "Help",
+                    AppRoutes.help,
+                  ),
 
-                    // ---------- DYNAMIC PLAN SECTION ----------
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Obx(() {
-                        final sub = premiumController.subscriptionData.value;
-                        final bool hasActiveSub =
-                            sub != null && sub['status'] == 'active';
-
-                        return Row(
-                          children: [
-                            Text(
-                              hasActiveSub
-                                  ? (sub['plan']?['name'] ?? "Active Plan")
-                                  : "No Active Plans",
-                              style: const TextStyle(
-                                color: AppColors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Spacer(),
-                            if (!hasActiveSub)
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.buttonColor,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                onPressed: () =>
-                                    Get.to(() => const GoPremiumPage()),
-                                child: const Text(
-                                  "SUBSCRIBE",
-                                  style: TextStyle(
-                                    color: AppColors.white,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              )
-                            else
-                              const Icon(
-                                Icons.verified,
-                                color: Colors.green,
-                                size: 24,
-                              ),
-                          ],
-                        );
-                      }),
+                  const SizedBox(height: 20),
+                  Center(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.buttonColor,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                      onPressed: onLogout,
+                      child: const Text(
+                        "SIGN OUT",
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 30),
+                  const Text(
+                    "App Version 1.0.0",
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  const SizedBox(height: 30),
+                ],
               ),
             ),
-            BannerAdWidget(),
-            const SizedBox(height: 10),
-
-            buildMenuItem(
-              context,
-              Icons.person_outline,
-              "My Account",
-              const AccountSettingsPage(),
-            ),
-            buildMenuItem(
-              context,
-              Icons.bookmark_border,
-              "Watchlist",
-              const WatchlistPage(),
-            ),
-            buildMenuItem(
-              context,
-              Icons.settings_outlined,
-              "Settings",
-              const SettingsPage(),
-            ),
-            buildMenuItem(
-              context,
-              Icons.rate_review,
-              "Rate Our App",
-              const ReviewPage(),
-            ),
-            buildMenuItem(
-              context,
-              Icons.info_outline,
-              "Terms & Conditions",
-              const TermsAndConditionsPage(),
-            ),
-            buildMenuItem(
-              context,
-              Icons.privacy_tip,
-              "Privacy Policy",
-              const PrivacyPolicyPage(),
-            ),
-            buildMenuItem(
-              context,
-              Icons.currency_rupee,
-              "Refund Policy",
-              const RefundPolicyPage(),
-            ),
-            buildMenuItem(
-              context,
-              Icons.help_outline,
-              "Help",
-              const HelpSupportPage(),
-            ),
-
-            const SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.buttonColor,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 40,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                ),
-                onPressed: onLogout,
-                child: const Text(
-                  "SIGN OUT",
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-            const Text(
-              "App Version 1.0.0",
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
+          ),
+        );
+      }),
     );
   }
 
@@ -254,10 +255,10 @@ class ProfilePage extends StatelessWidget {
     BuildContext context,
     IconData icon,
     String title,
-    Widget page,
+    String route,
   ) {
     return InkWell(
-      onTap: () => Get.to(() => page),
+      onTap: () => Get.toNamed(route),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(

@@ -23,4 +23,14 @@ abstract class AppRoutes {
   static const search= '/search';
   static const top10= '/top10';
   static const searchWithMic= '/searchWithMic';
+  static const notifications= '/notifications';
+  static const privacyPolicy= '/privacyPolicy';
+  static const termsAndConditions= '/termsAndConditions';
+  static const redeemVoucher= '/redeemVoucher';
+  static const categoryGrid= '/categoryGrid';
+  static const advancedVideoPlayer= '/advancedVideoPlayer';
+  static const settings= '/settings';
+  static const review= '/review';
+  static const refundPolicy= '/refundPolicy';
+  static const help= '/help';
 }

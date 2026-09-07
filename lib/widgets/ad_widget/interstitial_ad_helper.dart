@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:roccoplay/utils/helper/ad_helper.dart';
@@ -10,6 +11,7 @@ class InterstitialAdHelper {
 
   /// 🔄 Load Interstitial Ad
   static void loadAd() {
+    if (kIsWeb) return;
     InterstitialAd.load(
       adUnitId: AdHelper.interstitialAdUnitId,
       request: const AdRequest(),
@@ -31,6 +33,10 @@ class InterstitialAdHelper {
 
   /// 📢 Show Interstitial Ad
   static void showAd({VoidCallback? onAdClosed}) {
+    if (kIsWeb) {
+      if (onAdClosed != null) onAdClosed();
+      return;
+    }
     if (_isLoaded && _interstitialAd != null) {
       _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
         onAdDismissedFullScreenContent: (ad) {

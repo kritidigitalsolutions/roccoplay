@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:roccoplay/app/theme/app_colors.dart';
 
@@ -49,8 +50,21 @@ class CustomBottomNavbar extends StatelessWidget {
                 children: [
                   _buildNavItem(Icons.home, "Home", 0, iconSize, fontSize),
                   _buildNavItem(Icons.search, "Search", 1, iconSize, fontSize),
-                  _buildNavItem(Icons.workspace_premium, "Plans", 2, iconSize, fontSize),
-                  _buildNavItem(Icons.download, "Downloads", 3, iconSize, fontSize),
+                  _buildNavItem(
+                    Icons.workspace_premium,
+                    "Plans",
+                    2,
+                    iconSize,
+                    fontSize,
+                  ),
+                  if (!kIsWeb)
+                    _buildNavItem(
+                      Icons.download,
+                      "Downloads",
+                      3,
+                      iconSize,
+                      fontSize,
+                    ),
                   _buildNavItem(Icons.menu, "More", 4, iconSize, fontSize),
                 ],
               ),

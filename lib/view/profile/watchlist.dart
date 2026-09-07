@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:roccoplay/app/routes/app_routes.dart';
 import 'package:roccoplay/widgets/ad_widget/native_ad_widget.dart';
 import '../../app/theme/app_colors.dart';
 import '../../data/models/response_model/content_response_model/content_model.dart';
@@ -146,11 +147,9 @@ class WatchlistPage extends StatelessWidget {
                 ),
                 onTap: () {
                   if (contentItem != null) {
-                    Get.to(
-                      () => DramaDetailsPage(
-                        isSignedIn: authController.isLoggedIn.value,
-                        content: contentItem!,
-                      ),
+                    Get.toNamed(
+                      AppRoutes.dramaDetails,
+                      arguments: contentItem!,
                     );
                   }
                 },
@@ -263,7 +262,7 @@ class WatchlistPage extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
-                  Get.offAll(() => const MainHomePage());
+                  Get.offAllNamed(AppRoutes.home);
                 },
                 child: const Text(
                   "Start Adding",
