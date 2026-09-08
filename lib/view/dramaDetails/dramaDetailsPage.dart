@@ -44,7 +44,7 @@ class DramaDetailsPage extends StatelessWidget {
     // Refresh subscription status on page entry
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (authController.isLoggedIn.value) {
-        premiumController.fetchSubscriptionStatus();
+        premiumController.fetchAllSubscriptionStatus();
       }
       InterstitialAdHelper.loadAd();
     });

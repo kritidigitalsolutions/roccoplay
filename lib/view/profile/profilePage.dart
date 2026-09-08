@@ -28,7 +28,7 @@ class ProfilePage extends StatelessWidget {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       authController.getProfile();
       if (authController.isLoggedIn.value) {
-        premiumController.fetchSubscriptionStatus();
+        premiumController.fetchAllSubscriptionStatus();
       }
     });
 

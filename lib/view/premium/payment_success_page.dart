@@ -30,7 +30,7 @@ class PaymentSuccessPage extends StatelessWidget {
       Get.find<HomeController>().selectedIndex.value = 0;
     }
     if (Get.isRegistered<PremiumController>()) {
-      Get.find<PremiumController>().fetchSubscriptionStatus();
+      Get.find<PremiumController>().fetchAllSubscriptionStatus();
     }
     Get.offAll(() => const MainHomePage());
   }

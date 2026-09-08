@@ -314,7 +314,7 @@ class MainHomePage extends StatelessWidget {
 
               if (authController.isLoggedIn.value) {
                 refreshTasks.add(authController.getProfile());
-                refreshTasks.add(premiumController.fetchSubscriptionStatus());
+                refreshTasks.add(premiumController.fetchAllSubscriptionStatus());
               }
 
               await Future.wait(refreshTasks);

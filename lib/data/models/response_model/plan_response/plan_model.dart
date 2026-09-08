@@ -5,6 +5,7 @@ class PlanModel {
   final int duration;
   final List<String> features;
   final bool isActive;
+  final String platform;
 
   PlanModel({
     required this.id,
@@ -13,6 +14,7 @@ class PlanModel {
     required this.duration,
     required this.features,
     required this.isActive,
+    required this.platform,
   });
 
   factory PlanModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class PlanModel {
       duration: json['duration'] ?? 0,
       features: List<String>.from(json['features'] ?? []),
       isActive: json['isActive'] ?? false,
+      platform: json['platform'] ?? 'hinge',
     );
   }
 }

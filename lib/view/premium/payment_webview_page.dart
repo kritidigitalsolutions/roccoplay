@@ -125,7 +125,10 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
         url.contains('zaakpay/callback') ||
         url.contains('/payment/hdfc/callback') ||
         url.contains('hdfc/callback') ||
-        url.contains('/hdfc/response')) {
+        url.contains('/hdfc/response') ||
+        url.contains('/payment/sabpaisa/callback') ||
+        url.contains('/sabpaisa/response') ||
+        url.contains('sabpaisa/callback')) {
       if (!_isRedirected) {
         if (mounted) {
           setState(() {

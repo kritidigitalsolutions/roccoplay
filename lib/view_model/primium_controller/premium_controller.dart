@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:roccoplay/utils/service/razorpay_web_service.dart';
 import 'package:roccoplay/utils/service/meta_event_service.dart';
 import 'package:roccoplay/utils/service/firebase_analytics_service.dart';
 import '../../data/models/response_model/plan_response/plan_model.dart';
@@ -22,12 +25,28 @@ class PremiumController extends GetxController {
   // Use AuthController's isLoggedIn status instead of local copy
   RxBool get isUserLoggedIn => _authController.isLoggedIn;
 
+  var currentPlatform = (kIsWeb ? "website" : "hinge").obs; // Auto-detect platform
+
   var selectedPrice = "0".obs;
   var isLoading = true.obs;
   var isSubscribing = false.obs;
   var isRedeeming = false.obs;
   var isApplyingPromo = false.obs;
-  var plans = <PlanModel>[].obs;
+  
+  // Separate lists for App and Website plans
+  var appPlans = <PlanModel>[].obs;
+  var webPlans = <PlanModel>[].obs;
+  
+  // Computed property to get plans for current platform
+  List<PlanModel> get plans {
+    final current = currentPlatform.value;
+    if (current == "website") {
+      return webPlans.where((p) => p.platform == "website").toList();
+    } else {
+      // Show plans that are NOT website plans (hinge, app, android, etc.)
+      return appPlans.where((p) => p.platform != "website").toList();
+    }
+  }
 
   // Promo Code State
   var appliedPromoCode = "".obs;
@@ -36,10 +55,16 @@ class PremiumController extends GetxController {
   var isPromoApplied = false.obs;
 
   // Subscription Status Data
-  var subscriptionData = Rxn<Map<String, dynamic>>();
+  var appSubscriptionData = Rxn<Map<String, dynamic>>();
+  var webSubscriptionData = Rxn<Map<String, dynamic>>();
+  
+  // Computed property for current subscription data
+  Rxn<Map<String, dynamic>> get subscriptionData => 
+      currentPlatform.value == "website" ? webSubscriptionData : appSubscriptionData;
+
   var isLoadingStatus = false.obs;
 
-  // ✅ Helper to check if ANY plan is active
+  // ✅ Helper to check if ANY plan is active for current platform
   bool get hasActiveSubscription =>
       subscriptionData.value != null &&
       subscriptionData.value!['status'] == 'active';
@@ -53,45 +78,57 @@ class PremiumController extends GetxController {
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
 
-    // Fetch plans and subscription status
-    fetchPlans();
+    // Fetch plans for current platform only
+    fetchAllPlans();
 
     // Fetch status if logged in
     ever(isUserLoggedIn, (bool loggedIn) {
       if (loggedIn) {
-        fetchSubscriptionStatus();
+        fetchAllSubscriptionStatus();
       } else {
-        subscriptionData.value = null;
+        appSubscriptionData.value = null;
+        webSubscriptionData.value = null;
       }
     });
 
     if (isUserLoggedIn.value) {
-      fetchSubscriptionStatus();
+      fetchAllSubscriptionStatus();
     }
   }
 
-  @override
-  void onClose() {
-    _razorpay.clear();
-    super.onClose();
+  Future<void> fetchAllPlans() async {
+    isLoading.value = true;
+    await fetchPlans(currentPlatform.value);
+    isLoading.value = false;
+    if (plans.isNotEmpty) {
+      selectPlan(0);
+    }
   }
 
-  Future<void> fetchPlans() async {
+  Future<void> fetchPlans(String platform) async {
     try {
-      isLoading.value = true;
-      final response = await _repository.getPlans();
+      final response = await _repository.getPlans(platform: platform);
       if (response != null && response['success'] == true) {
         final List<dynamic> data = response['plans'];
-        plans.assignAll(data.map((e) => PlanModel.fromJson(e)).toList());
-        if (plans.isNotEmpty) {
-          selectPlan(0);
+        final planList = data
+            .map((e) => PlanModel.fromJson(e))
+            .where((p) => platform == "website" ? p.platform == "website" : p.platform != "website")
+            .toList();
+        if (platform == "website") {
+          webPlans.assignAll(planList);
+        } else {
+          appPlans.assignAll(planList);
         }
       }
     } catch (e) {
-      print("Error fetching plans: $e");
-    } finally {
-      isLoading.value = false;
+      print("Error fetching $platform plans: $e");
     }
+  }
+
+  void switchPlatform(String platform) {
+    if (currentPlatform.value == platform) return;
+    currentPlatform.value = platform;
+    selectPlan(0);
   }
 
   void selectPlan(int index) {
@@ -105,18 +142,25 @@ class PremiumController extends GetxController {
     }
   }
 
-  Future<void> fetchSubscriptionStatus() async {
+  Future<void> fetchAllSubscriptionStatus() async {
     if (!isUserLoggedIn.value) return;
+    isLoadingStatus.value = true;
+    await fetchSubscriptionStatus(currentPlatform.value);
+    isLoadingStatus.value = false;
+  }
+
+  Future<void> fetchSubscriptionStatus(String platform) async {
     try {
-      isLoadingStatus.value = true;
-      final response = await _repository.getSubscriptionStatus();
+      final response = await _repository.getSubscriptionStatus(platform: platform);
       if (response != null && response['success'] == true) {
-        subscriptionData.value = response['subscription'];
+        if (platform == "website") {
+          webSubscriptionData.value = response['subscription'];
+        } else {
+          appSubscriptionData.value = response['subscription'];
+        }
       }
     } catch (e) {
-      print("Error fetching subscription status: $e");
-    } finally {
-      isLoadingStatus.value = false;
+      print("Error fetching $platform subscription status: $e");
     }
   }
 
@@ -136,13 +180,27 @@ class PremiumController extends GetxController {
       final apiService = Get.find<BaseApiService>();
 
       // Prepare request body with promo code if applied
-      Map<String, dynamic> body = {"planId": planId};
+      String phone = _authController.userData.value?['phone'] ?? '';
+      phone = phone.replaceAll(RegExp(r'\D'), '');
+      if (phone.length > 10) {
+        phone = phone.substring(phone.length - 10);
+      }
+
+      Map<String, dynamic> body = {
+        "planId": planId,
+        "phone": phone,
+        "email": _authController.userData.value?['email'] ?? '',
+        "platform": currentPlatform.value,
+      };
       if (isPromoApplied.value) {
         body["promoCode"] = appliedPromoCode.value;
       }
 
       // 1. Create Order on Backend
-      final response = await apiService.postApi(AppConstants.createOrder, body);
+      final response = await apiService.postApi(
+        AppConstants.createOrder,
+        body,
+      );
 
       MetaEventService.instance.subscriptionStart(
         planId: planId,
@@ -172,7 +230,28 @@ class PremiumController extends GetxController {
           },
         };
 
-        _razorpay.open(options);
+        if (kIsWeb) {
+          RazorpayWebService.checkout(
+            options: options,
+            onSuccess: (paymentId, orderId, signature) {
+              _verifyRazorpayPayment(
+                paymentId: paymentId,
+                orderId: orderId,
+                signature: signature,
+              );
+            },
+            onFailure: (errorMessage) {
+              isSubscribing.value = false;
+              CustomSnackbar.show(
+                title: "Payment Failed",
+                message: errorMessage,
+                isError: true,
+              );
+            },
+          );
+        } else {
+          _razorpay.open(options);
+        }
       }
     } catch (e) {
       String errorMsg = e.toString();
@@ -193,6 +272,18 @@ class PremiumController extends GetxController {
   }
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    _verifyRazorpayPayment(
+      paymentId: response.paymentId ?? "",
+      orderId: response.orderId ?? "",
+      signature: response.signature ?? "",
+    );
+  }
+
+  Future<void> _verifyRazorpayPayment({
+    required String paymentId,
+    required String orderId,
+    required String signature,
+  }) async {
     try {
       isSubscribing.value = true;
       final apiService = Get.find<BaseApiService>();
@@ -201,13 +292,20 @@ class PremiumController extends GetxController {
       var amount = plans[selectedPlanIndex.value].price;
 
       // 2. Verify Payment on Backend
-      final verifyResponse = await apiService
-          .postApi(AppConstants.verifyPayment, {
-            "razorpay_order_id": response.orderId,
-            "razorpay_payment_id": response.paymentId,
-            "razorpay_signature": response.signature,
-            "planId": planId,
-          });
+      final String verifyUrl = currentPlatform.value == "website"
+          ? AppConstants.verifyPaymentWebsite
+          : AppConstants.verifyPayment;
+
+      final verifyResponse = await apiService.postApi(
+        verifyUrl,
+        {
+          "razorpay_order_id": orderId,
+          "razorpay_payment_id": paymentId,
+          "razorpay_signature": signature,
+          "planId": planId,
+          "platform": currentPlatform.value,
+        },
+      );
 
       if (verifyResponse != null && verifyResponse['success'] == true) {
         MetaEventService.instance.paymentComplete(
@@ -226,7 +324,7 @@ class PremiumController extends GetxController {
           isSuccess: true,
         );
 
-        fetchSubscriptionStatus();
+        fetchSubscriptionStatus(currentPlatform.value);
       }
     } catch (e) {
       CustomSnackbar.show(
@@ -333,11 +431,13 @@ class PremiumController extends GetxController {
           final isRazorpayEnabled = gateways['razorpay']?['enabled'] == true;
           final isZaakpayEnabled = gateways['zaakpay']?['enabled'] == true;
           final isHdfcEnabled = gateways['hdfc']?['enabled'] == true;
+          final isSabPaisaEnabled = gateways['sabpaisa']?['enabled'] == true;
 
           final enabledGateways = [];
           if (isRazorpayEnabled) enabledGateways.add('razorpay');
           if (isZaakpayEnabled) enabledGateways.add('zaakpay');
           if (isHdfcEnabled) enabledGateways.add('hdfc');
+          if (isSabPaisaEnabled) enabledGateways.add('sabpaisa');
 
           if (enabledGateways.length > 1) {
             _showGatewaySelectionBottomSheet(planId, gateways: gateways);
@@ -347,6 +447,8 @@ class PremiumController extends GetxController {
               startZaakpayPayment(planId);
             } else if (activeGateway == 'hdfc') {
               startHdfcPayment(planId);
+            } else if (activeGateway == 'sabpaisa') {
+              startSabPaisaPayment(planId);
             } else {
               startPayment(planId);
             }
@@ -374,6 +476,7 @@ class PremiumController extends GetxController {
           promoCode:
               promoCode ??
               (isPromoApplied.value ? appliedPromoCode.value : null),
+          platform: currentPlatform.value,
         );
 
         if (response != null && response['success'] == true) {
@@ -392,7 +495,7 @@ class PremiumController extends GetxController {
             message: "Payment Success",
             isSuccess: true,
           );
-          fetchSubscriptionStatus();
+          fetchSubscriptionStatus(currentPlatform.value);
         }
       } catch (e) {
         String errorMsg = e.toString();
@@ -412,6 +515,61 @@ class PremiumController extends GetxController {
     }
   }
 
+  /// 🔹 Helper for Web Payment Status
+  void _showWebPaymentStatusDialog({
+    required String orderId,
+    required String planId,
+    required Function(String, String) onCheckStatus,
+  }) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: const Color(0xFF16161F),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.pinkAccent),
+            SizedBox(width: 10),
+            Text("Payment Started",
+                style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: const Text(
+          "We've opened the payment gateway in a new tab. Once you complete the payment, come back here and click the button below to activate your plan.",
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.pinkAccent,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  Get.back();
+                  onCheckStatus(orderId, planId);
+                },
+                child: const Text(
+                  "Check Payment Status",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+  }
+
   /// 🔹 Start Zaakpay Payment Process
   Future<void> startZaakpayPayment(String planId) async {
     try {
@@ -421,7 +579,19 @@ class PremiumController extends GetxController {
       final apiService = Get.find<BaseApiService>();
 
       // Prepare request body with promo code if applied
-      Map<String, dynamic> body = {"planId": planId};
+      String phone = _authController.userData.value?['phone'] ?? '';
+      phone = phone.replaceAll(RegExp(r'\D'), '');
+      if (phone.length > 10) {
+        phone = phone.substring(phone.length - 10);
+      }
+
+      Map<String, dynamic> body = {
+        "planId": planId,
+        "phone": phone,
+        "email": _authController.userData.value?['email'] ?? '',
+        "name": _authController.userData.value?['name'] ?? '',
+        "platform": currentPlatform.value,
+      };
       if (isPromoApplied.value) {
         body["promoCode"] = appliedPromoCode.value;
       }
@@ -458,24 +628,43 @@ class PremiumController extends GetxController {
             }
           }
 
-          // Open Zaakpay WebView Page
-          final result = await Get.to(
-            () => PaymentWebViewPage(
-              paymentUrl: paymentUrl,
-              orderId: orderId,
-              params: params!,
-            ),
-          );
-
-          if (result == true) {
-            // WebView redirection callback completed, now check status from server
-            await verifyZaakpayPayment(orderId, planId);
+          if (kIsWeb) {
+            // Launch Zaakpay in new tab
+            final Uri uri = Uri.parse(paymentUrl);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+              _showWebPaymentStatusDialog(
+                orderId: orderId,
+                planId: planId,
+                onCheckStatus: verifyZaakpayPayment,
+              );
+            } else {
+              CustomSnackbar.show(
+                title: "Error",
+                message: "Could not open payment page",
+                isError: true,
+              );
+            }
           } else {
-            CustomSnackbar.show(
-              title: "Payment Cancelled",
-              message: "Payment was not completed",
-              isError: true,
+            // Open Zaakpay WebView Page
+            final result = await Get.to(
+              () => PaymentWebViewPage(
+                paymentUrl: paymentUrl,
+                orderId: orderId,
+                params: params!,
+              ),
             );
+
+            if (result == true) {
+              // WebView redirection callback completed, now check status from server
+              await verifyZaakpayPayment(orderId, planId);
+            } else {
+              CustomSnackbar.show(
+                title: "Payment Cancelled",
+                message: "Payment was not completed",
+                isError: true,
+              );
+            }
           }
         } else {
           CustomSnackbar.show(
@@ -565,7 +754,7 @@ class PremiumController extends GetxController {
           isSuccess: true,
         );
 
-        fetchSubscriptionStatus();
+        fetchSubscriptionStatus(currentPlatform.value);
       } else {
         CustomSnackbar.show(
           title: "Payment Failed",
@@ -596,7 +785,19 @@ class PremiumController extends GetxController {
       final apiService = Get.find<BaseApiService>();
 
       // Prepare request body with promo code if applied
-      Map<String, dynamic> body = {"planId": planId};
+      String phone = _authController.userData.value?['phone'] ?? '';
+      phone = phone.replaceAll(RegExp(r'\D'), '');
+      if (phone.length > 10) {
+        phone = phone.substring(phone.length - 10);
+      }
+
+      Map<String, dynamic> body = {
+        "planId": planId,
+        "phone": phone,
+        "email": _authController.userData.value?['email'] ?? '',
+        "name": _authController.userData.value?['name'] ?? '',
+        "platform": currentPlatform.value,
+      };
       if (isPromoApplied.value) {
         body["promoCode"] = appliedPromoCode.value;
       }
@@ -635,24 +836,43 @@ class PremiumController extends GetxController {
             }
           }
 
-          // Open HDFC WebView Page
-          final result = await Get.to(
-            () => PaymentWebViewPage(
-              paymentUrl: paymentUrl,
-              orderId: orderId,
-              params: params,
-            ),
-          );
-
-          if (result == true) {
-            // WebView redirection callback completed, now check status from server
-            await verifyHdfcPayment(orderId, planId);
+          if (kIsWeb) {
+            // Launch HDFC in new tab
+            final Uri uri = Uri.parse(paymentUrl);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+              _showWebPaymentStatusDialog(
+                orderId: orderId,
+                planId: planId,
+                onCheckStatus: verifyHdfcPayment,
+              );
+            } else {
+              CustomSnackbar.show(
+                title: "Error",
+                message: "Could not open payment page",
+                isError: true,
+              );
+            }
           } else {
-            CustomSnackbar.show(
-              title: "Payment Cancelled",
-              message: "Payment was not completed",
-              isError: true,
+            // Open HDFC WebView Page
+            final result = await Get.to(
+              () => PaymentWebViewPage(
+                paymentUrl: paymentUrl,
+                orderId: orderId,
+                params: params,
+              ),
             );
+
+            if (result == true) {
+              // WebView redirection callback completed, now check status from server
+              await verifyHdfcPayment(orderId, planId);
+            } else {
+              CustomSnackbar.show(
+                title: "Payment Cancelled",
+                message: "Payment was not completed",
+                isError: true,
+              );
+            }
           }
         } else {
           CustomSnackbar.show(
@@ -681,6 +901,204 @@ class PremiumController extends GetxController {
           isError: true,
         );
       }
+    } finally {
+      isSubscribing.value = false;
+    }
+  }
+
+  /// 🔹 Start SabPaisa Payment Process
+  Future<void> startSabPaisaPayment(String planId) async {
+    try {
+      if (Get.isBottomSheetOpen == true) Get.back();
+
+      isSubscribing.value = true;
+      final apiService = Get.find<BaseApiService>();
+
+      // Prepare request body with promo code if applied
+      String phone = _authController.userData.value?['phone'] ?? '';
+      // Remove any non-digit characters and handle +91 prefix
+      phone = phone.replaceAll(RegExp(r'\D'), '');
+      if (phone.length > 10) {
+        phone = phone.substring(phone.length - 10);
+      }
+
+      Map<String, dynamic> body = {
+        "planId": planId,
+        "phone": phone,
+        "email": _authController.userData.value?['email'] ?? '',
+        "name": _authController.userData.value?['name'] ?? '',
+        "platform": currentPlatform.value,
+      };
+      if (isPromoApplied.value) {
+        body["promoCode"] = appliedPromoCode.value;
+      }
+
+      // 1. Initiate SabPaisa Payment on Backend
+      final response = await apiService.postApi(
+        AppConstants.initiateSabPaisa,
+        body,
+      );
+
+      if (response != null && response['success'] == true) {
+        final paymentUrl = (response['paymentUrl'] ?? response['checkoutUrl']) as String?;
+        final orderId = response['orderId'] as String?;
+        final params = response['params'] as Map<String, dynamic>?;
+
+        if (paymentUrl != null && orderId != null) {
+          if (kIsWeb) {
+            // Launch SabPaisa in new tab
+            final Uri uri = Uri.parse(paymentUrl);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+              _showWebPaymentStatusDialog(
+                orderId: orderId,
+                planId: planId,
+                onCheckStatus: verifySabPaisaPayment,
+              );
+            } else {
+              CustomSnackbar.show(
+                title: "Error",
+                message: "Could not open payment page",
+                isError: true,
+              );
+            }
+          } else {
+            // Open SabPaisa WebView Page
+            final result = await Get.to(
+              () => PaymentWebViewPage(
+                paymentUrl: paymentUrl,
+                orderId: orderId,
+                params: params,
+              ),
+            );
+
+            if (result == true) {
+              await verifySabPaisaPayment(orderId, planId);
+            } else {
+              CustomSnackbar.show(
+                title: "Payment Cancelled",
+                message: "Payment was not completed",
+                isError: true,
+              );
+            }
+          }
+        } else {
+          CustomSnackbar.show(
+            title: "Error",
+            message: "Invalid response from server",
+            isError: true,
+          );
+        }
+      } else {
+        CustomSnackbar.show(
+          title: "Error",
+          message: response?['message'] ?? "Something went wrong",
+          isError: true,
+        );
+      }
+    } catch (e) {
+      String errorMsg = e.toString();
+      if (errorMsg.contains("already has an active subscription") ||
+          errorMsg.contains("already purchased")) {
+        CustomSnackbar.show(title: "Info", message: "Already Purchased");
+      } else {
+        print(e.toString());
+        CustomSnackbar.show(
+          title: "Payment Failed",
+          message: "Something went wrong",
+          isError: true,
+        );
+      }
+    } finally {
+      isSubscribing.value = false;
+    }
+  }
+
+  /// 🔹 Verify SabPaisa Payment on Backend (with retry logic)
+  Future<void> verifySabPaisaPayment(String orderId, String planId) async {
+    isSubscribing.value = true;
+    final apiService = Get.find<BaseApiService>();
+
+    int maxAttempts = 3;
+    int delaySeconds = 2;
+    dynamic verifyResponse;
+    bool isSuccess = false;
+
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        debugPrint(
+          "🔄 SabPaisa verification attempt $attempt of $maxAttempts for Order: $orderId",
+        );
+        verifyResponse = await apiService.getApi(
+          AppConstants.sabPaisaStatus(orderId),
+        );
+
+        if (verifyResponse != null && verifyResponse['success'] == true) {
+          isSuccess = true;
+          break;
+        }
+      } catch (e) {
+        debugPrint("⚠️ Attempt $attempt failed: $e");
+        if (attempt == maxAttempts) {
+          verifyResponse = null;
+        }
+      }
+
+      if (attempt < maxAttempts) {
+        await Future.delayed(Duration(seconds: delaySeconds));
+      }
+    }
+
+    try {
+      if (isSuccess && verifyResponse != null) {
+        final plan = plans.isNotEmpty && selectedPlanIndex.value < plans.length
+            ? plans[selectedPlanIndex.value]
+            : null;
+        final num amount =
+            plan?.price ?? (verifyResponse['data']?['amount'] ?? 0);
+        final planName = plan?.name ?? "VIP Subscription";
+        final transactionId = verifyResponse['data']?['transactionId'] ??
+            verifyResponse['data']?['bankRefNo'] ??
+            verifyResponse['transactionId']?.toString();
+
+        MetaEventService.instance.paymentComplete(
+          planId: planId,
+          amount: amount.toDouble(),
+          currency: 'INR',
+        );
+        FirebaseAnalyticsService.instance.paymentComplete(
+          planId: planId,
+          amount: amount.toDouble(),
+          currency: 'INR',
+        );
+
+        fetchSubscriptionStatus(currentPlatform.value);
+
+        Get.off(
+          () => PaymentSuccessPage(
+            orderId: orderId,
+            amount: amount,
+            planName: planName,
+            paymentMode: "SabPaisa",
+            transactionId: transactionId,
+            timestamp: DateTime.now(),
+          ),
+        );
+      } else {
+        CustomSnackbar.show(
+          title: "Payment Failed",
+          message: verifyResponse?['message'] ??
+              "Payment verification could not be confirmed.",
+          isError: true,
+        );
+      }
+    } catch (e) {
+      debugPrint("SabPaisa verification final failed: $e");
+      CustomSnackbar.show(
+        title: "Payment Failed",
+        message: "Something went wrong during verification",
+        isError: true,
+      );
     } finally {
       isSubscribing.value = false;
     }
@@ -797,7 +1215,7 @@ class PremiumController extends GetxController {
           currency: 'INR',
         );
 
-        fetchSubscriptionStatus();
+        fetchSubscriptionStatus(currentPlatform.value);
 
         // 🎯 Navigate directly to dedicated Real-Time Payment Success Page
         Get.off(
@@ -839,6 +1257,7 @@ class PremiumController extends GetxController {
     final isRazorpayEnabled = gateways['razorpay']?['enabled'] == true;
     final isZaakpayEnabled = gateways['zaakpay']?['enabled'] == true;
     final isHdfcEnabled = gateways['hdfc']?['enabled'] == true;
+    final isSabPaisaEnabled = gateways['sabpaisa']?['enabled'] == true;
 
     Get.bottomSheet(
       Container(
@@ -930,6 +1349,21 @@ class PremiumController extends GetxController {
                 onTap: () {
                   Get.back();
                   startPayment(planId);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            /// Gateway Option: SabPaisa
+            if (isSabPaisaEnabled) ...[
+              _buildGatewayTile(
+                name: gateways['sabpaisa']?['name'] ?? "SabPaisa",
+                description: "UPI, Cards, Net Banking",
+                icon: Icons.account_balance_wallet,
+                gradientColors: [Colors.orange, Colors.deepOrange],
+                onTap: () {
+                  Get.back();
+                  startSabPaisaPayment(planId);
                 },
               ),
               const SizedBox(height: 16),
@@ -1034,7 +1468,7 @@ class PremiumController extends GetxController {
           message: "Redeemed successfully",
           isSuccess: true,
         );
-        fetchSubscriptionStatus();
+        fetchSubscriptionStatus(currentPlatform.value);
       }
     } catch (e) {
       CustomSnackbar.show(

@@ -55,10 +55,10 @@ class NetworkApiService extends BaseApiService {
   }
 
   @override
-  Future<dynamic> getApi(String url) async {
+  Future<dynamic> getApi(String url, {Map<String, String>? headers}) async {
     try {
       debugPrint("GET API CALL => $url");
-      final response = await _dio.get(url);
+      final response = await _dio.get(url, options: Options(headers: headers));
       return returnResponse(response);
     } on DioException catch (e) {
       debugPrint("GET API ERROR => ${e.message}");
@@ -67,12 +67,13 @@ class NetworkApiService extends BaseApiService {
   }
 
   @override
-  Future<dynamic> postApi(String url, dynamic data) async {
+  Future<dynamic> postApi(String url, dynamic data,
+      {Map<String, String>? headers}) async {
     try {
       debugPrint("POST API CALL => $url");
       debugPrint("POST DATA => $data");
 
-      final response = await _dio.post(url, data: data);
+      final response = await _dio.post(url, data: data, options: Options(headers: headers));
       return returnResponse(response);
     } on DioException catch (e) {
       debugPrint("POST API ERROR => ${e.message}");
@@ -81,26 +82,28 @@ class NetworkApiService extends BaseApiService {
   }
 
   @override
-  Future<dynamic> pacthApi(String url, dynamic data) async {
+  Future<dynamic> pacthApi(String url, dynamic data,
+      {Map<String, String>? headers}) async {
     try {
-      debugPrint("POST API CALL => $url");
-      debugPrint("POST DATA => $data");
+      debugPrint("PATCH API CALL => $url");
+      debugPrint("PATCH DATA => $data");
 
-      final response = await _dio.patch(url, data: data);
+      final response = await _dio.patch(url, data: data, options: Options(headers: headers));
       return returnResponse(response);
     } on DioException catch (e) {
-      debugPrint("POST API ERROR => ${e.message}");
+      debugPrint("PATCH API ERROR => ${e.message}");
       throw _handleDioError(e);
     }
   }
 
   @override
-  Future<dynamic> putApi(String url, dynamic data) async {
+  Future<dynamic> putApi(String url, dynamic data,
+      {Map<String, String>? headers}) async {
     try {
       debugPrint("PUT API CALL => $url");
       debugPrint("PUT DATA => $data");
 
-      final response = await _dio.put(url, data: data);
+      final response = await _dio.put(url, data: data, options: Options(headers: headers));
       return returnResponse(response);
     } on DioException catch (e) {
       debugPrint("PUT API ERROR => ${e.message}");
@@ -109,11 +112,12 @@ class NetworkApiService extends BaseApiService {
   }
 
   @override
-  Future<dynamic> deleteApi(String url, dynamic data) async {
+  Future<dynamic> deleteApi(String url, dynamic data,
+      {Map<String, String>? headers}) async {
     try {
       debugPrint("DELETE API CALL => $url");
 
-      final response = await _dio.delete(url, data: data);
+      final response = await _dio.delete(url, data: data, options: Options(headers: headers));
       return returnResponse(response);
     } on DioException catch (e) {
       debugPrint("DELETE API ERROR => ${e.message}");

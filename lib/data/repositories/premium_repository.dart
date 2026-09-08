@@ -6,21 +6,29 @@ class PremiumRepository {
 
   PremiumRepository(this.apiProvider);
 
-  Future<dynamic> getPlans() async {
+  Future<dynamic> getPlans({String platform = 'hinge'}) async {
     try {
-      final response = await apiProvider.getApi(AppConstants.planList);
+      String url = AppConstants.planList;
+      if (platform == 'website') {
+        url += "?platform=website";
+      }
+      final response = await apiProvider.getApi(url);
       return response;
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<dynamic> subscribeToPlan(String planId, {String? promoCode}) async {
+  Future<dynamic> subscribeToPlan(String planId, {String? promoCode, String platform = 'hinge'}) async {
     try {
-      final Map<String, dynamic> data = {"planId": planId};
+      final Map<String, dynamic> data = {
+        "planId": planId,
+        "platform": platform,
+      };
       if (promoCode != null && promoCode.isNotEmpty) {
         data["promoCode"] = promoCode;
       }
+      
       final response = await apiProvider.postApi(
         AppConstants.buyPlan,
         data,
@@ -31,9 +39,14 @@ class PremiumRepository {
     }
   }
 
-  Future<dynamic> getSubscriptionStatus() async {
+  Future<dynamic> getSubscriptionStatus({String platform = 'hinge'}) async {
     try {
-      final response = await apiProvider.getApi(AppConstants.planCheck);
+      String url = AppConstants.planCheck;
+      if (platform == 'website') {
+        url += "?platform=website";
+      }
+
+      final response = await apiProvider.getApi(url);
       return response;
     } catch (e) {
       rethrow;
