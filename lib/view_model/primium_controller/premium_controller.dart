@@ -63,6 +63,8 @@ class PremiumController extends GetxController {
       currentPlatform.value == "website" ? webSubscriptionData : appSubscriptionData;
 
   var isLoadingStatus = false.obs;
+  var isLoadingGateways = false.obs;
+  var paymentGateways = Rxn<Map<String, dynamic>>();
 
   // ✅ Helper to check if ANY plan is active for current platform
   bool get hasActiveSubscription =>
@@ -80,6 +82,7 @@ class PremiumController extends GetxController {
 
     // Fetch plans for current platform only
     fetchAllPlans();
+    fetchPaymentGateways();
 
     // Fetch status if logged in
     ever(isUserLoggedIn, (bool loggedIn) {
@@ -122,6 +125,21 @@ class PremiumController extends GetxController {
       }
     } catch (e) {
       print("Error fetching $platform plans: $e");
+    }
+  }
+
+  Future<void> fetchPaymentGateways() async {
+    try {
+      isLoadingGateways.value = true;
+      final apiService = Get.find<BaseApiService>();
+      final response = await apiService.getApi(AppConstants.paymentGateways);
+      if (response != null && response['success'] == true) {
+        paymentGateways.value = response['gateways'];
+      }
+    } catch (e) {
+      print("Error fetching gateways: $e");
+    } finally {
+      isLoadingGateways.value = false;
     }
   }
 
@@ -292,18 +310,13 @@ class PremiumController extends GetxController {
       var amount = plans[selectedPlanIndex.value].price;
 
       // 2. Verify Payment on Backend
-      final String verifyUrl = currentPlatform.value == "website"
-          ? AppConstants.verifyPaymentWebsite
-          : AppConstants.verifyPayment;
-
       final verifyResponse = await apiService.postApi(
-        verifyUrl,
+        AppConstants.verifyPayment,
         {
           "razorpay_order_id": orderId,
           "razorpay_payment_id": paymentId,
           "razorpay_signature": signature,
           "planId": planId,
-          "platform": currentPlatform.value,
         },
       );
 
@@ -421,37 +434,25 @@ class PremiumController extends GetxController {
     if (discountedPrice.value > 0) {
       try {
         isSubscribing.value = true;
-        final apiService = Get.find<BaseApiService>();
-        final response = await apiService.getApi(AppConstants.paymentGateways);
+
+        // If gateways are not loaded, try fetching again
+        if (paymentGateways.value == null) {
+          await fetchPaymentGateways();
+        }
 
         isSubscribing.value = false;
 
-        if (response != null && response['success'] == true) {
-          final gateways = response['gateways'] as Map<String, dynamic>? ?? {};
-          final isRazorpayEnabled = gateways['razorpay']?['enabled'] == true;
-          final isZaakpayEnabled = gateways['zaakpay']?['enabled'] == true;
-          final isHdfcEnabled = gateways['hdfc']?['enabled'] == true;
-          final isSabPaisaEnabled = gateways['sabpaisa']?['enabled'] == true;
-
+        if (paymentGateways.value != null) {
+          final gateways = paymentGateways.value!;
+          
           final enabledGateways = [];
-          if (isRazorpayEnabled) enabledGateways.add('razorpay');
-          if (isZaakpayEnabled) enabledGateways.add('zaakpay');
-          if (isHdfcEnabled) enabledGateways.add('hdfc');
-          if (isSabPaisaEnabled) enabledGateways.add('sabpaisa');
+          if (gateways['razorpay']?['enabled'] == true) enabledGateways.add('razorpay');
+          if (gateways['zaakpay']?['enabled'] == true) enabledGateways.add('zaakpay');
+          if (gateways['hdfc']?['enabled'] == true) enabledGateways.add('hdfc');
+          if (gateways['sabpaisa']?['enabled'] == true) enabledGateways.add('sabpaisa');
 
-          if (enabledGateways.length > 1) {
+          if (enabledGateways.isNotEmpty) {
             _showGatewaySelectionBottomSheet(planId, gateways: gateways);
-          } else if (enabledGateways.length == 1) {
-            final activeGateway = enabledGateways.first;
-            if (activeGateway == 'zaakpay') {
-              startZaakpayPayment(planId);
-            } else if (activeGateway == 'hdfc') {
-              startHdfcPayment(planId);
-            } else if (activeGateway == 'sabpaisa') {
-              startSabPaisaPayment(planId);
-            } else {
-              startPayment(planId);
-            }
           } else {
             CustomSnackbar.show(
               title: "Error",
@@ -460,13 +461,20 @@ class PremiumController extends GetxController {
             );
           }
         } else {
-          // Fallback to Razorpay if API returns error
-          startPayment(planId);
+          // Fallback to Razorpay or show error
+          CustomSnackbar.show(
+            title: "Error",
+            message: "Unable to load payment methods. Please try again.",
+            isError: true,
+          );
         }
       } catch (e) {
         isSubscribing.value = false;
-        // Fallback to Razorpay if API call fails
-        startPayment(planId);
+        CustomSnackbar.show(
+          title: "Error",
+          message: "Something went wrong while fetching payment methods",
+          isError: true,
+        );
       }
     } else {
       try {
@@ -784,19 +792,9 @@ class PremiumController extends GetxController {
       isSubscribing.value = true;
       final apiService = Get.find<BaseApiService>();
 
-      // Prepare request body with promo code if applied
-      String phone = _authController.userData.value?['phone'] ?? '';
-      phone = phone.replaceAll(RegExp(r'\D'), '');
-      if (phone.length > 10) {
-        phone = phone.substring(phone.length - 10);
-      }
-
+      // Prepare request body (Strictly planId and promoCode as per spec for HDFC)
       Map<String, dynamic> body = {
         "planId": planId,
-        "phone": phone,
-        "email": _authController.userData.value?['email'] ?? '',
-        "name": _authController.userData.value?['name'] ?? '',
-        "platform": currentPlatform.value,
       };
       if (isPromoApplied.value) {
         body["promoCode"] = appliedPromoCode.value;
@@ -1263,12 +1261,12 @@ class PremiumController extends GetxController {
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         decoration: BoxDecoration(
-          color: Colors.grey[950],
+          color: const Color(0xFF0F0F15), // Solid dark background
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
           boxShadow: [
             BoxShadow(
-              color: Colors.pinkAccent.withOpacity(0.1),
+              color: Colors.black.withOpacity(0.5),
               blurRadius: 20,
               spreadRadius: 5,
             ),
@@ -1309,10 +1307,25 @@ class PremiumController extends GetxController {
             ),
             const SizedBox(height: 24),
 
+            /// Gateway Option: Razorpay
+            if (isRazorpayEnabled) ...[
+              _buildGatewayTile(
+                name: gateways['razorpay']?['name'] ?? "Razorpay",
+                description: "UPI, Cards, Wallets & Net Banking",
+                icon: Icons.payment,
+                gradientColors: [Colors.blue, Colors.indigoAccent],
+                onTap: () {
+                  Get.back();
+                  startPayment(planId);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+
             /// Gateway Option: HDFC Bank (SmartGateway)
             if (isHdfcEnabled) ...[
               _buildGatewayTile(
-                name: "HDFC Bank (SmartGateway)",
+                name: gateways['hdfc']?['name'] ?? "HDFC Bank (SmartGateway)",
                 description: "Powered by HDFC SmartGateway",
                 icon: Icons.account_balance,
                 gradientColors: [Colors.blue[700]!, Colors.tealAccent],
@@ -1327,28 +1340,13 @@ class PremiumController extends GetxController {
             /// Gateway Option: Zaakpay
             if (isZaakpayEnabled) ...[
               _buildGatewayTile(
-                name: "Zaakpay",
+                name: gateways['zaakpay']?['name'] ?? "Zaakpay",
                 description: "Cards, Net Banking, Wallets",
                 icon: Icons.security,
                 gradientColors: [Colors.deepPurple, Colors.purpleAccent],
                 onTap: () {
                   Get.back();
                   startZaakpayPayment(planId);
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            /// Gateway Option: Razorpay
-            if (isRazorpayEnabled) ...[
-              _buildGatewayTile(
-                name: "Razorpay",
-                description: "UPI, Cards, Wallets & Net Banking",
-                icon: Icons.payment,
-                gradientColors: [Colors.blue, Colors.indigoAccent],
-                onTap: () {
-                  Get.back();
-                  startPayment(planId);
                 },
               ),
               const SizedBox(height: 16),
@@ -1373,6 +1371,9 @@ class PremiumController extends GetxController {
       ),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.7), // Dim the background
+      enterBottomSheetDuration: const Duration(milliseconds: 300),
+      exitBottomSheetDuration: const Duration(milliseconds: 300),
     );
   }
 

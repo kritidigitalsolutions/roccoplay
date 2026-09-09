@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import '../../app/theme/app_colors.dart';
+import '../../utils/custom_snackbar.dart';
 
 class PaymentWebViewPage extends StatefulWidget {
   final String paymentUrl;
@@ -31,49 +33,82 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.white)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onProgress: (int progress) {
-            if (mounted) {
-              setState(() {
-                _loadingProgress = progress / 100.0;
-              });
-            }
-          },
-          onPageStarted: (String url) {
-            debugPrint("🔍 WebView Page Started: $url");
-            _checkRedirect(url);
-          },
-          onPageFinished: (String url) {
-            _checkRedirect(url);
-          },
-          onNavigationRequest: (NavigationRequest request) async {
-            debugPrint("🔍 WebView Navigation Request: ${request.url}");
-            if (_checkRedirect(request.url)) {
-              return NavigationDecision.prevent;
-            }
+      ..setBackgroundColor(Colors.white);
 
-            // Handle UPI and third-party app schemes (upi://, intent://, tez://, phonepe://, paytmmp://, etc.)
-            if (!request.url.startsWith('http://') &&
-                !request.url.startsWith('https://')) {
-              try {
-                final uri = Uri.parse(request.url);
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } else {
-                  debugPrint("Cannot launch URL scheme: ${request.url}");
-                }
-              } catch (e) {
-                debugPrint("Error launching external app: $e");
-              }
-              return NavigationDecision.prevent;
-            }
+    // Bypass SSL for HDFC UAT domain on Android
+    if (_controller.platform is AndroidWebViewController) {
+      final androidController = _controller.platform as AndroidWebViewController;
+      androidController.setUserAgent("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.181 Mobile Safari/537.36");
+    }
 
-            return NavigationDecision.navigate;
-          },
-        ),
-      );
+    final navigationDelegate = NavigationDelegate(
+      onProgress: (int progress) {
+        if (mounted) {
+          setState(() {
+            _loadingProgress = progress / 100.0;
+          });
+        }
+      },
+      onPageStarted: (String url) {
+        debugPrint("🔍 WebView Page Started: $url");
+        _checkRedirect(url);
+      },
+      onPageFinished: (String url) {
+        _checkRedirect(url);
+      },
+      onWebResourceError: (WebResourceError error) {
+        debugPrint("❌ WebView Error: ${error.description}");
+        debugPrint("❌ WebView Error Code: ${error.errorCode}");
+        debugPrint("❌ WebView Error Type: ${error.errorType}");
+        
+        // Show error to user
+        CustomSnackbar.show(
+          title: "Connection Error",
+          message: "Failed to load payment page: ${error.description}",
+          isError: true,
+        );
+      },
+      onNavigationRequest: (NavigationRequest request) async {
+        debugPrint("🔍 WebView Navigation Request: ${request.url}");
+        if (_checkRedirect(request.url)) {
+          return NavigationDecision.prevent;
+        }
+
+        // Handle UPI and third-party app schemes (upi://, intent://, tez://, phonepe://, paytmmp://, etc.)
+        if (!request.url.startsWith('http://') &&
+            !request.url.startsWith('https://')) {
+          try {
+            final uri = Uri.parse(request.url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } else {
+              debugPrint("Cannot launch URL scheme: ${request.url}");
+            }
+          } catch (e) {
+            debugPrint("Error launching external app: $e");
+          }
+          return NavigationDecision.prevent;
+        }
+
+        return NavigationDecision.navigate;
+      },
+    );
+
+    _controller.setNavigationDelegate(navigationDelegate);
+
+    // Bypass SSL for HDFC UAT domain on Android
+    if (navigationDelegate.platform is AndroidNavigationDelegate) {
+      (navigationDelegate.platform as AndroidNavigationDelegate).setOnSSlAuthError((error) {
+        final androidError = error as AndroidSslAuthError;
+        debugPrint("⚠️ SSL Error for URL: ${androidError.url}");
+        if (androidError.url.contains("hdfcuat.bank.in")) {
+          debugPrint("✅ Bypassing SSL for HDFC UAT domain");
+          androidError.proceed();
+        } else {
+          androidError.cancel();
+        }
+      });
+    }
 
     _loadPayment();
   }
