@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:roccoplay/utils/helper/ad_helper.dart';
+import 'web_ad_view.dart';
 
 class BannerAdWidget extends StatefulWidget {
   const BannerAdWidget({super.key});
@@ -78,6 +79,13 @@ class _BannerAdWidgetState extends State<BannerAdWidget> with AutomaticKeepAlive
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    if (kIsWeb) {
+      return const WebAdSenseView(
+        adClient: 'ca-pub-4529616898084985',
+        adSlot: '9012117988',
+      );
+    }
 
     if (!isLoaded || banner == null) {
       return const SizedBox();

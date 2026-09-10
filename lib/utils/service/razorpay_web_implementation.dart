@@ -1,5 +1,7 @@
-import 'dart:js' as js;
-import 'package:js/js.dart' show allowInterop;
+import 'dart:js_interop';
+
+@JS('checkoutRazorpay')
+external void _checkoutRazorpay(JSAny? options, JSFunction onSuccess, JSFunction onFailure);
 
 class RazorpayWebService {
   static void checkout({
@@ -7,14 +9,14 @@ class RazorpayWebService {
     required Function(String paymentId, String orderId, String signature) onSuccess,
     required Function(String errorMessage) onFailure,
   }) {
-    js.context.callMethod('checkoutRazorpay', [
-      js.JsObject.jsify(options),
-      allowInterop((paymentId, orderId, signature) {
-        onSuccess(paymentId, orderId, signature);
-      }),
-      allowInterop((errorMessage) {
-        onFailure(errorMessage);
-      }),
-    ]);
+    _checkoutRazorpay(
+      options.jsify(),
+      ((JSString paymentId, JSString orderId, JSString signature) {
+        onSuccess(paymentId.toDart, orderId.toDart, signature.toDart);
+      }).toJS,
+      ((JSString errorMessage) {
+        onFailure(errorMessage.toDart);
+      }).toJS,
+    );
   }
 }
