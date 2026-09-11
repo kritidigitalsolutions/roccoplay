@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
@@ -11,7 +10,7 @@ import '../utils/constants.dart';
 class NotificationService extends GetxController {
   static NotificationService get to => Get.find();
 
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  FirebaseMessaging get _firebaseMessaging => FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -21,26 +20,31 @@ class NotificationService extends GetxController {
   String? _currentToken;
 
   Future<void> init() async {
+    if (kIsWeb) return; // 🛑 Firebase and notifications disabled on Web
+    
     print("🚀 NotificationService INIT STARTED");
 
-    // Initialize Firebase if not already initialized
-    await Firebase.initializeApp();
+    try {
+      /// 🔐 Request Permission
+      NotificationSettings settings = await _firebaseMessaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
 
-    /// 🔐 Request Permission
-    NotificationSettings settings = await _firebaseMessaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+      print("🔔 Permission Status: ${settings.authorizationStatus}");
 
-    print("🔔 Permission Status: ${settings.authorizationStatus}");
+      // Get FCM Token
+      _currentToken = await _firebaseMessaging.getToken(
+        vapidKey: kIsWeb ? "YOUR_PUBLIC_VAPID_KEY" : null, // Optional for web
+      );
+      print("FCM Token: $_currentToken");
 
-    // Get FCM Token
-    _currentToken = await _firebaseMessaging.getToken();
-    print("FCM Token: $_currentToken");
-
-    if (_currentToken != null) {
-      uploadToken(); // Use the standardized upload method
+      if (_currentToken != null) {
+        uploadToken(); // Use the standardized upload method
+      }
+    } catch (e) {
+      print("❌ Notification Service Init Error: $e");
     }
 
     // Listen for token refresh

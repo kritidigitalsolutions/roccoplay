@@ -6,7 +6,7 @@ class FirebaseAnalyticsService {
 
   static final FirebaseAnalyticsService instance = FirebaseAnalyticsService._();
 
-  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+  FirebaseAnalytics get _analytics => FirebaseAnalytics.instance;
 
   /// Turn this off before release builds if you don't want console noise.
   static const bool _debugLogging = true;
@@ -26,6 +26,7 @@ class FirebaseAnalyticsService {
 
   /// Firebase Event: App activated / opened
   Future<void> activateApp() async {
+    if (kIsWeb) return;
     try {
       await _analytics.logAppOpen();
       _log('app_open');
@@ -38,6 +39,7 @@ class FirebaseAnalyticsService {
 
   /// Firebase Event: Login
   Future<void> login({String method = "mobile"}) async {
+    if (kIsWeb) return;
     try {
       await _analytics.logLogin(loginMethod: method);
       _log('login', params: {'method': method});
@@ -48,6 +50,7 @@ class FirebaseAnalyticsService {
 
   /// Firebase Event: Registration / Sign Up
   Future<void> register({String method = "mobile"}) async {
+    if (kIsWeb) return;
     try {
       await _analytics.logSignUp(signUpMethod: method);
       _log('sign_up', params: {'method': method});
@@ -58,6 +61,7 @@ class FirebaseAnalyticsService {
 
   /// Firebase Event: Logout (custom event)
   Future<void> logout() async {
+    if (kIsWeb) return;
     try {
       await _analytics.logEvent(name: "logout");
       _log('logout');
@@ -74,6 +78,7 @@ class FirebaseAnalyticsService {
     required int amount,
     required String currency,
   }) async {
+    if (kIsWeb) return;
     try {
       await _analytics.logBeginCheckout(
         value: amount.toDouble(),
@@ -102,6 +107,7 @@ class FirebaseAnalyticsService {
     required String currency,
     required String planId,
   }) async {
+    if (kIsWeb) return;
     try {
       await _analytics.logPurchase(
         value: amount,
@@ -132,6 +138,7 @@ class FirebaseAnalyticsService {
     required String contentId,
     required String contentName,
   }) async {
+    if (kIsWeb) return;
     try {
       await _analytics.logSelectContent(
         contentType: "video",
@@ -155,6 +162,7 @@ class FirebaseAnalyticsService {
     required String contentId,
     required String contentName,
   }) async {
+    if (kIsWeb) return;
     try {
       await _analytics.logEvent(
         name: "download",
@@ -174,6 +182,7 @@ class FirebaseAnalyticsService {
     required String contentId,
     required String contentName,
   }) async {
+    if (kIsWeb) return;
     try {
       await _analytics.logEvent(
         name: "liked",

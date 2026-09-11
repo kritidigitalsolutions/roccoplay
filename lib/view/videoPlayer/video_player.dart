@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
@@ -225,10 +226,11 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
                     ),
                   ),
                   
-                  /// Transparent Layer to catch clicks on Web specifically
-                  Positioned.fill(
-                    child: Container(color: Colors.transparent),
-                  ),
+                  /// Transparent Layer to catch clicks on Mobile specifically (removed from Web)
+                  if (!kIsWeb)
+                    Positioned.fill(
+                      child: Container(color: Colors.transparent),
+                    ),
 
                   /// 🔒 LOCK BUTTON
                 Positioned(

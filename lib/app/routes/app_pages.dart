@@ -4,10 +4,7 @@ import '../../view/auth/signInPage.dart';
 import '../../view/homePages/mainHomepage.dart';
 import '../../view/splash/splashScreen.dart';
 import '../../view/dramaDetails/dramaDetailsPage.dart';
-import '../../view/premium/goPremium.dart';
 import '../../view/profile/account_setting.dart';
-import '../../view/navbar/downloads.dart';
-import '../../view/search_pages/searchPage.dart';
 import '../../view/profile/watchlist.dart';
 import '../../view/dramaDetails/cast_crewPage.dart';
 import '../../view/notifications/notification_page.dart';
@@ -28,6 +25,10 @@ import 'app_routes.dart';
 class AppPages {
   static final pages = [
     GetPage(name: AppRoutes.home, page: () => const MainHomePage()),
+    GetPage(name: AppRoutes.search, page: () => const MainHomePage()),
+    GetPage(name: AppRoutes.goPremium, page: () => const MainHomePage()),
+    GetPage(name: AppRoutes.downloads, page: () => const MainHomePage()),
+    GetPage(name: AppRoutes.profile, page: () => const MainHomePage()),
     GetPage(name: AppRoutes.splash, page: () => const SplashScreen()),
     GetPage(name: AppRoutes.signIn, page: () => const SignInPage()),
     GetPage(
@@ -41,10 +42,7 @@ class AppPages {
         content: Get.arguments,
       ),
     ),
-    GetPage(name: AppRoutes.goPremium, page: () => const GoPremiumPage()),
     GetPage(name: AppRoutes.accountSetting, page: () => const AccountSettingsPage()),
-    GetPage(name: AppRoutes.downloads, page: () => const DownloadsPage()),
-    GetPage(name: AppRoutes.search, page: () => const SearchPage()),
     GetPage(name: AppRoutes.watchList, page: () => const WatchlistPage()),
     GetPage(
       name: AppRoutes.castDetails,

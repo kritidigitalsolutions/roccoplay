@@ -35,7 +35,14 @@ class NetworkApiService extends BaseApiService {
           return handler.next(response);
         },
         onError: (DioException e, handler) {
-          debugPrint("❌ ERROR [${e.response?.statusCode}] => ${e.message}");
+          final statusCode = e.response?.statusCode;
+          final isProfileRequest = e.requestOptions.uri.path.contains('user/profile');
+
+          if (statusCode == 401 && isProfileRequest) {
+            debugPrint("ℹ️ Unauthorized (Expected): User is not logged in");
+          } else {
+            debugPrint("❌ ERROR [$statusCode] => ${e.message}");
+          }
           return handler.next(e);
         },
       ),

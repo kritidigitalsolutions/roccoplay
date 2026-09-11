@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:get/get.dart';
@@ -14,6 +15,8 @@ import 'package:roccoplay/utils/service/meta_event_service.dart';
 import 'package:roccoplay/utils/service/firebase_analytics_service.dart';
 import 'package:roccoplay/view_model/like_dislike_controller/like_dislike_controller.dart';
 import 'package:roccoplay/view_model/watchlist_controller/watchlist_controller.dart';
+
+import 'package:roccoplay/view_model/home_controller/home_controller.dart';
 
 import 'app/routes/app_routes.dart';
 import 'app/theme/app_colors.dart';
@@ -53,21 +56,10 @@ Future<void> main() async {
   }
 
   ///  Firebase Init
-  if (kIsWeb) {
-    // TODO: User must provide Web Firebase Options here if not using flutterfire configure
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: "AIzaSyBzFeViX8VMVO_p4xsvdOT__d2TEkHz1O4",
-        appId: "1:930297722663:web:your_web_app_id", // Placeholder
-        messagingSenderId: "930297722663",
-        projectId: "roccoplay",
-        storageBucket: "roccoplay.firebasestorage.app",
-      ),
-    );
-  } else {
+  if (!kIsWeb) {
     await Firebase.initializeApp();
+    await FirebaseAnalyticsService.instance.activateApp();
   }
-  await FirebaseAnalyticsService.instance.activateApp();
 
   ///  Background Listener
   if (!kIsWeb) {
@@ -149,6 +141,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
+      routingCallback: (routing) {
+        if (routing != null && Get.isRegistered<HomeController>()) {
+          // Use post-frame to ensure synchronization happens after route is fully settled
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            Get.find<HomeController>().updateIndexFromRoute();
+          });
+        }
+      },
       darkTheme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: AppColors.background,
         appBarTheme: const AppBarTheme(

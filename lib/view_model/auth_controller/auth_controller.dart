@@ -170,6 +170,7 @@ class AuthController extends GetxController {
   }
 
   Future<void> getProfile() async {
+    if (!isLoggedIn.value) return; // 🛑 Don't fetch if not logged in
     try {
       final response = await repository.getProfile();
       if (response != null && response['user'] != null) {
@@ -177,7 +178,10 @@ class AuthController extends GetxController {
         await storage.write('user_data', userData.value);
       }
     } catch (e) {
-      print("❌ Error fetching profile: $e");
+      // Silencing noise for expected unauthorized errors
+      if (!e.toString().contains("Unauthorized")) {
+        print("❌ Error fetching profile: $e");
+      }
     }
   }
 

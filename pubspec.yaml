@@ -9,7 +9,6 @@ environment:
 
 
 dependencies:
-  better_player_plus: ^1.0.8
   path_provider: ^2.1.2
   permission_handler: ^11.3.0
   intl: ^0.20.2

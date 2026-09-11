@@ -34,12 +34,16 @@ Widget getWebAdView(String adClient, String adSlot) {
 
       // Use a MutationObserver or a simple delay to ensure the ins is in DOM before push
       html.window.animationFrame.then((_) {
-        try {
-          // Trigger the push using dart:js context
-          // This is the safest way to execute the push command on web
-          js.context.callMethod('eval', ['(adsbygoogle = window.adsbygoogle || []).push({});']);
-        } catch (e) {
-          print('AdSense push error: $e');
+        // Only push if the element is in the DOM and doesn't have an ad already
+        if (ins.dataset['adStatus'] != 'filled') {
+          try {
+            js.context.callMethod('eval', [
+              '(adsbygoogle = window.adsbygoogle || []).push({});'
+            ]);
+            ins.dataset['adStatus'] = 'filled'; // Mark as filled
+          } catch (e) {
+            print('AdSense push error: $e');
+          }
         }
       });
 

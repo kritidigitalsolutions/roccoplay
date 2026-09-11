@@ -21,9 +21,9 @@ class CustomBottomNavbar extends StatelessWidget {
     double width = MediaQuery.of(context).size.width;
     double height = MediaQuery.of(context).size.height;
 
-    double navHeight = height * 0.09;
-    double iconSize = width * 0.055;
-    double fontSize = width * 0.03;
+    double navHeight = (height * 0.09).clamp(65.0, 100.0);
+    double iconSize = (width * 0.055).clamp(20.0, 30.0);
+    double fontSize = (width * 0.03).clamp(10.0, 14.0);
 
     return SafeArea(
       child: Padding(
@@ -89,7 +89,7 @@ class CustomBottomNavbar extends StatelessWidget {
       onTap: () => onItemTapped(index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.buttonColor
@@ -107,6 +107,8 @@ class CustomBottomNavbar extends StatelessWidget {
             const SizedBox(height: 3),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: AppColors.white,
                 fontSize: fontSize,

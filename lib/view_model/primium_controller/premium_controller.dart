@@ -19,7 +19,7 @@ import '../../view/premium/payment_success_page.dart';
 class PremiumController extends GetxController {
   late final PremiumRepository _repository;
   final AuthController _authController = Get.find<AuthController>();
-  late Razorpay _razorpay;
+  Razorpay? _razorpay;
 
   var selectedPlanIndex = 0.obs;
   // Use AuthController's isLoggedIn status instead of local copy
@@ -75,10 +75,13 @@ class PremiumController extends GetxController {
   void onInit() {
     super.onInit();
     _repository = PremiumRepository(Get.find<BaseApiService>());
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+    
+    if (!kIsWeb) {
+      _razorpay = Razorpay();
+      _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+      _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+      _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+    }
 
     // Fetch plans for current platform only
     fetchAllPlans();
@@ -268,7 +271,7 @@ class PremiumController extends GetxController {
             },
           );
         } else {
-          _razorpay.open(options);
+          _razorpay?.open(options);
         }
       }
     } catch (e) {
@@ -1538,6 +1541,12 @@ class PremiumController extends GetxController {
   //     ),
   //   );
   // }
+
+  @override
+  void onClose() {
+    _razorpay?.clear();
+    super.onClose();
+  }
 
   String formatDate(String? dateStr) {
     if (dateStr == null) return "N/A";

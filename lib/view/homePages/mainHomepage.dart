@@ -22,29 +22,48 @@ import '../../view_model/auth_controller/auth_controller.dart';
 import '../../utils/notification_service.dart';
 import '../notifications/notification_page.dart';
 
-class MainHomePage extends StatelessWidget {
+class MainHomePage extends StatefulWidget {
   const MainHomePage({super.key});
 
   @override
+  State<MainHomePage> createState() => _MainHomePageState();
+}
+
+class _MainHomePageState extends State<MainHomePage> {
+  late final HomeController controller;
+  late final AuthController authController;
+  late final PremiumController premiumController;
+  late final ContentController contentController;
+
+  @override
+  void initState() {
+    super.initState();
+    contentController = Get.put(ContentController());
+    controller = Get.put(HomeController());
+    authController = Get.find<AuthController>();
+    premiumController = Get.find<PremiumController>();
+    
+    // ✅ Sync index with initial route
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.updateIndexFromRoute();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final ContentController contentController = Get.put(ContentController());
-    final HomeController controller = Get.put(HomeController());
-    final AuthController authController = Get.find<AuthController>();
-    final PremiumController premiumController = Get.find<PremiumController>();
     final notificationService = NotificationService.to;
 
     return LayoutBuilder(builder: (context, constraints) {
       bool isWeb = constraints.maxWidth > 800;
 
       return PopScope(
-        canPop: false, // ❌ direct pop disable
-        onPopInvoked: (didPop) {
-          final controller = Get.find<HomeController>();
+        canPop: controller.selectedIndex.value == 0, // Allow pop only if on Home tab
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
 
+          // If not on Home tab, go back to Home tab
           if (controller.selectedIndex.value != 0) {
-            controller.selectedIndex.value = 0; // ✅ Home pe le jao
-          } else {
-            Navigator.of(context).pop(); // ✅ App exit
+            controller.onItemTapped(0);
           }
         },
         child: Scaffold(
@@ -148,47 +167,42 @@ class MainHomePage extends StatelessWidget {
     PremiumController premiumController,
     NotificationService notificationService,
   ) {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.6),
-            border: const Border(bottom: BorderSide(color: Colors.white10, width: 1)),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.9), // Slightly more opaque since no blur
+        border: const Border(bottom: BorderSide(color: Colors.white10, width: 1)),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => controller.selectedIndex.value = 0,
+            child: Image.asset('assets/images/roccoplay_logo.png', height: 45),
           ),
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: () => controller.selectedIndex.value = 0,
-                child: Image.asset('assets/images/roccoplay_logo.png', height: 45),
+          const Spacer(),
+          _webSearchIcon(controller),
+          const SizedBox(width: 15),
+          _notificationIcon(notificationService),
+          const SizedBox(width: 20),
+          _premiumButton(premiumController),
+          const SizedBox(width: 20),
+          Obx(() {
+            bool isLoggedIn = authController.isLoggedIn.value;
+            return IconButton(
+              icon: Icon(
+                isLoggedIn ? Icons.account_circle : Icons.login,
+                color: Colors.white,
               ),
-              const Spacer(),
-              _webSearchIcon(controller),
-              const SizedBox(width: 15),
-              _notificationIcon(notificationService),
-              const SizedBox(width: 20),
-              _premiumButton(premiumController),
-              const SizedBox(width: 20),
-                  Obx(() {
-                    bool isLoggedIn = authController.isLoggedIn.value;
-                    return IconButton(
-                      icon: Icon(
-                        isLoggedIn ? Icons.account_circle : Icons.login,
-                        color: Colors.white,
-                      ),
-                      onPressed: () {
-                        if (isLoggedIn) {
-                          controller.selectedIndex.value = 4; // Profile
-                        } else {
-                          Get.toNamed(AppRoutes.signIn);
-                        }
-                      },
-                    );
-                  }),
-            ],
-          ),
-        ),
+              onPressed: () {
+                if (isLoggedIn) {
+                  controller.selectedIndex.value = 4; // Profile
+                } else {
+                  Get.toNamed(AppRoutes.signIn);
+                }
+              },
+            );
+          }),
+        ],
       ),
     );
   }
@@ -346,14 +360,16 @@ class MainHomePage extends StatelessWidget {
                       children: [
                         /// 1. 🔥 TOP SLIDER (Trending)
                         if (contentController.trendingContent.isNotEmpty)
-                          Column(
-                            children: [
-                              AutoSlider(
-                                content: contentController.trendingContent,
-                                isSignedIn: authController.isLoggedIn.value,
-                              ),
-                              const SizedBox(height: 25),
-                            ],
+                          RepaintBoundary(
+                            child: Column(
+                              children: [
+                                AutoSlider(
+                                  content: contentController.trendingContent,
+                                  isSignedIn: authController.isLoggedIn.value,
+                                ),
+                                const SizedBox(height: 25),
+                              ],
+                            ),
                           ),
 
                         /// 2. 🔹 OTHER CATEGORIES
@@ -380,29 +396,33 @@ class MainHomePage extends StatelessWidget {
 
                               Widget categoryWidget;
                               if (category.slug == 'top10') {
-                                categoryWidget = Column(
-                                  children: [
-                                    Top10List(
-                                      content: categoryContent,
-                                      isSignedIn:
-                                          authController.isLoggedIn.value,
-                                      isHorizontal: isWeb && (index % 2 == 0),
-                                    ),
-                                    const SizedBox(height: 10),
-                                  ],
+                                categoryWidget = RepaintBoundary(
+                                  child: Column(
+                                    children: [
+                                      Top10List(
+                                        content: categoryContent,
+                                        isSignedIn:
+                                            authController.isLoggedIn.value,
+                                        isHorizontal: isWeb && (index % 2 == 0),
+                                      ),
+                                      const SizedBox(height: 10),
+                                    ],
+                                  ),
                                 );
                               } else {
-                                categoryWidget = Column(
-                                  children: [
-                                    HomeSliderSection(
-                                      title: category.name,
-                                      content: categoryContent,
-                                      isSignedIn:
-                                          authController.isLoggedIn.value,
-                                      isHorizontal: isWeb && (index % 2 == 0),
-                                    ),
-                                    const SizedBox(height: 10),
-                                  ],
+                                categoryWidget = RepaintBoundary(
+                                  child: Column(
+                                    children: [
+                                      HomeSliderSection(
+                                        title: category.name,
+                                        content: categoryContent,
+                                        isSignedIn:
+                                            authController.isLoggedIn.value,
+                                        isHorizontal: isWeb && (index % 2 == 0),
+                                      ),
+                                      const SizedBox(height: 10),
+                                    ],
+                                  ),
                                 );
                               }
 

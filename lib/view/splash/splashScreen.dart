@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
-
-import '../homePages/mainHomepage.dart';
+import '../../app/routes/app_routes.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,10 +28,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (_controller.value.position >= _controller.value.duration &&
           !_controller.value.isPlaying) {
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const MainHomePage()),
-          );
+          Get.offAllNamed(AppRoutes.home);
         }
       }
     });
