@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import '../../utils/app_session.dart';
 import '../exception/app_exception.dart';
@@ -15,6 +17,14 @@ class NetworkApiService extends BaseApiService {
         headers: {"Content-Type": "application/json"},
       ),
     );
+
+    if (!kIsWeb) {
+      (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+        final client = HttpClient();
+        client.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+        return client;
+      };
+    }
 
     /// Interceptor for dynamic token and logging
     _dio.interceptors.add(

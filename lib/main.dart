@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:roccoplay/utils/network_overrides.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -41,6 +43,25 @@ Future<void> main() async {
     usePathUrlStrategy();
   }
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (!kIsWeb) {
+    try {
+      const channel = MethodChannel('com.roccoplay.app/proxy');
+      final Map? proxyDetails = await channel.invokeMethod('getSystemProxy');
+      if (proxyDetails != null && proxyDetails['host'] != null) {
+        final host = proxyDetails['host'];
+        final port = proxyDetails['port'] ?? 8080;
+        AuditNetworkOverrides.proxyStr = "PROXY $host:$port; DIRECT";
+        debugPrint("🌐 System Proxy Detected and Configuration Applied: $host:$port");
+      } else {
+        AuditNetworkOverrides.proxyStr = "DIRECT";
+      }
+    } catch (e) {
+      debugPrint("❌ Error detecting proxy, falling back to DIRECT: $e");
+      AuditNetworkOverrides.proxyStr = "DIRECT";
+    }
+    HttpOverrides.global = AuditNetworkOverrides();
+  }
 
   if (!kIsWeb) {
     await MobileAds.instance.initialize();
