@@ -135,6 +135,41 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
         .replaceAll("'", '&#x27;');
   }
 
+  void _showCancelDialog() {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          "Cancel Payment?",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          "Are you sure you want to cancel the payment process?",
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text(
+              "No",
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              if (Get.isDialogOpen == true) Get.back(); // Close dialog
+              Get.back(result: false); // Close WebView
+            },
+            child: const Text(
+              "Yes, Cancel",
+              style: TextStyle(color: Colors.pinkAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   bool _checkRedirect(String url) {
     if (_isRedirected) return true;
 
@@ -142,6 +177,13 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       return false;
     }
+
+    // Detect failure indicators in the URL
+    final lowerUrl = url.toLowerCase();
+    bool isFailure = lowerUrl.contains('cancel') ||
+        lowerUrl.contains('fail') ||
+        lowerUrl.contains('declined') ||
+        lowerUrl.contains('error');
 
     // Check if the URL contains the callback redirect pattern
     if (url.contains('/payment/zaakpay/callback') ||
@@ -161,7 +203,8 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
         }
         Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted) {
-            Get.back(result: true);
+            // Return false if failure keywords are detected, else true
+            Get.back(result: !isFailure);
           }
         });
       }
@@ -172,108 +215,86 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_isRedirected) return; // Prevent back while processing
+        _showCancelDialog();
+      },
+      child: Scaffold(
         backgroundColor: AppColors.background,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: AppColors.background,
-          statusBarIconBrightness: Brightness.light,
-          statusBarBrightness: Brightness.dark,
-        ),
-        title: const Text(
-          "Secure Payment",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: AppColors.background,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
           ),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () {
-            // Confirm cancellation
-            Get.dialog(
-              AlertDialog(
-                backgroundColor: Colors.grey[900],
-                title: const Text(
-                  "Cancel Payment?",
-                  style: TextStyle(color: Colors.white),
-                ),
-                content: const Text(
-                  "Are you sure you want to cancel the payment process?",
-                  style: TextStyle(color: Colors.white70),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Get.back(),
-                    child: const Text(
-                      "No",
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Get.back(); // Close dialog
-                      Get.back(result: false); // Close WebView
-                    },
-                    child: const Text(
-                      "Yes, Cancel",
-                      style: TextStyle(color: Colors.pinkAccent),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-        bottom: _loadingProgress < 1.0
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(3.0),
-                child: LinearProgressIndicator(
-                  value: _loadingProgress,
-                  backgroundColor: Colors.transparent,
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    Colors.pinkAccent,
-                  ),
-                ),
-              )
-            : null,
-      ),
-      body: Stack(
-        children: [
-          WebViewWidget(controller: _controller),
-          if (_isRedirected)
-            Container(
-              color: Colors.black87,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(color: Colors.pinkAccent),
-                    const SizedBox(height: 20),
-                    const Text(
-                      "Processing Payment...",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "Please do not close this screen or press back.",
-                      style: TextStyle(color: Colors.white54, fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
+          title: const Text(
+            "Secure Payment",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
             ),
-        ],
+          ),
+          centerTitle: true,
+          leading: IconButton(
+            icon: const Icon(Icons.close, color: Colors.white),
+            onPressed: () {
+              if (!_isRedirected) {
+                _showCancelDialog();
+              }
+            },
+          ),
+          bottom: _loadingProgress < 1.0
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(3.0),
+                  child: LinearProgressIndicator(
+                    value: _loadingProgress,
+                    backgroundColor: Colors.transparent,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.pinkAccent,
+                    ),
+                  ),
+                )
+              : null,
+        ),
+        body: Stack(
+          children: [
+            WebViewWidget(controller: _controller),
+            if (_isRedirected)
+              Container(
+                color: Colors.black87,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(color: Colors.pinkAccent),
+                      const SizedBox(height: 20),
+                      const Text(
+                        "Processing Payment...",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Please do not close this screen or press back.",
+                        style: TextStyle(color: Colors.white54, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

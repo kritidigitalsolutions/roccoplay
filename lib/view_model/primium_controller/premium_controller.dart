@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:roccoplay/utils/service/razorpay_web_service.dart';
+import 'package:roccoplay/utils/service/script_loader.dart';
 import 'package:roccoplay/utils/service/meta_event_service.dart';
 import 'package:roccoplay/utils/service/firebase_analytics_service.dart';
 import '../../data/models/response_model/plan_response/plan_model.dart';
@@ -252,6 +253,9 @@ class PremiumController extends GetxController {
         };
 
         if (kIsWeb) {
+          // Load Razorpay script dynamically before checkout
+          await ScriptLoader.loadScript('https://checkout.razorpay.com/v1/checkout.js');
+          
           RazorpayWebService.checkout(
             options: options,
             onSuccess: (paymentId, orderId, signature) {

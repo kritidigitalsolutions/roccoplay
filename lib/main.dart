@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:roccoplay/utils/network_overrides.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,16 @@ import 'view_model/auth_controller/auth_controller.dart';
 import 'view_model/primium_controller/premium_controller.dart';
 import 'widgets/ad_widget/app_open_ad_helper.dart';
 import 'widgets/ad_widget/interstitial_ad_helper.dart';
+
+class MyCustomScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.unknown,
+      };
+}
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -160,6 +171,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
+      scrollBehavior: MyCustomScrollBehavior(),
       routingCallback: (routing) {
         if (routing != null && Get.isRegistered<HomeController>()) {
           // Use post-frame to ensure synchronization happens after route is fully settled

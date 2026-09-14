@@ -106,10 +106,11 @@ class _AutoSliderState extends State<AutoSlider> {
         return Column(
           children: [
             SizedBox(
-              height: sliderHeight,
+              height: sliderHeight + 20, // Add headroom for scale effect
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: null,
+                clipBehavior: Clip.none, // Allow items to overflow their bounds when scaled
                 onPageChanged: (index) => setState(() => currentPage = index),
                 itemBuilder: (context, index) {
                   final item = widget.content[index % widget.content.length];
@@ -121,7 +122,10 @@ class _AutoSliderState extends State<AutoSlider> {
                     builder: (context, value, child) =>
                         Transform.scale(scale: value, child: child),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10, // Add vertical padding for scale headroom
+                      ),
                       child: _AutoSliderHoverItem(
                         item: item,
                         isWeb: isWeb,
