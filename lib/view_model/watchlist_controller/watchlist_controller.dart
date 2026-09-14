@@ -42,7 +42,6 @@ class WatchlistController extends GetxController {
       if (response != null) {
         // Checking for success true or just presence of data
         final List<dynamic> data = response['data'] ?? [];
-        debugPrint("📥 RAW WATCHLIST DATA: $data");
         
         // Filter out content that is not published
         final filteredData = data.where((item) {
@@ -57,10 +56,9 @@ class WatchlistController extends GetxController {
         }).map((e) => e as Map<String, dynamic>).toList();
         
         watchlist.assignAll(filteredData);
-        print("✅ WATCHLIST FETCHED: ${watchlist.length} items");
       }
     } catch (e) {
-      print("❌ Error fetching watchlist: $e");
+      // Error handled silently
     } finally {
       isLoading.value = false;
     }
@@ -96,7 +94,6 @@ class WatchlistController extends GetxController {
         await getWatchlist();
       }
     } catch (e) {
-      print("❌ Add Watchlist Error: $e");
       // Handle the case where it might already be in watchlist (safety check)
       if (e.toString().contains("Already in watchlist")) {
         await getWatchlist(); // Refresh to sync
@@ -131,7 +128,6 @@ class WatchlistController extends GetxController {
         );
       }
     } catch (e) {
-      print("❌ Remove Error: $e");
       CustomSnackbar.show(
         title: "Error",
         message: "Failed to remove from watchlist",
@@ -160,7 +156,6 @@ class WatchlistController extends GetxController {
           await removeFromWatchlist(watchlistId);
         }
       } catch (e) {
-        print("Error finding item to remove: $e");
         // Fallback: if we can't find it locally but isInWatchlist was true, 
         // it might be a sync issue. Let's refresh.
         await getWatchlist();

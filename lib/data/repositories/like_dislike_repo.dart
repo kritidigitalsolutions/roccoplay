@@ -24,7 +24,17 @@ class InteractionRepository {
       return response as Map<String, dynamic>?;
 
     } catch (e) {
-      print("❌ Repo Error: $e");
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getInteractionStats(String contentId) async {
+    try {
+      final response = await apiProvider.getApi(
+        "${AppConstants.interactionStats}/$contentId",
+      );
+      return response;
+    } catch (e) {
       return null;
     }
   }

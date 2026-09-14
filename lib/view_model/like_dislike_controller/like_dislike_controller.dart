@@ -9,6 +9,23 @@ class InteractionController extends GetxController {
   var isDisliked = false.obs;
   var isLoading = false.obs;
 
+  /// 📊 Fetch Interaction Status (Like/Dislike)
+  Future<void> fetchInteractionStatus(String contentId) async {
+    try {
+      final response = await _repo.getInteractionStats(contentId);
+      if (response != null && response['userInteraction'] != null) {
+        final interaction = response['userInteraction'].toString().toLowerCase();
+        isLiked.value = interaction == 'like';
+        isDisliked.value = interaction == 'dislike';
+      } else {
+        isLiked.value = false;
+        isDisliked.value = false;
+      }
+    } catch (e) {
+      // Error handled silently
+    }
+  }
+
   /// 👍 Toggle LIKE
   Future<void> toggleLike({
     required String contentId,
@@ -35,7 +52,7 @@ class InteractionController extends GetxController {
         }
       }
     } catch (e) {
-      print("❌ Like Toggle Error: $e");
+      // Error handled silently
     } finally {
       isLoading.value = false;
     }
@@ -67,7 +84,7 @@ class InteractionController extends GetxController {
         }
       }
     } catch (e) {
-      print("❌ Dislike Toggle Error: $e");
+      // Error handled silently
     } finally {
       isLoading.value = false;
     }

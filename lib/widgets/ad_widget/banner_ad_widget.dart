@@ -39,7 +39,6 @@ class _BannerAdWidgetState extends State<BannerAdWidget> with AutomaticKeepAlive
     _lastLoadTime = now.add(Duration(milliseconds: delayMs));
 
     if (delayMs > 0) {
-      debugPrint("⏳ Throttling banner ad request: delaying by ${delayMs}ms");
       await Future.delayed(Duration(milliseconds: delayMs));
     }
 
@@ -52,7 +51,6 @@ class _BannerAdWidgetState extends State<BannerAdWidget> with AutomaticKeepAlive
 
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          debugPrint("Banner Loaded");
           if (mounted) {
             setState(() {
               isLoaded = true;
@@ -61,7 +59,6 @@ class _BannerAdWidgetState extends State<BannerAdWidget> with AutomaticKeepAlive
         },
 
         onAdFailedToLoad: (ad, error) {
-          debugPrint("Banner Failed: ${error.message}");
           ad.dispose();
           if (mounted) {
             setState(() {
@@ -81,10 +78,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> with AutomaticKeepAlive
     super.build(context);
 
     if (kIsWeb) {
-      return const WebAdSenseView(
-        adClient: 'ca-pub-4529616898084985',
-        adSlot: '9012117988',
-      );
+      return const SizedBox.shrink();
     }
 
     if (!isLoaded || banner == null) {

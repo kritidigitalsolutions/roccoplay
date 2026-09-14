@@ -46,7 +46,7 @@ class HomeController extends GetxController {
         companyInfo.value = response['data'];
       }
     } catch (e) {
-      print("Error fetching company info: $e");
+      // Error handled silently
     } finally {
       isLoadingCompanyInfo.value = false;
     }

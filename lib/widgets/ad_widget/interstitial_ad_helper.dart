@@ -17,14 +17,12 @@ class InterstitialAdHelper {
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
-          debugPrint("✅ Interstitial Ad Loaded");
           _interstitialAd = ad;
           _isLoaded = true;
 
           _interstitialAd!.setImmersiveMode(true); // 👈 sahi naam
         },
         onAdFailedToLoad: (error) {
-          debugPrint("❌ Interstitial Failed: ${error.message}");
           _isLoaded = false;
         },
       ),
@@ -56,7 +54,6 @@ class InterstitialAdHelper {
       );
       _interstitialAd!.show();
     } else {
-      debugPrint("⚠️ Interstitial not ready, loading for next time...");
       loadAd();
       if (onAdClosed != null) onAdClosed();
     }

@@ -14,7 +14,6 @@ class WatchlistRepo {
       );
       return response;
     } catch (e) {
-      print("❌ Get Watchlist Error: $e");
       rethrow;
     }
   }
@@ -30,7 +29,6 @@ class WatchlistRepo {
       );
       return response;
     } catch (e) {
-      print("❌ Add Watchlist Error: $e");
       rethrow;
     }
   }
@@ -44,7 +42,6 @@ class WatchlistRepo {
       );
       return response;
     } catch (e) {
-      print("❌ Remove Watchlist Error: $e");
       rethrow;
     }
   }

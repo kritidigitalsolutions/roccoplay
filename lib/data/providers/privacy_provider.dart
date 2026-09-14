@@ -9,14 +9,11 @@ class PrivacyService {
         Uri.parse(AppConstants.privacyPolicyUrl),
       );
 
-      print("API STATUS: ${response.statusCode}");
-      print("API BODY: ${response.body}");
-
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
     } catch (e) {
-      print("ERROR: $e");
+      // Error handled by returning null
     }
     return null;
   }
@@ -28,14 +25,11 @@ class PrivacyService {
         Uri.parse(AppConstants.termsAndConditionsUrl),
       );
 
-      print("TERMS STATUS: ${response.statusCode}");
-      print("TERMS BODY: ${response.body}");
-
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
     } catch (e) {
-      print("ERROR TERMS: $e");
+      // Error handled by returning null
     }
     return null;
   }
@@ -46,14 +40,11 @@ class PrivacyService {
         Uri.parse(AppConstants.refundPolicy),
       );
 
-      print("REFUND STATUS: ${response.statusCode}");
-      print("REFUND BODY: ${response.body}");
-
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
     } catch (e) {
-      print("ERROR REFUND: $e");
+      // Error handled by returning null
     }
     return null;
   }
@@ -64,16 +55,13 @@ class PrivacyService {
         Uri.parse(AppConstants.helpSupport),
       );
 
-      print("HELP STATUS: ${response.statusCode}");
-      print("HELP BODY: ${response.body}");
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
         return data['helpData'] ?? [];
       }
     } catch (e) {
-      print("ERROR HELP: $e");
+      // Error handled by returning empty list
     }
     return [];
   }
@@ -86,7 +74,7 @@ class PrivacyService {
         return jsonDecode(response.body);
       }
     } catch (e) {
-      print("ERROR SUPPORT NUMBER: $e");
+      // Error handled by returning null
     }
     return null;
   }
@@ -99,7 +87,7 @@ class PrivacyService {
         return jsonDecode(response.body);
       }
     } catch (e) {
-      print("ERROR SUPPORT EMAIL: $e");
+      // Error handled by returning null
     }
     return null;
   }

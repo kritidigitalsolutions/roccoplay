@@ -33,11 +33,8 @@ class ContentController extends GetxController {
       // Filter trending for slider
       trendingContent.assignAll(content.where((c) => (c.isTrending || c.category.contains('trending')) && c.isComingSoon == false).toList());
       
-      // Fetch stats for each item to enable sorting by likes
-      _fetchAllStats();
-      
     } catch (e) {
-      print("Error in ContentController fetchContent: $e");
+      // Error handled silently
     } finally {
       isLoading.value = false;
     }
@@ -49,7 +46,7 @@ class ContentController extends GetxController {
       categories.assignAll(fetchedCategories);
       categories.sort((a, b) => a.priority.compareTo(b.priority));
     } catch (e) {
-      print("Error in ContentController fetchCategories: $e");
+      // Error handled silently
     }
   }
 
@@ -66,7 +63,7 @@ class ContentController extends GetxController {
         contentLikes[contentId] = stats['likes'] ?? 0;
       }
     } catch (e) {
-      print("Error fetching stats for $contentId: $e");
+      // Error handled silently
     }
   }
 }

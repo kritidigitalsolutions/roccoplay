@@ -127,7 +127,7 @@ class PremiumController extends GetxController {
         }
       }
     } catch (e) {
-      print("Error fetching $platform plans: $e");
+      // Error handled silently
     }
   }
 
@@ -140,7 +140,7 @@ class PremiumController extends GetxController {
         paymentGateways.value = response['gateways'];
       }
     } catch (e) {
-      print("Error fetching gateways: $e");
+      // Error handled silently
     } finally {
       isLoadingGateways.value = false;
     }
@@ -181,7 +181,7 @@ class PremiumController extends GetxController {
         }
       }
     } catch (e) {
-      print("Error fetching $platform subscription status: $e");
+      // Error handled silently
     }
   }
 
@@ -280,7 +280,6 @@ class PremiumController extends GetxController {
           errorMsg.contains("already purchased")) {
         CustomSnackbar.show(title: "Info", message: "Already Purchased");
       } else {
-        print(e.toString());
         CustomSnackbar.show(
           title: "Payment Failed",
           message: "Something went wrong",
@@ -632,9 +631,8 @@ class PremiumController extends GetxController {
 
                 params = Map<String, dynamic>.from(params);
                 params['returnUrl'] = returnUrl;
-                debugPrint("🔄 Patched returnUrl for development: $returnUrl");
               } catch (e) {
-                debugPrint("Error patching returnUrl: $e");
+                // Error handled silently
               }
             }
           }
@@ -697,7 +695,6 @@ class PremiumController extends GetxController {
           errorMsg.contains("already purchased")) {
         CustomSnackbar.show(title: "Info", message: "Already Purchased");
       } else {
-        print(e.toString());
         CustomSnackbar.show(
           title: "Payment Failed",
           message: "Something went wrong",
@@ -721,9 +718,6 @@ class PremiumController extends GetxController {
 
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        debugPrint(
-          "🔄 Zaakpay verification attempt $attempt of $maxAttempts for Order: $orderId",
-        );
         verifyResponse = await apiService.getApi(
           AppConstants.zaakpayStatus(orderId),
         );
@@ -733,7 +727,6 @@ class PremiumController extends GetxController {
           break;
         }
       } catch (e) {
-        debugPrint("⚠️ Attempt $attempt failed: $e");
         if (attempt == maxAttempts) {
           verifyResponse = null;
         }
@@ -776,7 +769,6 @@ class PremiumController extends GetxController {
         );
       }
     } catch (e) {
-      print("Zaakpay verification final failed: $e");
       CustomSnackbar.show(
         title: "Payment Failed",
         message: "Something went wrong during verification",
@@ -828,11 +820,8 @@ class PremiumController extends GetxController {
 
                 params = Map<String, dynamic>.from(params);
                 params['returnUrl'] = returnUrl;
-                debugPrint(
-                  "🔄 Patched HDFC returnUrl for development: $returnUrl",
-                );
               } catch (e) {
-                debugPrint("Error patching HDFC returnUrl: $e");
+                // Error handled silently
               }
             }
           }
@@ -895,7 +884,6 @@ class PremiumController extends GetxController {
           errorMsg.contains("already purchased")) {
         CustomSnackbar.show(title: "Info", message: "Already Purchased");
       } else {
-        print(e.toString());
         CustomSnackbar.show(
           title: "Payment Failed",
           message: "Something went wrong",
@@ -1003,7 +991,6 @@ class PremiumController extends GetxController {
           errorMsg.contains("already purchased")) {
         CustomSnackbar.show(title: "Info", message: "Already Purchased");
       } else {
-        print(e.toString());
         CustomSnackbar.show(
           title: "Payment Failed",
           message: "Something went wrong",
@@ -1027,9 +1014,6 @@ class PremiumController extends GetxController {
 
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        debugPrint(
-          "🔄 SabPaisa verification attempt $attempt of $maxAttempts for Order: $orderId",
-        );
         verifyResponse = await apiService.getApi(
           AppConstants.sabPaisaStatus(orderId),
         );
@@ -1039,7 +1023,6 @@ class PremiumController extends GetxController {
           break;
         }
       } catch (e) {
-        debugPrint("⚠️ Attempt $attempt failed: $e");
         if (attempt == maxAttempts) {
           verifyResponse = null;
         }
@@ -1094,7 +1077,6 @@ class PremiumController extends GetxController {
         );
       }
     } catch (e) {
-      debugPrint("SabPaisa verification final failed: $e");
       CustomSnackbar.show(
         title: "Payment Failed",
         message: "Something went wrong during verification",
@@ -1169,9 +1151,6 @@ class PremiumController extends GetxController {
 
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        debugPrint(
-          "🔄 HDFC verification attempt $attempt of $maxAttempts for Order: $orderId",
-        );
         verifyResponse = await apiService.getApi(
           AppConstants.hdfcStatus(orderId),
         );
@@ -1181,7 +1160,6 @@ class PremiumController extends GetxController {
           break;
         }
       } catch (e) {
-        debugPrint("⚠️ Attempt $attempt failed: $e");
         if (attempt == maxAttempts) {
           verifyResponse = null;
         }
@@ -1239,7 +1217,6 @@ class PremiumController extends GetxController {
         );
       }
     } catch (e) {
-      debugPrint("HDFC verification final failed: $e");
       CustomSnackbar.show(
         title: "Payment Failed",
         message: "Something went wrong during verification",

@@ -13,7 +13,6 @@ class InteractionRepository {
       );
       return response;
     } catch (e) {
-      print("❌ Interaction Stats Error: $e");
       return null;
     }
   }

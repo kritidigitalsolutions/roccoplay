@@ -50,12 +50,11 @@ class AuthController extends GetxController {
   void _syncNotificationsAfterLogin() {
     try {
       if (Get.isRegistered<NotificationService>()) {
-        print("🔔 Syncing notifications and FCM token after login...");
         NotificationService.to.uploadToken();
         NotificationService.to.fetchNotifications();
       }
     } catch (e) {
-      print("⚠️ Notification sync failed: $e");
+      // Error handled silently
     }
   }
 
@@ -72,13 +71,12 @@ class AuthController extends GetxController {
   Future<bool> sendOtp(String identifier) async {
     isLoading.value = true;
     try {
-      final response = await repository.sendOtp(identifier);
+      await repository.sendOtp(identifier);
       CustomSnackbar.show(
         title: 'OTP Generated',
         message: 'Your OTP is send Successfully',
         isSuccess: true,
       );
-      print(response);
       return true;
     } catch (e) {
       CustomSnackbar.show(title: 'Error', message: e.toString(), isError: true);
@@ -178,10 +176,7 @@ class AuthController extends GetxController {
         await storage.write('user_data', userData.value);
       }
     } catch (e) {
-      // Silencing noise for expected unauthorized errors
-      if (!e.toString().contains("Unauthorized")) {
-        print("❌ Error fetching profile: $e");
-      }
+      // Error handled silently
     }
   }
 

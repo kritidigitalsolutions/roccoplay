@@ -26,7 +26,6 @@ class ApiProvider extends GetConnect {
       'type': 'phone',
     });
 
-    print("FULL VERIFY RESPONSE => ${res.body}");
     return res;
   }
 
@@ -70,7 +69,6 @@ class ApiProvider extends GetConnect {
 
       return response;
     } catch (e) {
-      print("❌ EXCEPTION IN createProfile Provider: $e");
       return Response(statusCode: 500, statusText: e.toString());
     }
   }

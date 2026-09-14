@@ -22,8 +22,6 @@ class NotificationService extends GetxController {
   Future<void> init() async {
     if (kIsWeb) return; // 🛑 Firebase and notifications disabled on Web
     
-    print("🚀 NotificationService INIT STARTED");
-
     try {
       /// 🔐 Request Permission
       NotificationSettings settings = await _firebaseMessaging.requestPermission(
@@ -32,19 +30,16 @@ class NotificationService extends GetxController {
         sound: true,
       );
 
-      print("🔔 Permission Status: ${settings.authorizationStatus}");
-
       // Get FCM Token
       _currentToken = await _firebaseMessaging.getToken(
         vapidKey: kIsWeb ? "YOUR_PUBLIC_VAPID_KEY" : null, // Optional for web
       );
-      print("FCM Token: $_currentToken");
 
       if (_currentToken != null) {
         uploadToken(); // Use the standardized upload method
       }
     } catch (e) {
-      print("❌ Notification Service Init Error: $e");
+      // Error handled silently
     }
 
     // Listen for token refresh
@@ -64,14 +59,12 @@ class NotificationService extends GetxController {
         initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
           // Handle notification click here
-          print("Notification clicked: ${response.payload}");
         },
       );
     }
 
     /// 📩 Foreground Messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print("📩 Foreground Message Received: ${message.notification?.title}");
       _handleMessage(message);
       if (!kIsWeb) {
         _showLocalNotification(message);
@@ -80,29 +73,25 @@ class NotificationService extends GetxController {
 
     /// 📲 Notification Click (App in background)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print("📲 Notification Clicked (Background): ${message.notification?.title}");
       _handleMessage(message);
     });
 
     _loadNotifications();
     fetchNotifications(); // Initial fetch from server
-    print("🚀 NotificationService INIT COMPLETED");
   }
 
   /// 📡 Standardized method to send token to backend
   Future<void> uploadToken() async {
     if (_currentToken == null) return;
     
-    print("📡 Uploading FCM Token to Backend...");
     try {
       final BaseApiService apiService = Get.find<BaseApiService>();
-      final response = await apiService.pacthApi(
+      await apiService.pacthApi(
         AppConstants.updateFcmToken,
-        {'fcmToken': _currentToken}, // ✅ FIXED KEY NAME TO LOWERCASE 'fcmtoken'
+        {'fcmToken': _currentToken},
       );
-      print("✅ FCM Token Synced: $response");
     } catch (e) {
-      print("⚠️ FCM Token Sync Failed (Expected if not logged in): $e");
+      // Error handled silently
     }
   }
 
@@ -126,10 +115,9 @@ class NotificationService extends GetxController {
           };
         }).toList());
         _saveNotifications();
-        print("✅ Fetched ${notifications.length} notifications from server");
       }
     } catch (e) {
-      print("Error fetching notifications: $e");
+      // Error handled silently
     } finally {
       isLoading.value = false;
     }
@@ -158,7 +146,7 @@ class NotificationService extends GetxController {
         _saveNotifications();
       }
     } catch (e) {
-      print("Error marking notification read: $e");
+      // Error handled silently
     }
   }
 
@@ -176,7 +164,7 @@ class NotificationService extends GetxController {
         _saveNotifications();
       }
     } catch (e) {
-      print("Error marking all read: $e");
+      // Error handled silently
     }
   }
 
@@ -200,7 +188,6 @@ class NotificationService extends GetxController {
         _saveNotifications();
       }
     } catch (e) {
-      print("Error deleting notification: $e");
       // Fallback: Remove locally if API fails
       notifications.removeAt(index);
       _saveNotifications();
@@ -215,7 +202,6 @@ class NotificationService extends GetxController {
 
   void _handleMessage(RemoteMessage message) {
     if (message.notification != null) {
-      print("📩 Processing Message: ${message.notification?.title}");
       fetchNotifications(); // Refresh list from server
     }
   }
@@ -257,10 +243,9 @@ class NotificationService extends GetxController {
         }).toList();
         
         notifications.assignAll(convertedList);
-        print("✅ Loaded ${notifications.length} saved notifications");
       }
     } catch (e) {
-      print("❌ Error loading notifications from Hive: $e");
+      // Error handled silently
     }
   }
 
@@ -269,7 +254,7 @@ class NotificationService extends GetxController {
       var box = Hive.box('appBox');
       box.put('notifications', notifications.toList());
     } catch (e) {
-      print("❌ Error saving notifications to Hive: $e");
+      // Error handled silently
     }
   }
 }

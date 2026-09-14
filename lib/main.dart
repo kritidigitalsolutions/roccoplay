@@ -52,12 +52,10 @@ Future<void> main() async {
         final host = proxyDetails['host'];
         final port = proxyDetails['port'] ?? 8080;
         AuditNetworkOverrides.proxyStr = "PROXY $host:$port; DIRECT";
-        debugPrint("🌐 System Proxy Detected and Configuration Applied: $host:$port");
       } else {
         AuditNetworkOverrides.proxyStr = "DIRECT";
       }
     } catch (e) {
-      debugPrint("❌ Error detecting proxy, falling back to DIRECT: $e");
       AuditNetworkOverrides.proxyStr = "DIRECT";
     }
     HttpOverrides.global = AuditNetworkOverrides();

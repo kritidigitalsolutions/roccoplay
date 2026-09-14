@@ -47,7 +47,6 @@ class _NativeAdWidgetState extends State<NativeAdWidget> with AutomaticKeepAlive
     _lastLoadTime = now.add(Duration(milliseconds: delayMs));
 
     if (delayMs > 0) {
-      debugPrint("⏳ Throttling native ad request: delaying by ${delayMs}ms");
       await Future.delayed(Duration(milliseconds: delayMs));
     }
 
@@ -58,7 +57,6 @@ class _NativeAdWidgetState extends State<NativeAdWidget> with AutomaticKeepAlive
       request: const AdRequest(),
       listener: NativeAdListener(
         onAdLoaded: (ad) {
-          debugPrint("✅ Native Ad Loaded");
           if (mounted) {
             setState(() {
               _isLoaded = true;
@@ -66,7 +64,6 @@ class _NativeAdWidgetState extends State<NativeAdWidget> with AutomaticKeepAlive
           }
         },
         onAdFailedToLoad: (ad, error) {
-          debugPrint("❌ Native Ad Failed: ${error.message}");
           ad.dispose();
           if (mounted) {
             setState(() {

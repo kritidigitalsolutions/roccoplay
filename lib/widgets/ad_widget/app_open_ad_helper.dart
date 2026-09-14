@@ -30,13 +30,11 @@ class AppOpenAdHelper {
       request: const AdRequest(),
       adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (ad) {
-          debugPrint("✅ App Open Ad Loaded");
           _appOpenAd = ad;
           _isLoaded = true;
           _loadTime = DateTime.now();
         },
         onAdFailedToLoad: (error) {
-          debugPrint("❌ App Open Ad Failed: ${error.message}");
           _isLoaded = false;
         },
       ),
@@ -48,12 +46,10 @@ class AppOpenAdHelper {
     if (kIsWeb) return;
     // 🔥 Jab kisi screen ne suppress kar rakha ho (jaise video player), App Open Ad skip
     if (suppressed) {
-      debugPrint("⏭️ App Open Ad suppressed (current screen doesn't allow it)");
       return;
     }
 
     if (!_isLoaded || _appOpenAd == null || _isShowing || _isAdExpired) {
-      debugPrint("⚠️ App Open Ad not available, loading...");
       loadAd();
       return;
     }
@@ -61,7 +57,6 @@ class AppOpenAdHelper {
     _appOpenAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (ad) {
         _isShowing = true;
-        debugPrint("App Open Ad showing");
       },
       onAdDismissedFullScreenContent: (ad) {
         _isShowing = false;

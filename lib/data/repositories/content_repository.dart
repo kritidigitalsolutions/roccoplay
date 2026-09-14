@@ -20,7 +20,6 @@ class ContentRepository {
       }
       return [];
     } catch (e) {
-      print("Error fetching content: $e");
       rethrow;
     }
   }
@@ -34,7 +33,6 @@ class ContentRepository {
       }
       return [];
     } catch (e) {
-      print("Error fetching categories: $e");
       rethrow;
     }
   }

@@ -50,26 +50,20 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
         }
       },
       onPageStarted: (String url) {
-        debugPrint("🔍 WebView Page Started: $url");
         _checkRedirect(url);
       },
       onPageFinished: (String url) {
         _checkRedirect(url);
       },
       onWebResourceError: (WebResourceError error) {
-        debugPrint("❌ WebView Error: ${error.description}");
-        debugPrint("❌ WebView Error Code: ${error.errorCode}");
-        debugPrint("❌ WebView Error Type: ${error.errorType}");
-        
         // Show error to user
         CustomSnackbar.show(
           title: "Connection Error",
-          message: "Failed to load payment page: ${error.description}",
+          message: "Failed to load payment page",
           isError: true,
         );
       },
       onNavigationRequest: (NavigationRequest request) async {
-        debugPrint("🔍 WebView Navigation Request: ${request.url}");
         if (_checkRedirect(request.url)) {
           return NavigationDecision.prevent;
         }
@@ -81,11 +75,9 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
             final uri = Uri.parse(request.url);
             if (await canLaunchUrl(uri)) {
               await launchUrl(uri, mode: LaunchMode.externalApplication);
-            } else {
-              debugPrint("Cannot launch URL scheme: ${request.url}");
             }
           } catch (e) {
-            debugPrint("Error launching external app: $e");
+            // Error handled silently
           }
           return NavigationDecision.prevent;
         }
@@ -100,9 +92,7 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
     if (navigationDelegate.platform is AndroidNavigationDelegate) {
       (navigationDelegate.platform as AndroidNavigationDelegate).setOnSSlAuthError((error) {
         final androidError = error as AndroidSslAuthError;
-        debugPrint("⚠️ SSL Error for URL: ${androidError.url}");
         if (androidError.url.contains("hdfcuat.bank.in")) {
-          debugPrint("✅ Bypassing SSL for HDFC UAT domain");
           androidError.proceed();
         } else {
           androidError.cancel();
@@ -146,7 +136,6 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
   }
 
   bool _checkRedirect(String url) {
-    debugPrint("🔍 WebView Navigated to URL: $url");
     if (_isRedirected) return true;
 
     // Only match actual HTTP/HTTPS URL navigations
@@ -170,9 +159,6 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
             _isRedirected = true;
           });
         }
-        debugPrint(
-          "🎯 Callback URL reached! Closing WebView and returning success.",
-        );
         Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted) {
             Get.back(result: true);

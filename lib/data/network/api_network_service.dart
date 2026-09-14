@@ -26,7 +26,7 @@ class NetworkApiService extends BaseApiService {
       };
     }
 
-    /// Interceptor for dynamic token and logging
+    /// Interceptor for dynamic token
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -34,25 +34,13 @@ class NetworkApiService extends BaseApiService {
           String? token = AppSession.getToken();
           if (token != null && token.isNotEmpty) {
             options.headers["Authorization"] = "Bearer $token";
-            debugPrint("🔐 Interceptor: Added Bearer Token");
           }
-
-          debugPrint("➡️ REQUEST [${options.method}] => ${options.uri}");
           return handler.next(options);
         },
         onResponse: (response, handler) {
-          debugPrint("✅ RESPONSE [${response.statusCode}] => ${response.data}");
           return handler.next(response);
         },
         onError: (DioException e, handler) {
-          final statusCode = e.response?.statusCode;
-          final isProfileRequest = e.requestOptions.uri.path.contains('user/profile');
-
-          if (statusCode == 401 && isProfileRequest) {
-            debugPrint("ℹ️ Unauthorized (Expected): User is not logged in");
-          } else {
-            debugPrint("❌ ERROR [$statusCode] => ${e.message}");
-          }
           return handler.next(e);
         },
       ),
@@ -62,23 +50,19 @@ class NetworkApiService extends BaseApiService {
   /// 🔑 Set Authorization Token
   void setToken(String token) {
     _dio.options.headers["Authorization"] = "Bearer $token";
-    debugPrint("🔐 Token Set: Bearer $token");
   }
 
   /// ❌ Remove Token (Logout)
   void clearToken() {
     _dio.options.headers.remove("Authorization");
-    debugPrint("🔓 Token Cleared");
   }
 
   @override
   Future<dynamic> getApi(String url, {Map<String, String>? headers}) async {
     try {
-      debugPrint("GET API CALL => $url");
       final response = await _dio.get(url, options: Options(headers: headers));
       return returnResponse(response);
     } on DioException catch (e) {
-      debugPrint("GET API ERROR => ${e.message}");
       throw _handleDioError(e);
     }
   }
@@ -87,13 +71,9 @@ class NetworkApiService extends BaseApiService {
   Future<dynamic> postApi(String url, dynamic data,
       {Map<String, String>? headers}) async {
     try {
-      debugPrint("POST API CALL => $url");
-      debugPrint("POST DATA => $data");
-
       final response = await _dio.post(url, data: data, options: Options(headers: headers));
       return returnResponse(response);
     } on DioException catch (e) {
-      debugPrint("POST API ERROR => ${e.message}");
       throw _handleDioError(e);
     }
   }
@@ -102,13 +82,9 @@ class NetworkApiService extends BaseApiService {
   Future<dynamic> pacthApi(String url, dynamic data,
       {Map<String, String>? headers}) async {
     try {
-      debugPrint("PATCH API CALL => $url");
-      debugPrint("PATCH DATA => $data");
-
       final response = await _dio.patch(url, data: data, options: Options(headers: headers));
       return returnResponse(response);
     } on DioException catch (e) {
-      debugPrint("PATCH API ERROR => ${e.message}");
       throw _handleDioError(e);
     }
   }
@@ -117,13 +93,9 @@ class NetworkApiService extends BaseApiService {
   Future<dynamic> putApi(String url, dynamic data,
       {Map<String, String>? headers}) async {
     try {
-      debugPrint("PUT API CALL => $url");
-      debugPrint("PUT DATA => $data");
-
       final response = await _dio.put(url, data: data, options: Options(headers: headers));
       return returnResponse(response);
     } on DioException catch (e) {
-      debugPrint("PUT API ERROR => ${e.message}");
       throw _handleDioError(e);
     }
   }
@@ -132,19 +104,14 @@ class NetworkApiService extends BaseApiService {
   Future<dynamic> deleteApi(String url, dynamic data,
       {Map<String, String>? headers}) async {
     try {
-      debugPrint("DELETE API CALL => $url");
-
       final response = await _dio.delete(url, data: data, options: Options(headers: headers));
       return returnResponse(response);
     } on DioException catch (e) {
-      debugPrint("DELETE API ERROR => ${e.message}");
       throw _handleDioError(e);
     }
   }
 
   AppException _handleDioError(DioException error) {
-    debugPrint("HANDLE ERROR => ${error.response?.data}");
-
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
