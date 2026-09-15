@@ -31,25 +31,8 @@
 
   <title>roccoplay</title>
   <link rel="manifest" href="manifest.json">
-  <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4529616898084985"
-     crossorigin="anonymous"></script> -->
-  <script>
-    // Clear console periodically to protect user data
-    setInterval(function() {
-      console.clear();
-    }, 3000);
-  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <!-- Razorpay script will be loaded dynamically by Flutter when needed -->
   <script>
     function checkoutRazorpay(options, onSuccess, onFailure) {
       options.handler = function(response) {
