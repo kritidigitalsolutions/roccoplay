@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../app/routes/app_routes.dart';
 import '../data/models/response_model/content_response_model/content_model.dart';
-import '../view/dramaDetails/dramaDetailsPage.dart';
 
 class CategoryGridPage extends StatelessWidget {
   final String title;
@@ -118,6 +117,7 @@ class _CategoryHoverItemState extends State<_CategoryHoverItem> {
             child: Image.network(
               widget.item.poster,
               fit: BoxFit.cover,
+              cacheWidth: 350,
               errorBuilder: (context, error, stackTrace) => Image.asset(
                 "assets/images/farzi.jpg",
                 fit: BoxFit.cover,

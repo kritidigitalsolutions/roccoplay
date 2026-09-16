@@ -219,6 +219,7 @@ class _Top10HoverItemState extends State<_Top10HoverItem> with SingleTickerProvi
                       width: widget.posterWidth,
                       height: widget.posterHeight,
                       fit: BoxFit.cover,
+                      cacheWidth: widget.useBanner ? 500 : 300,
                       errorBuilder: (context, error, stackTrace) => Image.asset(
                         "assets/images/farzi.jpg",
                         width: widget.posterWidth,

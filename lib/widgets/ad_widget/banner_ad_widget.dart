@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:roccoplay/utils/helper/ad_helper.dart';
-import 'web_ad_view.dart';
 
 class BannerAdWidget extends StatefulWidget {
   const BannerAdWidget({super.key});

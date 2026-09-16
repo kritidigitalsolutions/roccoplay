@@ -24,6 +24,14 @@ class VideoController extends GetxController {
   Timer? _hideTimer;
   Timer? _saveTimer;
 
+  // Track last emitted values to throttle reactive updates
+  Duration _lastEmittedPosition = Duration.zero;
+  bool _lastEmittedPlaying = false;
+  Duration _lastEmittedDuration = Duration.zero;
+
+  // Listener callback reference for cleanup
+  VoidCallback? _videoListener;
+
   /// 🔥 INIT
   Future<void> initializeVideo(String url, {String? contentId}) async {
     if (_currentUrl == url && isInitialized.value) return;
@@ -31,6 +39,9 @@ class VideoController extends GetxController {
 
     isInitialized.value = false;
     _contentId = contentId;
+
+    // Dispose previous controller if exists
+    _cleanupOldController();
 
     // Allow all orientations when video starts
     SystemChrome.setPreferredOrientations([
@@ -45,6 +56,7 @@ class VideoController extends GetxController {
 
     isInitialized.value = true;
     totalDuration.value = videoPlayerController!.value.duration;
+    _lastEmittedDuration = videoPlayerController!.value.duration;
 
     // Resume logic
     if (_contentId != null) {
@@ -59,18 +71,55 @@ class VideoController extends GetxController {
 
     videoPlayerController!.play();
 
-    /// 🔥 LISTENER (REAL-TIME UPDATE)
-    videoPlayerController!.addListener(() {
-      final value = videoPlayerController!.value;
+    // Reset throttle tracking
+    _lastEmittedPosition = videoPlayerController!.value.position;
+    _lastEmittedPlaying = true;
 
-      currentPosition.value = value.position;
-      isPlaying.value = value.isPlaying;
+    /// 🔥 LISTENER (THROTTLED — only update Rx when values actually change)
+    _videoListener = () {
+      final c = videoPlayerController;
+      if (c == null) return;
+      final value = c.value;
 
-      totalDuration.value = value.duration;
-    });
+      // Only update position if changed by >= 250ms (cuts 60fps → ~4 updates/sec)
+      final posDiff = (value.position - _lastEmittedPosition).abs();
+      if (posDiff >= const Duration(milliseconds: 250) ||
+          value.position == Duration.zero ||
+          value.position >= value.duration) {
+        _lastEmittedPosition = value.position;
+        currentPosition.value = value.position;
+      }
+
+      // Only update isPlaying when it actually changes
+      if (value.isPlaying != _lastEmittedPlaying) {
+        _lastEmittedPlaying = value.isPlaying;
+        isPlaying.value = value.isPlaying;
+      }
+
+      // Only update duration when it actually changes
+      if (value.duration != _lastEmittedDuration) {
+        _lastEmittedDuration = value.duration;
+        totalDuration.value = value.duration;
+      }
+    };
+    videoPlayerController!.addListener(_videoListener!);
 
     _startHideTimer();
     _startSaveTimer();
+  }
+
+  /// 🧹 Cleanup old controller before re-init
+  void _cleanupOldController() {
+    _hideTimer?.cancel();
+    _saveTimer?.cancel();
+    final old = videoPlayerController;
+    if (old != null) {
+      if (_videoListener != null) {
+        old.removeListener(_videoListener!);
+      }
+      old.dispose();
+      videoPlayerController = null;
+    }
   }
 
   /// 💾 SAVE POSITION
@@ -129,6 +178,10 @@ class VideoController extends GetxController {
 
     final newPos = Duration(seconds: (duration.inSeconds * value).toInt());
 
+    // Force immediate position update on seek for responsive UI
+    currentPosition.value = newPos;
+    _lastEmittedPosition = newPos;
+
     c.seekTo(newPos);
     _startHideTimer();
   }
@@ -182,7 +235,15 @@ class VideoController extends GetxController {
     _savePosition();
     _hideTimer?.cancel();
     _saveTimer?.cancel();
-    videoPlayerController?.dispose();
+    final old = videoPlayerController;
+    if (old != null) {
+      if (_videoListener != null) {
+        old.removeListener(_videoListener!);
+        _videoListener = null;
+      }
+      old.dispose();
+      videoPlayerController = null;
+    }
     // Reset to portrait when leaving
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.onClose();

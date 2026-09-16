@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../app/routes/app_routes.dart';
 import '../data/models/response_model/content_response_model/content_model.dart';
-import '../view/dramaDetails/dramaDetailsPage.dart';
-import 'catagory_widget.dart';
 
 class HomeSliderSection extends StatelessWidget {
   final String title;
@@ -134,6 +132,7 @@ class _HoverItemState extends State<_HoverItem> {
               child: Image.network(
                 widget.useBanner ? widget.item.banner : widget.item.poster,
                 fit: BoxFit.cover,
+                cacheWidth: widget.useBanner ? 600 : 350,
                 errorBuilder: (context, error, stackTrace) => Image.asset(
                   "assets/images/farzi.jpg",
                   fit: BoxFit.cover,

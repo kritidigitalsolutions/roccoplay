@@ -67,7 +67,7 @@ class _AutoSliderState extends State<AutoSlider> {
 
   @override
   Widget build(BuildContext context) {
-    final PremiumController premiumController = Get.put(PremiumController());
+    final PremiumController premiumController = Get.find<PremiumController>();
     double screenWidth = MediaQuery.of(context).size.width;
     bool isWeb = screenWidth > 800;
 
@@ -79,13 +79,7 @@ class _AutoSliderState extends State<AutoSlider> {
     }
 
     // Adjust viewportFraction based on screen size
-    double viewportFraction = 0.8;
-    if (_pageController.viewportFraction != viewportFraction) {
-      _pageController = PageController(
-        viewportFraction: viewportFraction,
-        initialPage: currentPage,
-      );
-    }
+    const double viewportFraction = 0.8;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -210,6 +204,7 @@ class _AutoSliderHoverItemState extends State<_AutoSliderHoverItem> {
                   Image.network(
                     widget.isWeb ? widget.item.banner : widget.item.poster,
                     fit: BoxFit.cover,
+                    cacheWidth: 800,
                     errorBuilder: (context, error, stackTrace) => Container(
                       color: Colors.grey[900],
                       child: const Icon(Icons.broken_image, color: Colors.white54, size: 50),

@@ -7,14 +7,19 @@ import 'package:roccoplay/view_model/search_controller/search_controller.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../data/models/response_model/content_response_model/content_model.dart';
-import '../dramaDetails/cast_crewPage.dart';
-import '../dramaDetails/dramaDetailsPage.dart';
-import '../dramaDetails/topArtistpage.dart';
-import '../popUp/search_with_mic.dart';
 import '../../widgets/ad_widget/banner_ad_widget.dart';
 
-class SearchPage extends StatelessWidget {
+class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
+
+  @override
+  State<SearchPage> createState() => _SearchPageState();
+}
+
+class _SearchPageState extends State<SearchPage> {
+  late final AppSearchController controller;
+  late final AuthController authController;
+  late final ContentController contentController;
 
   final List<Map<String, String>> cast = const [
     {'name': 'Shahid Kapoor', 'image': 'assets/images/Shahid_Kapoor.jpg'},
@@ -25,12 +30,36 @@ class SearchPage extends StatelessWidget {
     {'name': 'Ranvir', 'image': 'assets/images/ranvir.jpg'},
   ];
 
+  List<ContentModel> _cachedTopSeries = [];
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.isRegistered<AppSearchController>()
+        ? Get.find<AppSearchController>()
+        : Get.put(AppSearchController());
+    authController = Get.find<AuthController>();
+    contentController = Get.find<ContentController>();
+
+    _computeTopSeries();
+  }
+
+  void _computeTopSeries() {
+    final List<ContentModel> topSeries = contentController.allContent
+        .where((item) => item.contentType == 'series' && item.isComingSoon == false)
+        .toList();
+
+    topSeries.sort((a, b) {
+      int likesA = contentController.contentLikes[a.id] ?? 0;
+      int likesB = contentController.contentLikes[b.id] ?? 0;
+      return likesB.compareTo(likesA);
+    });
+
+    _cachedTopSeries = topSeries;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final AppSearchController controller = Get.put(AppSearchController());
-    final AuthController authController = Get.find<AuthController>();
-    final ContentController contentController = Get.find<ContentController>();
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -98,7 +127,7 @@ class SearchPage extends StatelessWidget {
                         return Column(
                           children: [
                             const BannerAdWidget(),
-                            _buildDefaultSearchView(context, contentController, authController, isWeb),
+                            _buildDefaultSearchView(context, isWeb),
                           ],
                         );
                       }
@@ -148,6 +177,7 @@ class SearchPage extends StatelessWidget {
               width: 50,
               height: 70,
               fit: BoxFit.cover,
+              cacheWidth: 100,
               errorBuilder: (context, error, stackTrace) =>
                   Image.asset("assets/images/farzi.jpg", width: 50, height: 70, fit: BoxFit.cover),
             ),
@@ -167,24 +197,16 @@ class SearchPage extends StatelessWidget {
   }
 
   /// 🔥 DEFAULT VIEW (Top Series, Artists)
-  Widget _buildDefaultSearchView(BuildContext context, ContentController contentController, AuthController authController, bool isWeb) {
-    // 1. Filter series and release items (not coming soon)
-    final List<ContentModel> topSeries = contentController.allContent
-        .where((item) => item.contentType == 'series' && item.isComingSoon == false)
-        .toList();
-    
-    // 2. Sort by likes (descending)
-    topSeries.sort((a, b) {
-      int likesA = contentController.contentLikes[a.id] ?? 0;
-      int likesB = contentController.contentLikes[b.id] ?? 0;
-      return likesB.compareTo(likesA);
-    });
+  Widget _buildDefaultSearchView(BuildContext context, bool isWeb) {
+    if (_cachedTopSeries.isEmpty && contentController.allContent.isNotEmpty) {
+      _computeTopSeries();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         /// TOP SERIES
-        if (topSeries.isNotEmpty) ...[
+        if (_cachedTopSeries.isNotEmpty) ...[
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 15),
             child: Text(
@@ -199,37 +221,40 @@ class SearchPage extends StatelessWidget {
 
           const SizedBox(height: 15),
 
-          SizedBox(
-            height: isWeb ? 260 : 200,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: topSeries.length,
-              itemBuilder: (context, index) {
-                final item = topSeries[index];
-                return Padding(
-                  padding: const EdgeInsets.only(left: 15),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(5),
-                    onTap: () {
-                      Get.toNamed(
-                        AppRoutes.dramaDetails,
-                        arguments: item,
-                      );
-                    },
-                    child: ClipRRect(
+          RepaintBoundary(
+            child: SizedBox(
+              height: isWeb ? 260 : 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _cachedTopSeries.length,
+                itemBuilder: (context, index) {
+                  final item = _cachedTopSeries[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 15),
+                    child: InkWell(
                       borderRadius: BorderRadius.circular(5),
-                      child: Image.network(
-                        item.poster,
-                        width: isWeb ? 180 : 140,
-                        height: isWeb ? 260 : 200,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Image.asset("assets/images/farzi.jpg", width: isWeb ? 180 : 140, height: isWeb ? 260 : 200, fit: BoxFit.cover),
+                      onTap: () {
+                        Get.toNamed(
+                          AppRoutes.dramaDetails,
+                          arguments: item,
+                        );
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(5),
+                        child: Image.network(
+                          item.poster,
+                          width: isWeb ? 180 : 140,
+                          height: isWeb ? 260 : 200,
+                          fit: BoxFit.cover,
+                          cacheWidth: isWeb ? 360 : 280,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Image.asset("assets/images/farzi.jpg", width: isWeb ? 180 : 140, height: isWeb ? 260 : 200, fit: BoxFit.cover),
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -267,42 +292,44 @@ class SearchPage extends StatelessWidget {
 
         const SizedBox(height: 15),
 
-        SizedBox(
-          height: 120,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: cast.length,
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                onTap: () {
-                  Get.toNamed(
-                    AppRoutes.castDetails,
-                    arguments: {
-                      'name': cast[index]['name']!,
-                      'image': cast[index]['image']!,
-                    },
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 16),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          image: DecorationImage(
-                            image: AssetImage(cast[index]['image']!),
-                            fit: BoxFit.cover,
+        RepaintBoundary(
+          child: SizedBox(
+            height: 120,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: cast.length,
+              itemBuilder: (context, index) {
+                return GestureDetector(
+                  onTap: () {
+                    Get.toNamed(
+                      AppRoutes.castDetails,
+                      arguments: {
+                        'name': cast[index]['name']!,
+                        'image': cast[index]['image']!,
+                      },
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 16),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            image: DecorationImage(
+                              image: AssetImage(cast[index]['image']!),
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
         const SizedBox(height: 30),

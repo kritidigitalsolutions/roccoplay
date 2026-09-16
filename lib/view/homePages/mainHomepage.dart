@@ -355,6 +355,9 @@ class _MainHomePageState extends State<MainHomePage> {
                       );
                     }
 
+                    // Use precomputed category content map instead of filtering in build()
+                    final catMap = contentController.categoryContentMap;
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -372,7 +375,7 @@ class _MainHomePageState extends State<MainHomePage> {
                             ),
                           ),
 
-                        /// 2. 🔹 OTHER CATEGORIES
+                        /// 2. 🔹 OTHER CATEGORIES (uses precomputed map)
                         ...contentController.categories
                             .where((cat) => cat.slug != 'trending')
                             .toList()
@@ -381,16 +384,9 @@ class _MainHomePageState extends State<MainHomePage> {
                             .expand((entry) {
                               final index = entry.key;
                               final category = entry.value;
-                              final categoryContent = contentController
-                                  .allContent
-                                  .where(
-                                    (c) =>
-                                        c.category.contains(category.slug) &&
-                                        c.isComingSoon == false,
-                                  )
-                                  .toList();
+                              final categoryContent = catMap[category.slug];
 
-                              if (categoryContent.isEmpty) {
+                              if (categoryContent == null || categoryContent.isEmpty) {
                                 return <Widget>[];
                               }
 
@@ -441,16 +437,15 @@ class _MainHomePageState extends State<MainHomePage> {
                               return [categoryWidget];
                             }),
 
-                        /// 3. 🔹 COMING SOON
+                        /// 3. 🔹 COMING SOON (uses precomputed list)
                         ComingSoonSection(
-                          content: contentController.allContent
-                              .where((c) => c.isComingSoon == true)
-                              .toList(),
+                          content: contentController.comingSoonContent,
                           isSignedIn: authController.isLoggedIn.value,
                         ),
                       ],
                     );
                   }),
+
 
                   const SizedBox(height: 40),
 

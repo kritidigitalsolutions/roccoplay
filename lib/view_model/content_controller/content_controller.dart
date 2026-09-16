@@ -2,12 +2,10 @@ import 'package:get/get.dart';
 import '../../data/models/response_model/content_response_model/content_model.dart';
 import '../../data/models/response_model/category_model/category_model.dart';
 import '../../data/repositories/content_repository.dart';
-import '../../data/repositories/interaction_repository.dart';
 import '../../data/network/api_network_service.dart';
 
 class ContentController extends GetxController {
   final ContentRepository _repository = ContentRepository(NetworkApiService());
-  final InteractionRepository _interactionRepo = InteractionRepository(NetworkApiService());
 
   var isLoading = true.obs;
   var allContent = <ContentModel>[].obs;
@@ -16,6 +14,10 @@ class ContentController extends GetxController {
   
   // Cache for likes: ContentID -> LikeCount
   var contentLikes = <String, int>{}.obs;
+
+  // Precomputed category content map — avoids repeated .where() in build()
+  var categoryContentMap = <String, List<ContentModel>>{}.obs;
+  var comingSoonContent = <ContentModel>[].obs;
 
   @override
   void onInit() {
@@ -33,6 +35,12 @@ class ContentController extends GetxController {
       // Filter trending for slider
       trendingContent.assignAll(content.where((c) => (c.isTrending || c.category.contains('trending')) && c.isComingSoon == false).toList());
       
+      // Precompute coming soon
+      comingSoonContent.assignAll(content.where((c) => c.isComingSoon == true).toList());
+
+      // Rebuild category content map
+      _rebuildCategoryContentMap();
+      
     } catch (e) {
       // Error handled silently
     } finally {
@@ -45,25 +53,27 @@ class ContentController extends GetxController {
       final fetchedCategories = await _repository.getCategories();
       categories.assignAll(fetchedCategories);
       categories.sort((a, b) => a.priority.compareTo(b.priority));
+
+      // Rebuild category content map when categories change
+      _rebuildCategoryContentMap();
     } catch (e) {
       // Error handled silently
     }
   }
 
-  Future<void> _fetchAllStats() async {
-    for (var item in allContent) {
-      _fetchSingleStats(item.id);
-    }
-  }
-
-  Future<void> _fetchSingleStats(String contentId) async {
-    try {
-      final stats = await _interactionRepo.getInteractionStats(contentId);
-      if (stats != null) {
-        contentLikes[contentId] = stats['likes'] ?? 0;
+  /// Precompute category → content list mapping (called after content or categories update)
+  void _rebuildCategoryContentMap() {
+    if (allContent.isEmpty || categories.isEmpty) return;
+    final map = <String, List<ContentModel>>{};
+    for (final category in categories) {
+      if (category.slug == 'trending') continue;
+      final items = allContent
+          .where((c) => c.category.contains(category.slug) && c.isComingSoon == false)
+          .toList();
+      if (items.isNotEmpty) {
+        map[category.slug] = items;
       }
-    } catch (e) {
-      // Error handled silently
     }
+    categoryContentMap.value = map;
   }
 }

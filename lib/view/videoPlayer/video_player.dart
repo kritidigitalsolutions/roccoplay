@@ -82,6 +82,8 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
     AppOpenAdHelper.suppressed = false;
     _positionWorker?.dispose();
     _durationWorker?.dispose();
+    // 🔥 Properly delete controller so timers/listeners are cleaned up
+    Get.delete<VideoController>(force: true);
     super.dispose();
   }
 
@@ -136,10 +138,15 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
   }
 
   /// 🔥 Video position 12-min mark cross kare to mid-roll ad
+  int _lastCheckedSecond = -1;
   void _checkMidRollAd(Duration pos) {
     if (_adMarkSeconds.isEmpty || _isAdPlaying) return;
+    // Skip if we already checked this second (throttled position updates)
+    final sec = pos.inSeconds;
+    if (sec == _lastCheckedSecond) return;
+    _lastCheckedSecond = sec;
     for (final mark in _adMarkSeconds) {
-      if (!_shownAdMarks.contains(mark) && pos.inSeconds >= mark) {
+      if (!_shownAdMarks.contains(mark) && sec >= mark) {
         _shownAdMarks.add(mark);
         _showMidVideoAd();
         break;
@@ -217,12 +224,14 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
               },
               child: Stack(
                 children: [
-                  /// 🎬 VIDEO
+                  /// 🎬 VIDEO (RepaintBoundary isolates platform view repaints)
                   Center(
-                    child: AspectRatio(
-                      aspectRatio:
-                          controller.videoPlayerController!.value.aspectRatio,
-                      child: VideoPlayer(controller.videoPlayerController!),
+                    child: RepaintBoundary(
+                      child: AspectRatio(
+                        aspectRatio:
+                            controller.videoPlayerController!.value.aspectRatio,
+                        child: VideoPlayer(controller.videoPlayerController!),
+                      ),
                     ),
                   ),
                   
@@ -250,11 +259,13 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
                   ),
                 ),
 
-                /// 🎮 CONTROLS
-                Obx(
-                  () => controller.showControls.value && !isLocked.value
-                      ? _controls(context)
-                      : const SizedBox(),
+                /// 🎮 CONTROLS (RepaintBoundary isolates control repaints from video)
+                RepaintBoundary(
+                  child: Obx(
+                    () => controller.showControls.value && !isLocked.value
+                        ? _controls(context)
+                        : const SizedBox(),
+                  ),
                 ),
               ],
             ),

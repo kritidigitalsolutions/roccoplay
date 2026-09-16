@@ -82,6 +82,7 @@ class ComingSoonSection extends StatelessWidget {
                           height: 250,
                           width: 170,
                           fit: BoxFit.cover,
+                          cacheWidth: 250,
                           // Agar URL galat ho ya image load na ho
                           errorBuilder: (context, error, stackTrace) => Container(
                             height: 250,

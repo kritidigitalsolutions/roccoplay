@@ -21,7 +21,7 @@ import '../../utils/custom_snackbar.dart';
 import '../../widgets/ad_widget/banner_ad_widget.dart';
 import '../../widgets/ad_widget/interstitial_ad_helper.dart';
 
-class DramaDetailsPage extends StatelessWidget {
+class DramaDetailsPage extends StatefulWidget {
   final bool isSignedIn;
   final ContentModel content;
 
@@ -32,30 +32,59 @@ class DramaDetailsPage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final DramaDetailsController controller = Get.put(DramaDetailsController());
-    final AuthController authController = Get.find<AuthController>();
-    final WatchlistController watchlistController = Get.put(WatchlistController());
-    final ContentController contentController = Get.find<ContentController>();
-    final PremiumController premiumController = Get.find<PremiumController>();
-    final InteractionController interactionController = Get.put(InteractionController());
-    final DownloadController downloadController = Get.put(DownloadController());
+  State<DramaDetailsPage> createState() => _DramaDetailsPageState();
+}
 
-    // Refresh subscription status on page entry
+class _DramaDetailsPageState extends State<DramaDetailsPage> {
+  late final DramaDetailsController controller;
+  late final AuthController authController;
+  late final WatchlistController watchlistController;
+  late final ContentController contentController;
+  late final PremiumController premiumController;
+  late final InteractionController interactionController;
+  late final DownloadController downloadController;
+  late final List<ContentModel> relatedContent;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.isRegistered<DramaDetailsController>()
+        ? Get.find<DramaDetailsController>()
+        : Get.put(DramaDetailsController());
+    authController = Get.find<AuthController>();
+    watchlistController = Get.isRegistered<WatchlistController>()
+        ? Get.find<WatchlistController>()
+        : Get.put(WatchlistController());
+    contentController = Get.find<ContentController>();
+    premiumController = Get.find<PremiumController>();
+    interactionController = Get.isRegistered<InteractionController>()
+        ? Get.find<InteractionController>()
+        : Get.put(InteractionController());
+    downloadController = Get.isRegistered<DownloadController>()
+        ? Get.find<DownloadController>()
+        : Get.put(DownloadController());
+
+    // Filter "You May Also Like" once
+    relatedContent = contentController.allContent.where((item) {
+      return item.id != widget.content.id &&
+          item.contentType == widget.content.contentType &&
+          item.category.any((cat) => widget.content.category.contains(cat));
+    }).toList();
+
+    // Refresh subscription status ONCE on page entry
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (authController.isLoggedIn.value) {
         premiumController.fetchAllSubscriptionStatus();
-        interactionController.fetchInteractionStatus(content.id);
+        interactionController.fetchInteractionStatus(widget.content.id);
       }
       InterstitialAdHelper.loadAd();
     });
+  }
 
-    // Filter "You May Also Like"
-    final List<ContentModel> relatedContent = contentController.allContent.where((item) {
-      return item.id != content.id &&
-          item.contentType == content.contentType &&
-          item.category.any((cat) => content.category.contains(cat));
-    }).toList();
+  @override
+  Widget build(BuildContext context) {
+    final content = widget.content;
+    final isSignedIn = widget.isSignedIn;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -76,6 +105,7 @@ class DramaDetailsPage extends StatelessWidget {
                     child: Image.network(
                       content.banner,
                       fit: BoxFit.contain,
+                      cacheWidth: isWeb ? 1200 : 700,
                       errorBuilder: (context, error, stackTrace) => Image.asset(
                         "assets/images/farzi.jpg",
                         fit: BoxFit.contain,
@@ -667,7 +697,14 @@ class DramaDetailsPage extends StatelessWidget {
                                   padding: const EdgeInsets.only(left: 16),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
-                                    child: Image.network(item.poster, width: isWeb ? 150 : 110, fit: BoxFit.fill, errorBuilder: (context, error, stackTrace) => Image.asset("assets/images/asur.webp", width: isWeb ? 150 : 110, fit: BoxFit.fill)),
+                                    child: Image.network(
+                                      item.poster,
+                                      width: isWeb ? 150 : 110,
+                                      fit: BoxFit.fill,
+                                      cacheWidth: isWeb ? 300 : 220,
+                                      errorBuilder: (context, error, stackTrace) =>
+                                          Image.asset("assets/images/asur.webp", width: isWeb ? 150 : 110, fit: BoxFit.fill),
+                                    ),
                                   ),
                                 ),
                               );
