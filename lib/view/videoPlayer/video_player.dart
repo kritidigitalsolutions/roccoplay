@@ -54,16 +54,16 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
     controller = Get.put(VideoController());
     controller.initializeVideo(widget.url, contentId: widget.contentId);
 
-    // 🔥 Is screen par App Open Ad kabhi show na ho (sirf Interstitial chalega)
+    // 🔥 Is screen par App Open Ad kabhi show na ho
     AppOpenAdHelper.suppressed = true;
 
-    // 🔥 Ad jitni jaldi ho sake preload karo (start ad ke liye ready rahe)
-    InterstitialAdHelper.loadAd();
+    // // 🔥 Ad jitni jaldi ho sake preload karo (start ad ke liye ready rahe)
+    // InterstitialAdHelper.loadAd();
 
     // 🔥 Video open hote hi Interstitial Ad
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showStartAd();
-    });
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _showStartAd();
+    // });
 
     // 🔥 Total duration pata chalte hi seekbar ke liye ad marks calculate karo
     _durationWorker = ever(controller.totalDuration, (Duration total) {
@@ -122,20 +122,20 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
   }
 
   /// 🔥 START AD (video khulte hi ek baar)
-  void _showStartAd() {
-    if (_isAdPlaying) return;
-    _isAdPlaying = true;
-    _pauseVideoForAd();
+  // void _showStartAd() {
+  //   if (_isAdPlaying) return;
+  //   _isAdPlaying = true;
+  //   _pauseVideoForAd();
 
-    InterstitialAdHelper.showAd(
-      onAdClosed: () {
-        _isAdPlaying = false;
-        _resumeVideoAfterAd();
-        // 🔥 Agla ad (back/mid-roll ke liye) turant preload karo
-        InterstitialAdHelper.loadAd();
-      },
-    );
-  }
+  //   InterstitialAdHelper.showAd(
+  //     onAdClosed: () {
+  //       _isAdPlaying = false;
+  //       _resumeVideoAfterAd();
+  //       // 🔥 Agla ad (back/mid-roll ke liye) turant preload karo
+  //       InterstitialAdHelper.loadAd();
+  //     },
+  //   );
+  // }
 
   /// 🔥 Video position 12-min mark cross kare to mid-roll ad
   int _lastCheckedSecond = -1;
@@ -169,27 +169,10 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
     );
   }
 
-  /// 🔥 Back / manual pause pe bhi ad dikhane ke baad turant reload karo.
-  /// ✅ FIX: pehle video pause karo, phir hi ad dikhao — taaki ad ke dauran
-  /// video/audio background me na chalta rahe.
-  void _showAdThen(VoidCallback onAdClosedAction) {
-    if (_isAdPlaying) return;
-    _isAdPlaying = true;
-    _pauseVideoForAd(); // 👈 ye line missing thi, isi wajah se back-button ad ke waqt video chalta rehta tha
-
-    InterstitialAdHelper.showAd(
-      onAdClosed: () {
-        _isAdPlaying = false;
-        onAdClosedAction(); // ye Get.back() karega, isliye resume karne ki zaroorat nahi
-        InterstitialAdHelper.loadAd();
-      },
-    );
-  }
-
   /// 🔥 Common "leave screen" handler — UI back button aur hardware back
-  /// button dono isi function se guzarte hain, taaki dono jagah ad chale.
+  /// button dono se seedha back jaye bina ad show kiye.
   void _handleBackPressed() {
-    _showAdThen(() => Get.back());
+    Get.back();
   }
 
   @override
@@ -234,7 +217,7 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
                       ),
                     ),
                   ),
-                  
+
                   /// Transparent Layer to catch clicks on Mobile specifically (removed from Web)
                   if (!kIsWeb)
                     Positioned.fill(
@@ -242,34 +225,35 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
                     ),
 
                   /// 🔒 LOCK BUTTON
-                Positioned(
-                  left: 10,
-                  top: MediaQuery.of(context).size.height / 2,
-                  child: Obx(
-                    () => IconButton(
-                      icon: Icon(
-                        isLocked.value ? Icons.lock : Icons.lock_open,
-                        color: Colors.white,
+                  Positioned(
+                    left: 10,
+                    top: MediaQuery.of(context).size.height / 2,
+                    child: Obx(
+                      () => IconButton(
+                        icon: Icon(
+                          isLocked.value ? Icons.lock : Icons.lock_open,
+                          color: Colors.white,
+                        ),
+                        onPressed: () {
+                          isLocked.value = !isLocked.value;
+                          controller.showControls.value = !isLocked.value;
+                        },
                       ),
-                      onPressed: () {
-                        isLocked.value = !isLocked.value;
-                        controller.showControls.value = !isLocked.value;
-                      },
                     ),
                   ),
-                ),
 
-                /// 🎮 CONTROLS (RepaintBoundary isolates control repaints from video)
-                RepaintBoundary(
-                  child: Obx(
-                    () => controller.showControls.value && !isLocked.value
-                        ? _controls(context)
-                        : const SizedBox(),
+                  /// 🎮 CONTROLS (RepaintBoundary isolates control repaints from video)
+                  RepaintBoundary(
+                    child: Obx(
+                      () => controller.showControls.value && !isLocked.value
+                          ? _controls(context)
+                          : const SizedBox(),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ));
+          );
         }),
       ),
     );

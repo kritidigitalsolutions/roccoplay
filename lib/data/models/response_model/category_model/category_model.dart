@@ -4,6 +4,8 @@ class CategoryModel {
   final String color;
   final String slug;
   final int priority;
+  final String? layout;
+  final bool? isHorizontal;
 
   CategoryModel({
     required this.id,
@@ -11,6 +13,8 @@ class CategoryModel {
     required this.color,
     required this.slug,
     required this.priority,
+    this.layout,
+    this.isHorizontal,
   });
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +24,8 @@ class CategoryModel {
       color: json['color'] ?? '#000000',
       slug: json['slug'] ?? '',
       priority: json['priority'] ?? 0,
+      layout: json['layout'] ?? json['orientation'] ?? json['cardType'],
+      isHorizontal: json['isHorizontal'] ?? json['is_horizontal'],
     );
   }
 
@@ -30,6 +36,9 @@ class CategoryModel {
       'color': color,
       'slug': slug,
       'priority': priority,
+      if (layout != null) 'layout': layout,
+      if (isHorizontal != null) 'isHorizontal': isHorizontal,
     };
   }
 }
+

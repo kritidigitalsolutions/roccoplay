@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:roccoplay/utils/service/meta_event_service.dart';
@@ -20,7 +19,6 @@ import '../profile/profilePage.dart';
 import '../../view_model/home_controller/home_controller.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import '../../utils/notification_service.dart';
-import '../notifications/notification_page.dart';
 
 class MainHomePage extends StatefulWidget {
   const MainHomePage({super.key});
@@ -34,6 +32,7 @@ class _MainHomePageState extends State<MainHomePage> {
   late final AuthController authController;
   late final PremiumController premiumController;
   late final ContentController contentController;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -47,6 +46,38 @@ class _MainHomePageState extends State<MainHomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.updateIndexFromRoute();
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// 🔄 Logo click handler: Home pe le jao, scroll top karo, aur content refresh karo
+  Future<void> _handleLogoClick() async {
+    controller.onItemTapped(0);
+
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+
+    List<Future> refreshTasks = [
+      contentController.fetchContent(),
+      contentController.fetchCategories(),
+      controller.fetchCompanyInfo(),
+    ];
+
+    if (authController.isLoggedIn.value) {
+      refreshTasks.add(authController.getProfile());
+      refreshTasks.add(premiumController.fetchAllSubscriptionStatus());
+    }
+
+    await Future.wait(refreshTasks);
   }
 
   @override
@@ -175,9 +206,12 @@ class _MainHomePageState extends State<MainHomePage> {
       ),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => controller.selectedIndex.value = 0,
-            child: Image.asset('assets/images/roccoplay_logo.png', height: 45),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: _handleLogoClick,
+              child: Image.asset('assets/images/roccoplay_logo.png', height: 45),
+            ),
           ),
           const Spacer(),
           _webSearchIcon(controller),
@@ -302,9 +336,12 @@ class _MainHomePageState extends State<MainHomePage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                GestureDetector(
-                  onTap: () => controller.selectedIndex.value = 0,
-                  child: Image.asset('assets/images/roccoplay_logo.png', height: 40),
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: _handleLogoClick,
+                    child: Image.asset('assets/images/roccoplay_logo.png', height: 40),
+                  ),
                 ),
                 Row(
                   children: [
@@ -335,6 +372,7 @@ class _MainHomePageState extends State<MainHomePage> {
             },
             color: AppColors.buttonColor,
             child: SingleChildScrollView(
+              controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,67 +413,105 @@ class _MainHomePageState extends State<MainHomePage> {
                             ),
                           ),
 
-                        /// 2. 🔹 OTHER CATEGORIES (uses precomputed map)
-                        ...contentController.categories
-                            .where((cat) => cat.slug != 'trending')
-                            .toList()
-                            .asMap()
-                            .entries
-                            .expand((entry) {
-                              final index = entry.key;
-                              final category = entry.value;
-                              final categoryContent = catMap[category.slug];
+                        /// 2. 🔹 OTHER CATEGORIES (Dynamic alternating layout)
+                        ...() {
+                          final visibleCategories = contentController.categories
+                              .where((cat) => cat.slug != 'trending')
+                              .where((cat) {
+                                final items = catMap[cat.slug];
+                                return items != null && items.isNotEmpty;
+                              })
+                              .toList();
 
-                              if (categoryContent == null || categoryContent.isEmpty) {
-                                return <Widget>[];
-                              }
+                          bool nextIsHorizontal = true;
+                          final List<Widget> categoryWidgets = [];
 
-                              Widget categoryWidget;
-                              if (category.slug == 'top10') {
-                                categoryWidget = RepaintBoundary(
-                                  child: Column(
-                                    children: [
-                                      Top10List(
-                                        content: categoryContent,
-                                        isSignedIn:
-                                            authController.isLoggedIn.value,
-                                        isHorizontal: isWeb && (index % 2 == 0),
-                                      ),
-                                      const SizedBox(height: 10),
-                                    ],
-                                  ),
-                                );
-                              } else {
-                                categoryWidget = RepaintBoundary(
-                                  child: Column(
-                                    children: [
-                                      HomeSliderSection(
-                                        title: category.name,
-                                        content: categoryContent,
-                                        isSignedIn:
-                                            authController.isLoggedIn.value,
-                                        isHorizontal: isWeb && (index % 2 == 0),
-                                      ),
-                                      const SizedBox(height: 10),
-                                    ],
-                                  ),
-                                );
-                              }
+                          for (int i = 0; i < visibleCategories.length; i++) {
+                            final category = visibleCategories[i];
+                            final categoryContent = catMap[category.slug]!;
 
-                              // 🔥 Har 2 categories ke baad ek Banner Ad
-                              if ((index + 1) % 2 == 0) {
-                                return [
-                                  categoryWidget,
-                                  Center(
-                                    child: BannerAdWidget(
-                                      key: ValueKey('home_category_ad_$index'),
+                            // Dynamic detection of Top 10 category
+                            final cleanSlug = category.slug
+                                .toLowerCase()
+                                .replaceAll(RegExp(r'[-_\s]'), '');
+                            final cleanName = category.name
+                                .toLowerCase()
+                                .replaceAll(RegExp(r'[-_\s]'), '');
+                            final isTop10 = cleanSlug == 'top10' ||
+                                cleanName == 'top10' ||
+                                category.layout == 'top10';
+
+                            // Dynamically determine layout
+                            final bool isHorizontal;
+                            if (isTop10) {
+                              // Top 10 is always Horizontal Cards with Big 1, 2 Digits
+                              isHorizontal = true;
+                              nextIsHorizontal = false; // Next alternates to Vertical
+                            } else if (category.isHorizontal != null) {
+                              isHorizontal = category.isHorizontal!;
+                              nextIsHorizontal = !isHorizontal;
+                            } else if (category.layout != null) {
+                              isHorizontal = category.layout == 'horizontal';
+                              nextIsHorizontal = !isHorizontal;
+                            } else {
+                              // Dynamically alternate layout for all subsequent categories
+                              isHorizontal = nextIsHorizontal;
+                              nextIsHorizontal = !nextIsHorizontal;
+                            }
+
+                            Widget categoryWidget;
+                            if (isTop10) {
+                              categoryWidget = RepaintBoundary(
+                                child: Column(
+                                  children: [
+                                    Top10List(
+                                      title: category.name.isNotEmpty
+                                          ? category.name
+                                          : "Top 10",
+                                      content: categoryContent,
+                                      isSignedIn:
+                                          authController.isLoggedIn.value,
+                                      isHorizontal: isHorizontal,
                                     ),
+                                    const SizedBox(height: 15),
+                                  ],
+                                ),
+                              );
+                            } else {
+                              categoryWidget = RepaintBoundary(
+                                child: Column(
+                                  children: [
+                                    HomeSliderSection(
+                                      title: category.name,
+                                      content: categoryContent,
+                                      isSignedIn:
+                                          authController.isLoggedIn.value,
+                                      isHorizontal: isHorizontal,
+                                    ),
+                                    const SizedBox(height: 15),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            categoryWidgets.add(categoryWidget);
+
+                            // 🔥 Har 2 categories ke baad ek Banner Ad
+                            if ((i + 1) % 2 == 0) {
+                              categoryWidgets.add(
+                                Center(
+                                  child: BannerAdWidget(
+                                    key: ValueKey('home_category_ad_$i'),
                                   ),
-                                  const SizedBox(height: 10),
-                                ];
-                              }
-                              return [categoryWidget];
-                            }),
+                                ),
+                              );
+                              categoryWidgets.add(const SizedBox(height: 15));
+                            }
+                          }
+
+                          return categoryWidgets;
+                        }(),
+
 
                         /// 3. 🔹 COMING SOON (uses precomputed list)
                         ComingSoonSection(
@@ -484,9 +560,15 @@ class _MainHomePageState extends State<MainHomePage> {
                         ),
                         child: Column(
                           children: [
-                            Image.asset(
-                              'assets/images/roccoplay_logo.png',
-                              height: 50,
+                            MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: _handleLogoClick,
+                                child: Image.asset(
+                                  'assets/images/roccoplay_logo.png',
+                                  height: 50,
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 10),
                             const Text(
@@ -518,8 +600,9 @@ class _MainHomePageState extends State<MainHomePage> {
                               ),
                             ),
                             const SizedBox(height: 20),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 TextButton(
                                   onPressed: () => Get.toNamed(AppRoutes.privacyPolicy),
@@ -533,6 +616,22 @@ class _MainHomePageState extends State<MainHomePage> {
                                   onPressed: () => Get.toNamed(AppRoutes.termsAndConditions),
                                   child: const Text(
                                     "Terms & Conditions",
+                                    style: TextStyle(color: Colors.blue, fontSize: 12),
+                                  ),
+                                ),
+                                const Text(" | ", style: TextStyle(color: Colors.white24)),
+                                TextButton(
+                                  onPressed: () => Get.toNamed(AppRoutes.refundPolicy),
+                                  child: const Text(
+                                    "Refund Policy",
+                                    style: TextStyle(color: Colors.blue, fontSize: 12),
+                                  ),
+                                ),
+                                const Text(" | ", style: TextStyle(color: Colors.white24)),
+                                TextButton(
+                                  onPressed: () => Get.toNamed(AppRoutes.help),
+                                  child: const Text(
+                                    "Help & Support",
                                     style: TextStyle(color: Colors.blue, fontSize: 12),
                                   ),
                                 ),

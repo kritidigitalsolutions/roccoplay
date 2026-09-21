@@ -159,10 +159,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  /// 🔥 App foreground me aane pe App Open Ad show karo
+  /// 🔥 App background/foreground track karke 30s+ minimize pe hi App Open Ad allow karo
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!kIsWeb && state == AppLifecycleState.resumed) {
+    if (kIsWeb) return;
+    if (state == AppLifecycleState.paused) {
+      AppOpenAdHelper.onAppPaused();
+    } else if (state == AppLifecycleState.resumed) {
       AppOpenAdHelper.showAdIfAvailable();
     }
   }

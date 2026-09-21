@@ -19,7 +19,6 @@ import '../popUp/age_popup.dart';
 import '../../view_model/drama_detail_controller/drama_details_controller.dart';
 import '../../utils/custom_snackbar.dart';
 import '../../widgets/ad_widget/banner_ad_widget.dart';
-import '../../widgets/ad_widget/interstitial_ad_helper.dart';
 
 class DramaDetailsPage extends StatefulWidget {
   final bool isSignedIn;
@@ -77,7 +76,7 @@ class _DramaDetailsPageState extends State<DramaDetailsPage> {
         premiumController.fetchAllSubscriptionStatus();
         interactionController.fetchInteractionStatus(widget.content.id);
       }
-      InterstitialAdHelper.loadAd();
+      // InterstitialAdHelper.loadAd();
     });
   }
 
@@ -137,11 +136,7 @@ class _DramaDetailsPageState extends State<DramaDetailsPage> {
                     left: 10,
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () {
-                        InterstitialAdHelper.showAd(
-                          onAdClosed: () => Get.back(),
-                        );
-                      },
+                      onPressed: () => Get.back(),
                     ),
                   ),
                   if (content.trailerUrl != null && content.trailerUrl!.isNotEmpty)

@@ -3,18 +3,19 @@ import 'package:get/get.dart';
 import '../../app/routes/app_routes.dart';
 import '../../data/models/response_model/content_response_model/content_model.dart';
 import '../../app/theme/app_colors.dart';
-import '../dramaDetails/dramaDetailsPage.dart';
 
 class Top10List extends StatelessWidget {
+  final String title;
   final List<ContentModel> content;
   final bool isSignedIn;
   final bool isHorizontal;
 
   const Top10List({
     super.key,
+    this.title = "Top 10",
     required this.content,
     required this.isSignedIn,
-    this.isHorizontal = false,
+    this.isHorizontal = true,
   });
 
   @override
@@ -24,11 +25,21 @@ class Top10List extends StatelessWidget {
     double screenWidth = MediaQuery.of(context).size.width;
     bool isWeb = screenWidth > 800;
 
-    double posterWidth = isWeb ? (isHorizontal ? 420 : 200) : 95;
-    double posterHeight = isWeb ? (isHorizontal ? 240 : 300) : 140;
-    double sectionHeight = isWeb ? (isHorizontal ? 300 : 350) : 170;
-    double numberSize = isWeb ? (isHorizontal ? 260 : 280) : 150;
-    double offsetLeft = isWeb ? (isHorizontal ? 120 : 110) : 50;
+    double posterWidth = isWeb
+        ? (isHorizontal ? 400 : 200)
+        : (isHorizontal ? 210 : 110);
+    double posterHeight = isWeb
+        ? (isHorizontal ? 225 : 300)
+        : (isHorizontal ? 120 : 160);
+    double sectionHeight = isWeb
+        ? (isHorizontal ? 255 : 330)
+        : (isHorizontal ? 140 : 180);
+    double numberSize = isWeb
+        ? (isHorizontal ? 200 : 210)
+        : (isHorizontal ? 110 : 110);
+    double offsetLeft = isWeb
+        ? (isHorizontal ? 85 : 75)
+        : (isHorizontal ? 45 : 40);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,17 +49,16 @@ class Top10List extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: InkWell(
             onTap: () {
-              // Get.to(() => CategoryGridPage(
-              //   title: "Top 10",
-              //   content: content,
-              //   isSignedIn: isSignedIn, items: [],
-              // ));
+              Get.toNamed(
+                AppRoutes.categoryGrid,
+                arguments: {'title': title, 'content': content},
+              );
             },
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  "Top 10",
+                  title,
                   style: TextStyle(
                     color: AppColors.white,
                     fontSize: isWeb ? 26 : 22,
@@ -69,6 +79,7 @@ class Top10List extends StatelessWidget {
           height: sectionHeight,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
             itemCount: content.length > 10 ? 10 : content.length,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemBuilder: (context, index) {
@@ -81,7 +92,8 @@ class Top10List extends StatelessWidget {
                 numberSize: numberSize,
                 offsetLeft: offsetLeft,
                 isSignedIn: isSignedIn,
-                useBanner: isWeb && isHorizontal,
+                useBanner: isHorizontal,
+                isWeb: isWeb,
               );
             },
           ),
@@ -100,6 +112,7 @@ class _Top10HoverItem extends StatefulWidget {
   final double offsetLeft;
   final bool isSignedIn;
   final bool useBanner;
+  final bool isWeb;
 
   const _Top10HoverItem({
     required this.item,
@@ -110,6 +123,7 @@ class _Top10HoverItem extends StatefulWidget {
     required this.offsetLeft,
     required this.isSignedIn,
     required this.useBanner,
+    required this.isWeb,
   });
 
   @override
@@ -143,6 +157,12 @@ class _Top10HoverItemState extends State<_Top10HoverItem> with SingleTickerProvi
 
   @override
   Widget build(BuildContext context) {
+    final bool isTwoDigit = (widget.index + 1) >= 10;
+    final double effectiveOffset = isTwoDigit
+        ? (widget.isWeb ? widget.offsetLeft * 1.6 : widget.offsetLeft * 1.6)
+        : widget.offsetLeft;
+    final double itemWidth = widget.posterWidth + effectiveOffset;
+
     return MouseRegion(
       onEnter: (_) {
         setState(() => _isHovered = true);
@@ -161,65 +181,81 @@ class _Top10HoverItemState extends State<_Top10HoverItem> with SingleTickerProvi
             Get.toNamed(AppRoutes.dramaDetails, arguments: widget.item);
           },
           child: Container(
-            width: widget.posterWidth + widget.offsetLeft,
-            margin: const EdgeInsets.only(right: 20),
+            width: itemWidth,
+            height: widget.posterHeight,
+            margin: const EdgeInsets.only(right: 18),
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                /// 🔥 Binking Glow Digit
+                /// 🔥 Big Rank Digit (1, 2, ... 10)
                 Positioned(
                   left: 0,
-                  bottom: -15,
-                  child: AnimatedBuilder(
-                    animation: _blinkController,
-                    builder: (context, child) {
-                      final glowColor = Color.lerp(
-                        Colors.white24,
-                        AppColors.buttonColor.withOpacity(0.8),
-                        _blinkController.value,
-                      );
+                  top: 0,
+                  bottom: 0,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: AnimatedBuilder(
+                      animation: _blinkController,
+                      builder: (context, child) {
+                        final glowColor = Color.lerp(
+                          Colors.white,
+                          AppColors.buttonColor,
+                          _blinkController.value,
+                        );
 
-                      return Text(
-                        '${widget.index + 1}',
-                        style: TextStyle(
-                          fontSize: widget.numberSize,
-                          fontWeight: FontWeight.w900,
-                          height: 0.9,
-                          color: _isHovered ? glowColor : Colors.white,
-                          shadows: _isHovered
-                              ? [
-                                  Shadow(
-                                    color: AppColors.buttonColor.withOpacity(
-                                      0.5 * _blinkController.value,
-                                    ),
-                                    blurRadius: 20 * _blinkController.value,
+                        return Text(
+                          '${widget.index + 1}',
+                          style: TextStyle(
+                            fontSize: widget.numberSize,
+                            fontWeight: FontWeight.w900,
+                            height: 1.0,
+                            color: _isHovered ? glowColor : Colors.white,
+                            letterSpacing: isTwoDigit ? -4 : -2,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.8),
+                                offset: const Offset(2, 2),
+                                blurRadius: 4,
+                              ),
+                              if (_isHovered) ...[
+                                Shadow(
+                                  color: AppColors.buttonColor.withValues(
+                                    alpha: 0.6 * _blinkController.value,
                                   ),
-                                  Shadow(
-                                    color: AppColors.buttonColor.withOpacity(
-                                      0.3 * _blinkController.value,
-                                    ),
-                                    blurRadius: 40 * _blinkController.value,
+                                  blurRadius: 20 * _blinkController.value,
+                                ),
+                                Shadow(
+                                  color: AppColors.buttonColor.withValues(
+                                    alpha: 0.4 * _blinkController.value,
                                   ),
-                                ]
-                              : [],
-                        ),
-                      );
-                    },
+                                  blurRadius: 40 * _blinkController.value,
+                                ),
+                              ],
+                            ],
+
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
 
                 /// Poster Image
                 Positioned(
-                  left: widget.offsetLeft,
-                  top: 10,
+                  left: effectiveOffset,
+                  top: 0,
+                  bottom: 0,
+                  width: widget.posterWidth,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: Image.network(
-                      widget.useBanner ? widget.item.banner : widget.item.poster,
+                      (widget.useBanner && widget.item.banner.isNotEmpty)
+                          ? widget.item.banner
+                          : widget.item.poster,
                       width: widget.posterWidth,
                       height: widget.posterHeight,
                       fit: BoxFit.cover,
-                      cacheWidth: widget.useBanner ? 500 : 300,
+                      cacheWidth: (widget.useBanner && widget.item.banner.isNotEmpty) ? 600 : 350,
                       errorBuilder: (context, error, stackTrace) => Image.asset(
                         "assets/images/farzi.jpg",
                         width: widget.posterWidth,
@@ -237,3 +273,4 @@ class _Top10HoverItemState extends State<_Top10HoverItem> with SingleTickerProvi
     );
   }
 }
+

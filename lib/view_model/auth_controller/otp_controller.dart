@@ -23,6 +23,23 @@ class OtpController extends GetxController {
     super.onClose();
   }
 
+  void setOtp(String otp) {
+    final digits = otp.replaceAll(RegExp(r'\D'), '');
+    for (int i = 0; i < 6; i++) {
+      if (i < digits.length) {
+        controllers[i].text = digits[i];
+      } else {
+        controllers[i].clear();
+      }
+    }
+  }
+
+  void clearOtp() {
+    for (var controller in controllers) {
+      controller.clear();
+    }
+  }
+
   void startTimer() {
     isResendButtonDisabled.value = true;
     countdown.value = 30;

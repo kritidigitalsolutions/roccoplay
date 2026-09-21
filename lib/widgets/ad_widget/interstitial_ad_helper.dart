@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:roccoplay/utils/helper/ad_helper.dart';
 
@@ -8,6 +7,7 @@ import 'package:roccoplay/utils/helper/ad_helper.dart';
 class InterstitialAdHelper {
   static InterstitialAd? _interstitialAd;
   static bool _isLoaded = false;
+  static bool isShowing = false;
 
   /// 🔄 Load Interstitial Ad
   static void loadAd() {
@@ -37,7 +37,11 @@ class InterstitialAdHelper {
     }
     if (_isLoaded && _interstitialAd != null) {
       _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
+        onAdShowedFullScreenContent: (ad) {
+          isShowing = true;
+        },
         onAdDismissedFullScreenContent: (ad) {
+          isShowing = false;
           ad.dispose();
           _interstitialAd = null;
           _isLoaded = false;
@@ -45,6 +49,7 @@ class InterstitialAdHelper {
           if (onAdClosed != null) onAdClosed();
         },
         onAdFailedToShowFullScreenContent: (ad, error) {
+          isShowing = false;
           ad.dispose();
           _interstitialAd = null;
           _isLoaded = false;

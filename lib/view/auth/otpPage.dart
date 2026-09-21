@@ -57,6 +57,46 @@ class OtpPage extends StatelessWidget {
       }
     }
 
+    void handleOtpChange(int index, String value) {
+      if (value.length > 2) {
+        // Autofill from keyboard suggestion or clipboard paste
+        otpController.setOtp(value);
+        FocusScope.of(context).unfocus();
+        TextInput.finishAutofillContext();
+        final digits = value.replaceAll(RegExp(r'\D'), '');
+        if (digits.length >= 6) {
+          verifyOtp();
+        }
+        return;
+      }
+
+      if (value.length == 2) {
+        // Overwriting a character in an already filled box
+        final newChar = value.substring(value.length - 1);
+        otpController.controllers[index].text = newChar;
+        otpController.controllers[index].selection =
+            const TextSelection.collapsed(offset: 1);
+        if (index < 5) {
+          FocusScope.of(context).requestFocus(otpController.focusNodes[index + 1]);
+        } else {
+          FocusScope.of(context).unfocus();
+          verifyOtp();
+        }
+        return;
+      }
+
+      if (value.isNotEmpty && index < 5) {
+        FocusScope.of(context).requestFocus(otpController.focusNodes[index + 1]);
+      }
+      if (value.isEmpty && index > 0) {
+        FocusScope.of(context).requestFocus(otpController.focusNodes[index - 1]);
+      }
+      if (value.length == 1 && index == 5) {
+        FocusScope.of(context).unfocus();
+        verifyOtp();
+      }
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -96,55 +136,50 @@ class OtpPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 40),
 
-                    Center(
-                      child: SizedBox(
-                        width: isWeb ? 350 : double.infinity,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: List.generate(
-                            6,
-                            (index) => SizedBox(
-                              width: isWeb ? 45 : 40,
-                              height: 55,
-                              child: TextField(
-                                controller: otpController.controllers[index],
-                                focusNode: otpController.focusNodes[index],
-                                keyboardType: TextInputType.number,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: AppColors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(1),
-                                ],
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: AppColors.grey,
-                                  contentPadding: EdgeInsets.zero,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide.none,
+                    AutofillGroup(
+                      child: Center(
+                        child: SizedBox(
+                          width: isWeb ? 350 : double.infinity,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: List.generate(
+                              6,
+                              (index) => SizedBox(
+                                width: isWeb ? 45 : 40,
+                                height: 55,
+                                child: TextField(
+                                  controller: otpController.controllers[index],
+                                  focusNode: otpController.focusNodes[index],
+                                  autofocus: index == 0,
+                                  autofillHints: const [AutofillHints.oneTimeCode],
+                                  keyboardType: TextInputType.number,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: AppColors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
                                   ),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(6),
+                                  ],
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: AppColors.grey,
+                                    contentPadding: EdgeInsets.zero,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    otpController.controllers[index].selection = TextSelection(
+                                      baseOffset: 0,
+                                      extentOffset: otpController.controllers[index].text.length,
+                                    );
+                                  },
+                                  onChanged: (value) => handleOtpChange(index, value),
                                 ),
-                                onChanged: (value) {
-                                  if (value.isNotEmpty && index < 5) {
-                                    FocusScope.of(
-                                      context,
-                                    ).requestFocus(otpController.focusNodes[index + 1]);
-                                  }
-                                  if (value.isEmpty && index > 0) {
-                                    FocusScope.of(
-                                      context,
-                                    ).requestFocus(otpController.focusNodes[index - 1]);
-                                  }
-                                  if (value.length == 1 && index == 5) {
-                                    FocusScope.of(context).unfocus();
-                                    verifyOtp();
-                                  }
-                                },
                               ),
                             ),
                           ),
@@ -191,6 +226,8 @@ class OtpPage extends StatelessWidget {
                                     phoneNumber,
                                   );
                                   if (success) {
+                                    otpController.clearOtp();
+                                    otpController.focusNodes[0].requestFocus();
                                     otpController.startTimer();
                                   }
                                 },

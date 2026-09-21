@@ -7,9 +7,6 @@ import '../../app/routes/app_routes.dart';
 import '../../app/theme/app_colors.dart';
 import '../../view_model/home_controller/home_controller.dart';
 import '../../widgets/expendable_plan_card.dart';
-import '../auth/signInPage.dart';
-import '../popUp/promo_code_popup.dart';
-import '../popUp/redeem_voucher_page.dart';
 import '../../utils/custom_snackbar.dart';
 
 class GoPremiumPage extends StatelessWidget {
@@ -22,267 +19,283 @@ class GoPremiumPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: LayoutBuilder(builder: (context, constraints) {
-          bool isWeb = constraints.maxWidth > 800;
-          return Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: isWeb ? 600 : double.infinity),
-              child: Obx(() {
-                if (controller.isLoading.value) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Colors.pink),
-                  );
-                }
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            bool isWeb = constraints.maxWidth > 800;
+            return Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isWeb ? 600 : double.infinity,
+                ),
+                child: Obx(() {
+                  if (controller.isLoading.value) {
+                    return const Center(
+                      child: CircularProgressIndicator(color: Colors.pink),
+                    );
+                  }
 
-                return Column(
-                  children: [
-                    /// 🔹 Top Section
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 15),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          /// Back Icon
-                          IconButton(
-                            icon: const Icon(
-                              Icons.arrow_back_ios,
-                              color: AppColors.white,
+                  return Column(
+                    children: [
+                      /// 🔹 Top Section
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            /// Back Icon
+                            IconButton(
+                              icon: const Icon(
+                                Icons.arrow_back_ios,
+                                color: AppColors.white,
+                              ),
+                              onPressed: () {
+                                if (Get.key.currentState?.canPop() ?? false) {
+                                  Get.back(); // ✅ If opened via Get.to()
+                                } else {
+                                  Get.find<HomeController>()
+                                          .selectedIndex
+                                          .value =
+                                      0; // ✅ If opened via navbar
+                                }
+                              },
                             ),
-                            onPressed: () {
-                              if (Get.key.currentState?.canPop() ?? false) {
-                                Get.back(); // ✅ If opened via Get.to()
-                              } else {
-                                Get.find<HomeController>().selectedIndex.value = 0; // ✅ If opened via navbar
-                              }
-                            },
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                    /// 🔹 Upgrade Text
-                    const Text(
-                      "Upgrade Your Plan for More Benefits",
-                      style: TextStyle(
-                        color: AppColors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                      /// 🔹 Upgrade Text
+                      const Text(
+                        "Upgrade Your Plan for More Benefits",
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                    /// 🔹 Expandable Plans List
-                    Expanded(
-                      child: Obx(() {
-                        if (controller.plans.isEmpty) {
-                          return const Center(
-                            child: Text(
-                              "No plans available",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          );
-                        }
-
-                        return ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 15),
-                          itemCount: controller.plans.length,
-                          itemBuilder: (context, index) {
-                            final plan = controller.plans[index];
-                            return Obx(() {
-                              bool isSelected = controller.selectedPlanIndex.value == index;
-
-                              return ExpandablePlanCard(
-                                title: plan.name,
-                                price: "₹${plan.price}",
-                                duration: "/ ${plan.duration} Days",
-                                features: plan.features,
-                                isHighlighted: isSelected,
-                                onTap: () => controller.selectPlan(index),
-                              );
-                            });
-                          },
-                        );
-                      }),
-                    ),
-                    NativeAdWidget(
-                      adType: TemplateType.small,
-                      constraints: BoxConstraints(
-                        minWidth: MediaQuery.of(context).size.width,
-                        minHeight: 50,
-                        maxWidth: MediaQuery.of(context).size.width,
-                        maxHeight: 100,
-                      ),
-                    ),
-
-                    /// 🔴 Sign In / Purchase / Already Purchased Button
-                    Padding(
-                      padding: const EdgeInsets.all(15.0),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 50,
+                      /// 🔹 Expandable Plans List
+                      Expanded(
                         child: Obx(() {
-                          if (controller.isSubscribing.value) {
+                          if (controller.plans.isEmpty) {
                             return const Center(
-                              child: CircularProgressIndicator(
-                                color: AppColors.buttonColor,
+                              child: Text(
+                                "No plans available",
+                                style: TextStyle(color: Colors.white),
                               ),
                             );
                           }
 
-                          final bool hasActive = controller.hasActiveSubscription;
+                          return ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 15),
+                            itemCount: controller.plans.length,
+                            itemBuilder: (context, index) {
+                              final plan = controller.plans[index];
+                              return Obx(() {
+                                bool isSelected =
+                                    controller.selectedPlanIndex.value == index;
 
-                          return ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: hasActive ? Colors.grey : AppColors.buttonColor,
-                            ),
-                            onPressed: () {
-                              if (!controller.isUserLoggedIn.value) {
-                                Get.toNamed(AppRoutes.signIn);
-                                return;
-                              }
-
-                              if (hasActive) {
-                                CustomSnackbar.show(
-                                  title: "Info",
-                                  message: "Already Purchased",
+                                return ExpandablePlanCard(
+                                  title: plan.name,
+                                  price: "₹${plan.price}",
+                                  duration: "/ ${plan.duration} Days",
+                                  features: plan.features,
+                                  isHighlighted: isSelected,
+                                  onTap: () => controller.selectPlan(index),
                                 );
-                              } else {
-                                if (controller.plans.isNotEmpty) {
-                                  final selectedPlan = controller.plans[controller.selectedPlanIndex.value];
-                                  controller.subscribeToPlan(selectedPlan.id);
-                                }
-                              }
+                              });
                             },
-                            child: Text(
-                              hasActive
-                                  ? "Already Purchased"
-                                  : (controller.isUserLoggedIn.value ? "Continue with ${controller.selectedPrice.value}" : "Sign In"),
-                              style: const TextStyle(
-                                color: AppColors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
                           );
                         }),
                       ),
-                    ),
-
-                    /// 🔹 Bottom 50%-50% (Mobile Only)
-                    if (!isWeb)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                if (controller.isUserLoggedIn.value) {
-                                  Get.dialog(const ApplyPromoPopup());
-                                } else {
-                                  _showSignInPopup();
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 15,
-                                ),
-                                alignment: Alignment.center,
-                                decoration: const BoxDecoration(
-                                  border: Border(
-                                    top: BorderSide(
-                                      color: AppColors.borderColor,
-                                    ),
-                                    right: BorderSide(
-                                      color: AppColors.borderColor,
-                                    ),
-                                  ),
-                                ),
-                                child: const Text(
-                                  "Apply Promo Code",
-                                  style: TextStyle(color: AppColors.white),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                if (controller.isUserLoggedIn.value) {
-                                  Get.toNamed(AppRoutes.redeemVoucher);
-                                } else {
-                                  _showSignInPopup();
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 15,
-                                ),
-                                alignment: Alignment.center,
-                                decoration: const BoxDecoration(
-                                  border: Border(
-                                    top: BorderSide(
-                                      color: AppColors.borderColor,
-                                    ),
-                                  ),
-                                ),
-                                child: const Text(
-                                  "Apply Prepaid Pin",
-                                  style: TextStyle(color: AppColors.white),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                      NativeAdWidget(
+                        adType: TemplateType.small,
+                        constraints: BoxConstraints(
+                          minWidth: MediaQuery.of(context).size.width,
+                          minHeight: 50,
+                          maxWidth: MediaQuery.of(context).size.width,
+                          maxHeight: 100,
+                        ),
                       ),
-                  ],
-                );
-              }),
-            ),
-          );
-        }),
+
+                      /// 🔴 Sign In / Purchase / Already Purchased Button
+                      Padding(
+                        padding: const EdgeInsets.all(15.0),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: Obx(() {
+                            if (controller.isSubscribing.value) {
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: AppColors.buttonColor,
+                                ),
+                              );
+                            }
+
+                            final bool hasActive =
+                                controller.hasActiveSubscription;
+
+                            return ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: hasActive
+                                    ? Colors.grey
+                                    : AppColors.buttonColor,
+                              ),
+                              onPressed: () {
+                                if (!controller.isUserLoggedIn.value) {
+                                  Get.toNamed(AppRoutes.signIn);
+                                  return;
+                                }
+
+                                if (hasActive) {
+                                  CustomSnackbar.show(
+                                    title: "Info",
+                                    message: "Already Purchased",
+                                  );
+                                } else {
+                                  if (controller.plans.isNotEmpty) {
+                                    final selectedPlan =
+                                        controller.plans[controller
+                                            .selectedPlanIndex
+                                            .value];
+                                    controller.subscribeToPlan(selectedPlan.id);
+                                  }
+                                }
+                              },
+                              child: Text(
+                                hasActive
+                                    ? "Already Purchased"
+                                    : (controller.isUserLoggedIn.value
+                                          ? "Continue with ${controller.selectedPrice.value}"
+                                          : "Sign In"),
+                                style: const TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+
+                      /// 🔹 Bottom 50%-50% (Mobile Only)
+                      // if (!isWeb)
+                      //   Row(
+                      //     children: [
+                      //       Expanded(
+                      //         child: GestureDetector(
+                      //           onTap: () {
+                      //             if (controller.isUserLoggedIn.value) {
+                      //               Get.dialog(const ApplyPromoPopup());
+                      //             } else {
+                      //               _showSignInPopup();
+                      //             }
+                      //           },
+                      //           child: Container(
+                      //             padding: const EdgeInsets.symmetric(
+                      //               vertical: 15,
+                      //             ),
+                      //             alignment: Alignment.center,
+                      //             decoration: const BoxDecoration(
+                      //               border: Border(
+                      //                 top: BorderSide(
+                      //                   color: AppColors.borderColor,
+                      //                 ),
+                      //                 right: BorderSide(
+                      //                   color: AppColors.borderColor,
+                      //                 ),
+                      //               ),
+                      //             ),
+                      //             child: const Text(
+                      //               "Apply Promo Code",
+                      //               style: TextStyle(color: AppColors.white),
+                      //             ),
+                      //           ),
+                      //         ),
+                      //       ),
+                      //       Expanded(
+                      //         child: GestureDetector(
+                      //           onTap: () {
+                      //             if (controller.isUserLoggedIn.value) {
+                      //               Get.toNamed(AppRoutes.redeemVoucher);
+                      //             } else {
+                      //               _showSignInPopup();
+                      //             }
+                      //           },
+                      //           child: Container(
+                      //             padding: const EdgeInsets.symmetric(
+                      //               vertical: 15,
+                      //             ),
+                      //             alignment: Alignment.center,
+                      //             decoration: const BoxDecoration(
+                      //               border: Border(
+                      //                 top: BorderSide(
+                      //                   color: AppColors.borderColor,
+                      //                 ),
+                      //               ),
+                      //             ),
+                      //             child: const Text(
+                      //               "Apply Prepaid Pin",
+                      //               style: TextStyle(color: AppColors.white),
+                      //             ),
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     ],
+                      //   ),
+                    ],
+                  );
+                }),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
   /// 🔹 Sign In Required Popup
-  void _showSignInPopup() {
-    Get.dialog(
-      AlertDialog(
-        backgroundColor: Colors.black,
-        title: const Text(
-          "Sign In Required",
-          style: TextStyle(color: AppColors.white),
-        ),
-        content: const Text(
-          "Please sign in to complete the payment.",
-          style: TextStyle(color: AppColors.white),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: AppColors.grey),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.buttonColor,
-            ),
-            onPressed: () {
-              Get.back();
-              Get.toNamed(AppRoutes.signIn);
-            },
-            child: const Text(
-              "Sign In",
-              style: TextStyle(color: AppColors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // void _showSignInPopup() {
+  //   Get.dialog(
+  //     AlertDialog(
+  //       backgroundColor: Colors.black,
+  //       title: const Text(
+  //         "Sign In Required",
+  //         style: TextStyle(color: AppColors.white),
+  //       ),
+  //       content: const Text(
+  //         "Please sign in to complete the payment.",
+  //         style: TextStyle(color: AppColors.white),
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Get.back(),
+  //           child: const Text(
+  //             "Cancel",
+  //             style: TextStyle(color: AppColors.grey),
+  //           ),
+  //         ),
+  //         ElevatedButton(
+  //           style: ElevatedButton.styleFrom(
+  //             backgroundColor: AppColors.buttonColor,
+  //           ),
+  //           onPressed: () {
+  //             Get.back();
+  //             Get.toNamed(AppRoutes.signIn);
+  //           },
+  //           child: const Text(
+  //             "Sign In",
+  //             style: TextStyle(color: AppColors.white),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 }

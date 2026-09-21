@@ -26,7 +26,6 @@ class VideoController extends GetxController {
 
   // Track last emitted values to throttle reactive updates
   Duration _lastEmittedPosition = Duration.zero;
-  bool _lastEmittedPlaying = false;
   Duration _lastEmittedDuration = Duration.zero;
 
   // Listener callback reference for cleanup
@@ -69,11 +68,11 @@ class VideoController extends GetxController {
       }
     }
 
-    videoPlayerController!.play();
+    await videoPlayerController!.play();
+    isPlaying.value = true;
 
     // Reset throttle tracking
     _lastEmittedPosition = videoPlayerController!.value.position;
-    _lastEmittedPlaying = true;
 
     /// 🔥 LISTENER (THROTTLED — only update Rx when values actually change)
     _videoListener = () {
@@ -90,9 +89,8 @@ class VideoController extends GetxController {
         currentPosition.value = value.position;
       }
 
-      // Only update isPlaying when it actually changes
-      if (value.isPlaying != _lastEmittedPlaying) {
-        _lastEmittedPlaying = value.isPlaying;
+      // Always directly sync isPlaying with real video player state
+      if (isPlaying.value != value.isPlaying) {
         isPlaying.value = value.isPlaying;
       }
 
@@ -112,6 +110,7 @@ class VideoController extends GetxController {
   void _cleanupOldController() {
     _hideTimer?.cancel();
     _saveTimer?.cancel();
+    isPlaying.value = false;
     final old = videoPlayerController;
     if (old != null) {
       if (_videoListener != null) {
@@ -144,9 +143,11 @@ class VideoController extends GetxController {
 
     if (c.value.isPlaying) {
       c.pause();
+      isPlaying.value = false;
       _savePosition();
     } else {
       c.play();
+      isPlaying.value = true;
       _startHideTimer();
     }
   }
