@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:roccoplay/utils/service/meta_event_service.dart';
 import 'package:roccoplay/utils/service/firebase_analytics_service.dart';
+import 'package:roccoplay/utils/service/web_reload_helper.dart';
 import 'package:roccoplay/widgets/ad_widget/banner_ad_widget.dart';
 import '../../app/routes/app_routes.dart';
 import '../../app/theme/app_colors.dart';
@@ -54,8 +57,13 @@ class _MainHomePageState extends State<MainHomePage> {
     super.dispose();
   }
 
-  /// 🔄 Logo click handler: Home pe le jao, scroll top karo, aur content refresh karo
+  /// 🔄 Logo click handler: Web pe full reload karo, Mobile pe home pe scroll karo aur content refresh karo
   Future<void> _handleLogoClick() async {
+    if (kIsWeb) {
+      performWebReload();
+      return;
+    }
+
     controller.onItemTapped(0);
 
     if (_scrollController.hasClients) {
@@ -78,6 +86,14 @@ class _MainHomePageState extends State<MainHomePage> {
     }
 
     await Future.wait(refreshTasks);
+  }
+
+  Future<void> _launchStoreUrl(String url) async {
+    if (url.isEmpty) return;
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   @override
@@ -413,7 +429,7 @@ class _MainHomePageState extends State<MainHomePage> {
                             ),
                           ),
 
-                        /// 2. 🔹 OTHER CATEGORIES (Dynamic alternating layout)
+                        /// 2. 🔹 OTHER CATEGORIES (Strictly alternating vertical & horizontal layouts)
                         ...() {
                           final visibleCategories = contentController.categories
                               .where((cat) => cat.slug != 'trending')
@@ -423,7 +439,7 @@ class _MainHomePageState extends State<MainHomePage> {
                               })
                               .toList();
 
-                          bool nextIsHorizontal = true;
+                          bool nextIsHorizontal = false; // Alternates: 1st vertical, 2nd horizontal, 3rd vertical...
                           final List<Widget> categoryWidgets = [];
 
                           for (int i = 0; i < visibleCategories.length; i++) {
@@ -441,20 +457,13 @@ class _MainHomePageState extends State<MainHomePage> {
                                 cleanName == 'top10' ||
                                 category.layout == 'top10';
 
-                            // Dynamically determine layout
+                            // Dynamically alternate layout
                             final bool isHorizontal;
                             if (isTop10) {
-                              // Top 10 is always Horizontal Cards with Big 1, 2 Digits
+                              // Top 10 is always Horizontal Cards with Big Digits
                               isHorizontal = true;
                               nextIsHorizontal = false; // Next alternates to Vertical
-                            } else if (category.isHorizontal != null) {
-                              isHorizontal = category.isHorizontal!;
-                              nextIsHorizontal = !isHorizontal;
-                            } else if (category.layout != null) {
-                              isHorizontal = category.layout == 'horizontal';
-                              nextIsHorizontal = !isHorizontal;
                             } else {
-                              // Dynamically alternate layout for all subsequent categories
                               isHorizontal = nextIsHorizontal;
                               nextIsHorizontal = !nextIsHorizontal;
                             }
@@ -522,140 +531,10 @@ class _MainHomePageState extends State<MainHomePage> {
                     );
                   }),
 
-
                   const SizedBox(height: 40),
 
-                  /// 🔹 COMPANY INFO (Footer)
-                  Obx(() {
-                    final info = controller.companyInfo.value;
-                    if (info != null && info['status'] == 'published') {
-                      final addressList = [
-                        info['addressLine1'],
-                        if (info['addressLine2'] != null &&
-                            info['addressLine2'] != "i don't have one")
-                          info['addressLine2'],
-                        info['city'],
-                        info['state'],
-                        "${info['country']} - ${info['postalCode']}",
-                      ];
-
-                      final address = addressList
-                          .where(
-                            (e) => e != null && e.toString().trim().isNotEmpty,
-                          )
-                          .join(", ");
-
-                      return Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 30,
-                          horizontal: 20,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(30),
-                            topRight: Radius.circular(30),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: GestureDetector(
-                                onTap: _handleLogoClick,
-                                child: Image.asset(
-                                  'assets/images/roccoplay_logo.png',
-                                  height: 50,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            const Text(
-                              "ROCCO PLAY",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                letterSpacing: 2,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            const Text(
-                              "Office Address",
-                              style: TextStyle(
-                                color: AppColors.buttonColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              address,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
-                                fontSize: 13,
-                                height: 1.5,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Wrap(
-                              alignment: WrapAlignment.center,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                TextButton(
-                                  onPressed: () => Get.toNamed(AppRoutes.privacyPolicy),
-                                  child: const Text(
-                                    "Privacy Policy",
-                                    style: TextStyle(color: Colors.blue, fontSize: 12),
-                                  ),
-                                ),
-                                const Text(" | ", style: TextStyle(color: Colors.white24)),
-                                TextButton(
-                                  onPressed: () => Get.toNamed(AppRoutes.termsAndConditions),
-                                  child: const Text(
-                                    "Terms & Conditions",
-                                    style: TextStyle(color: Colors.blue, fontSize: 12),
-                                  ),
-                                ),
-                                const Text(" | ", style: TextStyle(color: Colors.white24)),
-                                TextButton(
-                                  onPressed: () => Get.toNamed(AppRoutes.refundPolicy),
-                                  child: const Text(
-                                    "Refund Policy",
-                                    style: TextStyle(color: Colors.blue, fontSize: 12),
-                                  ),
-                                ),
-                                const Text(" | ", style: TextStyle(color: Colors.white24)),
-                                TextButton(
-                                  onPressed: () => Get.toNamed(AppRoutes.help),
-                                  child: const Text(
-                                    "Help & Support",
-                                    style: TextStyle(color: Colors.blue, fontSize: 12),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  "© ${DateTime.now().year} Rocco Play. All rights reserved.",
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.4),
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  }),
+                  /// 🔹 COMPANY INFO & STORE LINKS (Footer)
+                  _buildFooter(controller),
 
                   const SizedBox(height: 100),
                 ],
@@ -665,5 +544,256 @@ class _MainHomePageState extends State<MainHomePage> {
         ),
       ],
     );
+  }
+
+  /// 🔹 COMPANY INFO & STORE LINKS (Footer)
+  Widget _buildFooter(HomeController controller) {
+    return Obx(() {
+      final info = controller.companyInfo.value;
+      final addressList = [
+        if (info != null) info['addressLine1'],
+        if (info != null &&
+            info['addressLine2'] != null &&
+            info['addressLine2'] != "i don't have one")
+          info['addressLine2'],
+        if (info != null) info['city'],
+        if (info != null) info['state'],
+        if (info != null && info['country'] != null)
+          "${info['country']} - ${info['postalCode'] ?? ''}",
+      ];
+
+      final address = addressList
+          .where((e) => e != null && e.toString().trim().isNotEmpty)
+          .join(", ");
+
+      final playStoreUrl = (info != null &&
+              info['playStoreUrl'] != null &&
+              info['playStoreUrl'].toString().isNotEmpty)
+          ? info['playStoreUrl']
+          : 'https://play.google.com/store/apps/details?id=com.roccoplay';
+
+      final appStoreUrl = (info != null &&
+              info['appStoreUrl'] != null &&
+              info['appStoreUrl'].toString().isNotEmpty)
+          ? info['appStoreUrl']
+          : 'https://apps.apple.com';
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          vertical: 30,
+          horizontal: 20,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(30),
+            topRight: Radius.circular(30),
+          ),
+        ),
+        child: Column(
+          children: [
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: _handleLogoClick,
+                child: Image.asset(
+                  'assets/images/roccoplay_logo.png',
+                  height: 50,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              "ROCCO PLAY",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                letterSpacing: 2,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            if (address.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const Text(
+                "Office Address",
+                style: TextStyle(
+                  color: AppColors.buttonColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                address,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 25),
+
+            /// 🔹 ALL POLICIES
+            const Text(
+              "Quick Links & Legal Policies",
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                TextButton(
+                  onPressed: () => Get.toNamed(AppRoutes.privacyPolicy),
+                  child: const Text(
+                    "Privacy Policy",
+                    style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                  ),
+                ),
+                const Text("|", style: TextStyle(color: Colors.white24)),
+                TextButton(
+                  onPressed: () => Get.toNamed(AppRoutes.termsAndConditions),
+                  child: const Text(
+                    "Terms & Conditions",
+                    style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                  ),
+                ),
+                const Text("|", style: TextStyle(color: Colors.white24)),
+                TextButton(
+                  onPressed: () => Get.toNamed(AppRoutes.refundPolicy),
+                  child: const Text(
+                    "Refund Policy",
+                    style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                  ),
+                ),
+                const Text("|", style: TextStyle(color: Colors.white24)),
+                TextButton(
+                  onPressed: () => Get.toNamed(AppRoutes.help),
+                  child: const Text(
+                    "Help & Support",
+                    style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 25),
+
+            /// 🔹 APP STORE & PLAY STORE LINKS
+            const Text(
+              "Download Rocco Play App",
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 15,
+              runSpacing: 10,
+              children: [
+                /// Google Play Store Button
+                OutlinedButton.icon(
+                  onPressed: () => _launchStoreUrl(playStoreUrl),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white38),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  icon: const Icon(Icons.android, color: Colors.greenAccent, size: 22),
+                  label: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "GET IT ON",
+                        style: TextStyle(fontSize: 9, color: Colors.white60),
+                      ),
+                      Text(
+                        "Google Play",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                /// Apple App Store Button
+                OutlinedButton.icon(
+                  onPressed: () => _launchStoreUrl(appStoreUrl),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white38),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  icon: const Icon(Icons.apple, color: Colors.white, size: 24),
+                  label: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "Download on the",
+                        style: TextStyle(fontSize: 9, color: Colors.white60),
+                      ),
+                      Text(
+                        "App Store",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 25),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "© ${DateTime.now().year} Rocco Play. All rights reserved.",
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.4),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
   }
 }

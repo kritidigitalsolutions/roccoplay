@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class OtpController extends GetxController {
+  final TextEditingController pinController = TextEditingController();
+  final FocusNode focusNode = FocusNode();
+
   final List<TextEditingController> controllers =
       List.generate(6, (index) => TextEditingController());
   final List<FocusNode> focusNodes = List.generate(6, (index) => FocusNode());
@@ -13,6 +16,8 @@ class OtpController extends GetxController {
 
   @override
   void onClose() {
+    pinController.dispose();
+    focusNode.dispose();
     for (var controller in controllers) {
       controller.dispose();
     }
@@ -25,6 +30,7 @@ class OtpController extends GetxController {
 
   void setOtp(String otp) {
     final digits = otp.replaceAll(RegExp(r'\D'), '');
+    pinController.text = digits;
     for (int i = 0; i < 6; i++) {
       if (i < digits.length) {
         controllers[i].text = digits[i];
@@ -35,6 +41,7 @@ class OtpController extends GetxController {
   }
 
   void clearOtp() {
+    pinController.clear();
     for (var controller in controllers) {
       controller.clear();
     }

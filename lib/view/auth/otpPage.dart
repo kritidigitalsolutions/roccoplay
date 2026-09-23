@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:pinput/pinput.dart';
 import 'package:roccoplay/utils/service/meta_event_service.dart';
 import 'package:roccoplay/utils/service/firebase_analytics_service.dart';
 import '../../app/theme/app_colors.dart';
@@ -21,7 +21,11 @@ class OtpPage extends StatelessWidget {
     final OtpController otpController = Get.put(OtpController());
 
     void verifyOtp() async {
-      String otp = otpController.controllers.map((e) => e.text).join();
+      String otp = otpController.pinController.text.trim();
+      if (otp.length < 6) {
+        // Fallback to controllers if used
+        otp = otpController.controllers.map((e) => e.text).join();
+      }
 
       if (otp.length < 6) {
         CustomSnackbar.show(
@@ -42,7 +46,7 @@ class OtpPage extends StatelessWidget {
             (response.user != null &&
             response.user!['profileComplete'] == false);
 
-        // ✅ Add a small delay to prevent FocusNode issues during navigation
+        // ✅ Small delay to prevent FocusNode issues during navigation
         Future.delayed(const Duration(milliseconds: 100), () {
           if (isNew || isProfileIncomplete) {
             MetaEventService.instance.register();
@@ -57,45 +61,31 @@ class OtpPage extends StatelessWidget {
       }
     }
 
-    void handleOtpChange(int index, String value) {
-      if (value.length > 2) {
-        // Autofill from keyboard suggestion or clipboard paste
-        otpController.setOtp(value);
-        FocusScope.of(context).unfocus();
-        TextInput.finishAutofillContext();
-        final digits = value.replaceAll(RegExp(r'\D'), '');
-        if (digits.length >= 6) {
-          verifyOtp();
-        }
-        return;
-      }
+    final defaultPinTheme = PinTheme(
+      width: 48,
+      height: 55,
+      textStyle: const TextStyle(
+        fontSize: 22,
+        color: AppColors.white,
+        fontWeight: FontWeight.bold,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.grey,
+        borderRadius: BorderRadius.circular(10),
+      ),
+    );
 
-      if (value.length == 2) {
-        // Overwriting a character in an already filled box
-        final newChar = value.substring(value.length - 1);
-        otpController.controllers[index].text = newChar;
-        otpController.controllers[index].selection =
-            const TextSelection.collapsed(offset: 1);
-        if (index < 5) {
-          FocusScope.of(context).requestFocus(otpController.focusNodes[index + 1]);
-        } else {
-          FocusScope.of(context).unfocus();
-          verifyOtp();
-        }
-        return;
-      }
+    final focusedPinTheme = defaultPinTheme.copyWith(
+      decoration: defaultPinTheme.decoration!.copyWith(
+        border: Border.all(color: AppColors.buttonColor, width: 2),
+      ),
+    );
 
-      if (value.isNotEmpty && index < 5) {
-        FocusScope.of(context).requestFocus(otpController.focusNodes[index + 1]);
-      }
-      if (value.isEmpty && index > 0) {
-        FocusScope.of(context).requestFocus(otpController.focusNodes[index - 1]);
-      }
-      if (value.length == 1 && index == 5) {
-        FocusScope.of(context).unfocus();
-        verifyOtp();
-      }
-    }
+    final submittedPinTheme = defaultPinTheme.copyWith(
+      decoration: defaultPinTheme.decoration!.copyWith(
+        border: Border.all(color: AppColors.buttonColor.withValues(alpha: 0.5)),
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -137,53 +127,22 @@ class OtpPage extends StatelessWidget {
                     const SizedBox(height: 40),
 
                     AutofillGroup(
-                      child: Center(
-                        child: SizedBox(
-                          width: isWeb ? 350 : double.infinity,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: List.generate(
-                              6,
-                              (index) => SizedBox(
-                                width: isWeb ? 45 : 40,
-                                height: 55,
-                                child: TextField(
-                                  controller: otpController.controllers[index],
-                                  focusNode: otpController.focusNodes[index],
-                                  autofocus: index == 0,
-                                  autofillHints: const [AutofillHints.oneTimeCode],
-                                  keyboardType: TextInputType.number,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: AppColors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(6),
-                                  ],
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    fillColor: AppColors.grey,
-                                    contentPadding: EdgeInsets.zero,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                  ),
-                                  onTap: () {
-                                    otpController.controllers[index].selection = TextSelection(
-                                      baseOffset: 0,
-                                      extentOffset: otpController.controllers[index].text.length,
-                                    );
-                                  },
-                                  onChanged: (value) => handleOtpChange(index, value),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                      child: Pinput(
+                        length: 6,
+                        controller: otpController.pinController,
+                        focusNode: otpController.focusNode,
+                        autofocus: true,
+                        autofillHints: const [AutofillHints.oneTimeCode],
+                        defaultPinTheme: defaultPinTheme,
+                        focusedPinTheme: focusedPinTheme,
+                        submittedPinTheme: submittedPinTheme,
+                        onChanged: (value) {
+                          otpController.setOtp(value);
+                        },
+                        onCompleted: (pin) {
+                          otpController.setOtp(pin);
+                          verifyOtp();
+                        },
                       ),
                     ),
 
@@ -227,7 +186,7 @@ class OtpPage extends StatelessWidget {
                                   );
                                   if (success) {
                                     otpController.clearOtp();
-                                    otpController.focusNodes[0].requestFocus();
+                                    otpController.focusNode.requestFocus();
                                     otpController.startTimer();
                                   }
                                 },
