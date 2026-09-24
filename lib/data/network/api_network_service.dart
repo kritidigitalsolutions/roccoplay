@@ -26,7 +26,7 @@ class NetworkApiService extends BaseApiService {
       };
     }
 
-    /// Interceptor for dynamic token
+    /// Interceptor for dynamic token and logging
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -35,12 +35,20 @@ class NetworkApiService extends BaseApiService {
           if (token != null && token.isNotEmpty) {
             options.headers["Authorization"] = "Bearer $token";
           }
+          debugPrint("🌐 [API REQ] ${options.method} ${options.uri}");
+          if (options.data != null) {
+            debugPrint("📤 [API REQ DATA] ${options.data}");
+          }
           return handler.next(options);
         },
         onResponse: (response, handler) {
+          debugPrint("✅ [API RES] ${response.requestOptions.method} ${response.requestOptions.uri} (${response.statusCode})");
+          debugPrint("📥 [API RES DATA] ${response.data}");
           return handler.next(response);
         },
         onError: (DioException e, handler) {
+          debugPrint("❌ [API ERR] ${e.requestOptions.method} ${e.requestOptions.uri}");
+          debugPrint("⚠️ [API ERR DETAILS] ${e.response?.statusCode} - ${e.response?.data ?? e.message}");
           return handler.next(e);
         },
       ),

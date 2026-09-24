@@ -16,6 +16,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:roccoplay/app/routes/app_pages.dart';
 import 'package:roccoplay/utils/service/meta_event_service.dart';
 import 'package:roccoplay/utils/service/firebase_analytics_service.dart';
+import 'package:roccoplay/view/homePages/mainHomepage.dart';
 import 'package:roccoplay/view_model/like_dislike_controller/like_dislike_controller.dart';
 import 'package:roccoplay/view_model/watchlist_controller/watchlist_controller.dart';
 
@@ -215,6 +216,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
       ),
       initialRoute: AppRoutes.splash,
+      unknownRoute: GetPage(
+        name: '/notfound',
+        page: () => const MainHomePage(),
+      ),
       getPages: AppPages.pages,
     );
   }
