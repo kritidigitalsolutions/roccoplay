@@ -636,146 +636,148 @@ class _MainHomePageState extends State<MainHomePage> {
               ),
             ],
 
-            const SizedBox(height: 25),
+            if (kIsWeb) ...[
+              const SizedBox(height: 25),
 
-            /// 🔹 ALL POLICIES
-            const Text(
-              "Quick Links & Legal Policies",
-              style: TextStyle(
-                color: AppColors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
+              /// 🔹 ALL POLICIES
+              const Text(
+                "Quick Links & Legal Policies",
+                style: TextStyle(
+                  color: AppColors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              alignment: WrapAlignment.center,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                TextButton(
-                  onPressed: () => Get.toNamed(AppRoutes.privacyPolicy),
-                  child: const Text(
-                    "Privacy Policy",
-                    style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+              const SizedBox(height: 10),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  TextButton(
+                    onPressed: () => Get.toNamed(AppRoutes.privacyPolicy),
+                    child: const Text(
+                      "Privacy Policy",
+                      style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                    ),
                   ),
-                ),
-                const Text("|", style: TextStyle(color: Colors.white24)),
-                TextButton(
-                  onPressed: () => Get.toNamed(AppRoutes.termsAndConditions),
-                  child: const Text(
-                    "Terms & Conditions",
-                    style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                  const Text("|", style: TextStyle(color: Colors.white24)),
+                  TextButton(
+                    onPressed: () => Get.toNamed(AppRoutes.termsAndConditions),
+                    child: const Text(
+                      "Terms & Conditions",
+                      style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                    ),
                   ),
-                ),
-                const Text("|", style: TextStyle(color: Colors.white24)),
-                TextButton(
-                  onPressed: () => Get.toNamed(AppRoutes.refundPolicy),
-                  child: const Text(
-                    "Refund Policy",
-                    style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                  const Text("|", style: TextStyle(color: Colors.white24)),
+                  TextButton(
+                    onPressed: () => Get.toNamed(AppRoutes.refundPolicy),
+                    child: const Text(
+                      "Refund Policy",
+                      style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                    ),
                   ),
-                ),
-                const Text("|", style: TextStyle(color: Colors.white24)),
-                TextButton(
-                  onPressed: () => Get.toNamed(AppRoutes.help),
-                  child: const Text(
-                    "Help & Support",
-                    style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                  const Text("|", style: TextStyle(color: Colors.white24)),
+                  TextButton(
+                    onPressed: () => Get.toNamed(AppRoutes.help),
+                    child: const Text(
+                      "Help & Support",
+                      style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                    ),
                   ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 25),
-
-            /// 🔹 APP STORE & PLAY STORE LINKS
-            const Text(
-              "Download Rocco Play App",
-              style: TextStyle(
-                color: AppColors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
+                ],
               ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 15,
-              runSpacing: 10,
-              children: [
-                /// Google Play Store Button
-                OutlinedButton.icon(
-                  onPressed: () => _launchStoreUrl(playStoreUrl),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white38),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  icon: const Icon(Icons.android, color: Colors.greenAccent, size: 22),
-                  label: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        "GET IT ON",
-                        style: TextStyle(fontSize: 9, color: Colors.white60),
-                      ),
-                      Text(
-                        "Google Play",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
 
-                /// Apple App Store Button
-                OutlinedButton.icon(
-                  onPressed: () => _launchStoreUrl(appStoreUrl),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white38),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  icon: const Icon(Icons.apple, color: Colors.white, size: 24),
-                  label: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        "Download on the",
-                        style: TextStyle(fontSize: 9, color: Colors.white60),
-                      ),
-                      Text(
-                        "App Store",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
+              const SizedBox(height: 25),
+
+              /// 🔹 APP STORE & PLAY STORE LINKS
+              const Text(
+                "Download Rocco Play App",
+                style: TextStyle(
+                  color: AppColors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 15,
+                runSpacing: 10,
+                children: [
+                  /// Google Play Store Button
+                  OutlinedButton.icon(
+                    onPressed: () => _launchStoreUrl(playStoreUrl),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white38),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: const Icon(Icons.android, color: Colors.greenAccent, size: 22),
+                    label: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "GET IT ON",
+                          style: TextStyle(fontSize: 9, color: Colors.white60),
+                        ),
+                        Text(
+                          "Google Play",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  /// Apple App Store Button
+                  OutlinedButton.icon(
+                    onPressed: () => _launchStoreUrl(appStoreUrl),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white38),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: const Icon(Icons.apple, color: Colors.white, size: 24),
+                    label: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "Download on the",
+                          style: TextStyle(fontSize: 9, color: Colors.white60),
+                        ),
+                        Text(
+                          "App Store",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
 
             const SizedBox(height: 25),
 

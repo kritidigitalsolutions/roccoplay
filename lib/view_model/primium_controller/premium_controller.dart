@@ -173,7 +173,7 @@ class PremiumController extends GetxController {
       final response = await apiService.getApi(AppConstants.paymentGateways);
       debugPrint("📥 [GATEWAYS RES] Response: $response");
       if (response != null && response['success'] == true) {
-        paymentGateways.value = response['gateways'];
+        paymentGateways.value = Map<String, dynamic>.from(response);
       }
     } catch (e) {
       debugPrint("⚠️ [GATEWAYS ERR] $e");
@@ -503,23 +503,10 @@ class PremiumController extends GetxController {
         isSubscribing.value = false;
 
         if (paymentGateways.value != null) {
-          final gateways = paymentGateways.value!;
-          
-          final enabledGateways = [];
-          if (gateways['razorpay']?['enabled'] == true) enabledGateways.add('razorpay');
-          if (gateways['zaakpay']?['enabled'] == true) enabledGateways.add('zaakpay');
-          if (gateways['hdfc']?['enabled'] == true) enabledGateways.add('hdfc');
-          if (gateways['sabpaisa']?['enabled'] == true) enabledGateways.add('sabpaisa');
-
-          if (enabledGateways.isNotEmpty) {
-            _showGatewaySelectionBottomSheet(planId, gateways: gateways);
-          } else {
-            CustomSnackbar.show(
-              title: "Error",
-              message: "No active payment gateways available",
-              isError: true,
-            );
-          }
+          _showGatewaySelectionBottomSheet(
+            planId,
+            gatewayData: paymentGateways.value!,
+          );
         } else {
           CustomSnackbar.show(
             title: "Error",
@@ -1434,15 +1421,72 @@ class PremiumController extends GetxController {
     }
   }
 
+  List<Map<String, dynamic>> _getActiveOrderedGateways(
+      Map<String, dynamic> data) {
+    List<Map<String, dynamic>> activeList = [];
+
+    if (data['activeOrderedGateways'] is List &&
+        (data['activeOrderedGateways'] as List).isNotEmpty) {
+      for (var item in data['activeOrderedGateways']) {
+        if (item is Map) {
+          final map = Map<String, dynamic>.from(item);
+          if (map['enabled'] == true) activeList.add(map);
+        }
+      }
+    } else if (data['orderedGateways'] is List &&
+        (data['orderedGateways'] as List).isNotEmpty) {
+      for (var item in data['orderedGateways']) {
+        if (item is Map) {
+          final map = Map<String, dynamic>.from(item);
+          if (map['enabled'] == true) activeList.add(map);
+        }
+      }
+    } else if (data['gatewayOrder'] is List && data['gateways'] is Map) {
+      final gatewaysMap = data['gateways'] as Map;
+      for (var id in data['gatewayOrder']) {
+        final key = id.toString();
+        if (gatewaysMap.containsKey(key) && gatewaysMap[key] is Map) {
+          final map = Map<String, dynamic>.from(gatewaysMap[key]);
+          if (!map.containsKey('id')) map['id'] = key;
+          if (map['enabled'] == true) activeList.add(map);
+        }
+      }
+    } else {
+      final Map mapToIterate =
+          (data['gateways'] is Map) ? (data['gateways'] as Map) : data;
+      mapToIterate.forEach((key, val) {
+        if (val is Map) {
+          final map = Map<String, dynamic>.from(val);
+          if (!map.containsKey('id')) map['id'] = key.toString();
+          if (map['enabled'] == true) activeList.add(map);
+        }
+      });
+    }
+
+    activeList.sort((a, b) {
+      num pA = a['priority'] ?? a['index'] ?? 999;
+      num pB = b['priority'] ?? b['index'] ?? 999;
+      return pA.compareTo(pB);
+    });
+
+    return activeList;
+  }
+
   /// 🔹 Selection Bottom Sheet for Payment Gateways
   void _showGatewaySelectionBottomSheet(
     String planId, {
-    required Map<String, dynamic> gateways,
+    required Map<String, dynamic> gatewayData,
   }) {
-    final isRazorpayEnabled = gateways['razorpay']?['enabled'] == true;
-    final isZaakpayEnabled = gateways['zaakpay']?['enabled'] == true;
-    final isHdfcEnabled = gateways['hdfc']?['enabled'] == true;
-    final isSabPaisaEnabled = gateways['sabpaisa']?['enabled'] == true;
+    final activeGateways = _getActiveOrderedGateways(gatewayData);
+
+    if (activeGateways.isEmpty) {
+      CustomSnackbar.show(
+        title: "Error",
+        message: "No active payment gateways available",
+        isError: true,
+      );
+      return;
+    }
 
     Get.bottomSheet(
       Container(
@@ -1459,96 +1503,55 @@ class PremiumController extends GetxController {
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                width: 40,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(10),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  width: 40,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
-            ),
 
-            const Text(
-              "Select Payment Method",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
+              const Text(
+                "Select Payment Method",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "Choose your preferred gateway to complete the purchase safely.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white54, fontSize: 14),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 8),
+              const Text(
+                "Choose your preferred gateway to complete the purchase safely.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white54, fontSize: 14),
+              ),
+              const SizedBox(height: 24),
 
-            if (isRazorpayEnabled) ...[
-              _buildGatewayTile(
-                name: gateways['razorpay']?['name'] ?? "Razorpay",
-                description: "UPI, Cards, Wallets & Net Banking",
-                icon: Icons.payment,
-                gradientColors: [Colors.blue, Colors.indigoAccent],
-                onTap: () {
-                  Get.back();
-                  startPayment(planId);
-                },
-              ),
-              const SizedBox(height: 16),
+              ...activeGateways.map((gw) {
+                final id = (gw['id'] ?? '').toString().toLowerCase();
+                final customName = gw['name']?.toString();
+
+                final tile = _buildGatewayTileForId(id, customName, planId);
+                if (tile == null) return const SizedBox.shrink();
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: tile,
+                );
+              }),
             ],
-
-            if (isHdfcEnabled) ...[
-              _buildGatewayTile(
-                name: gateways['hdfc']?['name'] ?? "HDFC Bank (SmartGateway)",
-                description: "Powered by HDFC SmartGateway",
-                icon: Icons.account_balance,
-                gradientColors: [Colors.blue[700]!, Colors.tealAccent],
-                onTap: () {
-                  Get.back();
-                  startHdfcPayment(planId);
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            if (isZaakpayEnabled) ...[
-              _buildGatewayTile(
-                name: gateways['zaakpay']?['name'] ?? "Zaakpay",
-                description: "Cards, Net Banking, Wallets",
-                icon: Icons.security,
-                gradientColors: [Colors.deepPurple, Colors.purpleAccent],
-                onTap: () {
-                  Get.back();
-                  startZaakpayPayment(planId);
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            if (isSabPaisaEnabled) ...[
-              _buildGatewayTile(
-                name: gateways['sabpaisa']?['name'] ?? "SabPaisa",
-                description: "UPI, Cards, Net Banking",
-                icon: Icons.account_balance_wallet,
-                gradientColors: [Colors.orange, Colors.deepOrange],
-                onTap: () {
-                  Get.back();
-                  startSabPaisaPayment(planId);
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-          ],
+          ),
         ),
       ),
       isScrollControlled: true,
@@ -1557,6 +1560,62 @@ class PremiumController extends GetxController {
       enterBottomSheetDuration: const Duration(milliseconds: 300),
       exitBottomSheetDuration: const Duration(milliseconds: 300),
     );
+  }
+
+  Widget? _buildGatewayTileForId(
+    String id,
+    String? customName,
+    String planId,
+  ) {
+    switch (id) {
+      case 'razorpay':
+      case 'rzp':
+        return _buildGatewayTile(
+          name: customName ?? "Razorpay",
+          description: "UPI, Cards, Wallets & Net Banking",
+          icon: Icons.payment,
+          gradientColors: [Colors.blue, Colors.indigoAccent],
+          onTap: () {
+            Get.back();
+            startPayment(planId);
+          },
+        );
+      case 'hdfc':
+        return _buildGatewayTile(
+          name: customName ?? "HDFC Bank (SmartGateway)",
+          description: "Powered by HDFC SmartGateway",
+          icon: Icons.account_balance,
+          gradientColors: [Colors.blue[700]!, Colors.tealAccent],
+          onTap: () {
+            Get.back();
+            startHdfcPayment(planId);
+          },
+        );
+      case 'zaakpay':
+        return _buildGatewayTile(
+          name: customName ?? "Zaakpay",
+          description: "Cards, Net Banking, Wallets",
+          icon: Icons.security,
+          gradientColors: [Colors.deepPurple, Colors.purpleAccent],
+          onTap: () {
+            Get.back();
+            startZaakpayPayment(planId);
+          },
+        );
+      case 'sabpaisa':
+        return _buildGatewayTile(
+          name: customName ?? "SabPaisa",
+          description: "UPI, Cards, Net Banking",
+          icon: Icons.account_balance_wallet,
+          gradientColors: [Colors.orange, Colors.deepOrange],
+          onTap: () {
+            Get.back();
+            startSabPaisaPayment(planId);
+          },
+        );
+      default:
+        return null;
+    }
   }
 
   Widget _buildGatewayTile({
