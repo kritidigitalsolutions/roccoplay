@@ -13,6 +13,7 @@ class PaymentSuccessPage extends StatelessWidget {
   final String planName;
   final String? paymentMode;
   final String? transactionId;
+  final String? message;
   final DateTime? timestamp;
 
   const PaymentSuccessPage({
@@ -22,6 +23,7 @@ class PaymentSuccessPage extends StatelessWidget {
     required this.planName,
     this.paymentMode = "HDFC Bank (SmartGateway)",
     this.transactionId,
+    this.message,
     this.timestamp,
   });
 
@@ -132,7 +134,9 @@ class PaymentSuccessPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        "Your transaction has been processed in real-time.",
+                        (message != null && message!.trim().isNotEmpty)
+                            ? message!
+                            : "Your transaction has been processed in real-time.",
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 14,

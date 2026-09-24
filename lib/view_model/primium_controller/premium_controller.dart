@@ -80,7 +80,16 @@ class PremiumController extends GetxController {
     }
 
     final data = response['data'] is Map<String, dynamic> ? response['data'] : response;
-    String status = (data['status'] ?? data['paymentStatus'] ?? data['orderStatus'] ?? response['status'] ?? '').toString().toLowerCase();
+
+    // Check Zaakpay / gateway responseCode if present
+    String responseCode = (data['responseCode'] ?? response['responseCode'] ?? '').toString().trim();
+    if (responseCode.isNotEmpty) {
+      if (responseCode != '100' && responseCode != '200' && responseCode != '0') {
+        return false;
+      }
+    }
+
+    String status = (data['status'] ?? data['paymentStatus'] ?? data['orderStatus'] ?? data['txnStatus'] ?? response['status'] ?? '').toString().toLowerCase().trim();
 
     if (status.contains('fail') ||
         status.contains('cancel') ||
@@ -714,24 +723,8 @@ class PremiumController extends GetxController {
 
             debugPrint("🏁 [ZAAKPAY WEBVIEW RESULT] $result for order $orderId");
 
-            if (result == true) {
-              await verifyZaakpayPayment(orderId, planId);
-            } else {
-              try {
-                await fetchSubscriptionStatus(currentPlatform.value);
-                if (hasActiveSubscription) {
-                  await verifyZaakpayPayment(orderId, planId);
-                  return;
-                }
-              } catch (_) {}
-
-              debugPrint("🛑 [ZAAKPAY CANCELLED] Payment was cancelled or incomplete");
-              CustomSnackbar.show(
-                title: "Payment Cancelled",
-                message: "Payment was not completed",
-                isError: true,
-              );
-            }
+            // Always verify status with backend to ensure no false cancellations
+            await verifyZaakpayPayment(orderId, planId);
           }
         } else {
           CustomSnackbar.show(
@@ -766,13 +759,65 @@ class PremiumController extends GetxController {
     }
   }
 
+  /// 🔹 Helper to show full-screen verification loader for Zaakpay
+  void _showZaakpayVerificationDialog() {
+    if (Get.isDialogOpen != true) {
+      Get.dialog(
+        PopScope(
+          canPop: false,
+          child: Dialog(
+            backgroundColor: const Color(0xFF16161F),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(color: Colors.pinkAccent),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "Verifying Payment...",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Confirming transaction with Zaakpay in real-time. Please do not close the app.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        barrierDismissible: false,
+      );
+    }
+  }
+
+  void _closeZaakpayVerificationDialog() {
+    if (Get.isDialogOpen == true) {
+      Get.back();
+    }
+  }
+
   /// 🔹 Verify Zaakpay Payment on Backend (with retry logic)
   Future<void> verifyZaakpayPayment(String orderId, String planId) async {
     debugPrint("🔍 [VERIFY ZAAKPAY] Starting verification for orderId: $orderId, planId: $planId");
     isSubscribing.value = true;
+    _showZaakpayVerificationDialog();
     final apiService = Get.find<BaseApiService>();
 
-    int maxAttempts = 3;
+    int maxAttempts = 5;
     int delaySeconds = 2;
     dynamic verifyResponse;
     bool isSuccess = false;
@@ -801,30 +846,71 @@ class PremiumController extends GetxController {
       }
     }
 
+    _closeZaakpayVerificationDialog();
+
+    // Refresh subscription status with retries if isSuccess is true
     await fetchSubscriptionStatus(currentPlatform.value);
-    final bool isSubActive = hasActiveSubscription;
+    bool isSubActive = hasActiveSubscription;
+
+    if (isSuccess && !isSubActive) {
+      for (int subAttempt = 1; subAttempt <= 3; subAttempt++) {
+        await Future.delayed(const Duration(seconds: 1));
+        await fetchSubscriptionStatus(currentPlatform.value);
+        if (hasActiveSubscription) {
+          isSubActive = true;
+          break;
+        }
+      }
+    }
+
     debugPrint("📊 [VERIFY ZAAKPAY SUMMARY] isSuccess=$isSuccess, hasActiveSubscription=$isSubActive");
 
     try {
-      if (isSuccess && isSubActive) {
-        debugPrint("🎉 [VERIFY ZAAKPAY SUCCESS] Confirming subscription active");
-        final amount = plans[selectedPlanIndex.value].price;
+      if (isSuccess) {
+        debugPrint("🎉 [VERIFY ZAAKPAY SUCCESS] Navigating to PaymentSuccessPage");
+        final plan = plans.isNotEmpty && selectedPlanIndex.value < plans.length
+            ? plans[selectedPlanIndex.value]
+            : null;
+        final num amount = plan?.price ?? (verifyResponse?['data']?['amount'] ?? 0);
+        final planName = plan?.name ?? "VIP Subscription";
+        final transactionId = verifyResponse?['data']?['transactionId'] ??
+            verifyResponse?['data']?['bankRefNo'] ??
+            verifyResponse?['data']?['pgTxnNo'] ??
+            verifyResponse?['transactionId']?.toString();
+
+        final String successMessage = verifyResponse?['message'] ??
+            verifyResponse?['data']?['message'] ??
+            verifyResponse?['data']?['responseDescription'] ??
+            verifyResponse?['data']?['responseMsg'] ??
+            "Payment verified successfully";
 
         MetaEventService.instance.paymentComplete(
           planId: planId,
           amount: amount.toDouble(),
-          currency: 'IN',
+          currency: 'INR',
         );
         FirebaseAnalyticsService.instance.paymentComplete(
           planId: planId,
           amount: amount.toDouble(),
-          currency: 'IN',
+          currency: 'INR',
         );
 
         CustomSnackbar.show(
           title: "Success",
-          message: "Payment Success",
+          message: successMessage,
           isSuccess: true,
+        );
+
+        Get.off(
+          () => PaymentSuccessPage(
+            orderId: orderId,
+            amount: amount,
+            planName: planName,
+            paymentMode: "Zaakpay",
+            transactionId: transactionId,
+            message: successMessage,
+            timestamp: DateTime.now(),
+          ),
         );
       } else {
         debugPrint("🛑 [VERIFY ZAAKPAY FAILED] Payment cancelled/failed");

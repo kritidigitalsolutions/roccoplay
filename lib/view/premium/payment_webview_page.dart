@@ -357,8 +357,8 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
 
       // Also inspect query parameter values for failure indicators
       queryParams.forEach((key, val) {
-        final lowerVal = val.toLowerCase();
-        final lowerKey = key.toLowerCase();
+        final lowerVal = val.toLowerCase().trim();
+        final lowerKey = key.toLowerCase().trim();
         if (lowerKey.contains('status') ||
             lowerKey.contains('code') ||
             lowerKey.contains('msg') ||
@@ -370,7 +370,12 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
               lowerVal.contains('error') ||
               lowerVal.contains('abort') ||
               lowerVal == '0' ||
-              lowerVal == 'false') {
+              lowerVal == 'false' ||
+              (lowerKey.contains('code') &&
+                  lowerVal != '100' &&
+                  lowerVal != '200' &&
+                  lowerVal != '0' &&
+                  lowerVal != 'success')) {
             isFailure = true;
           }
         }
