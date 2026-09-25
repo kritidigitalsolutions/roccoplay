@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 final Set<String> _registeredFactories = {};
 int _adInstanceCounter = 0;
 
-Widget getWebAdView(String adClient, String adSlot) {
+Widget getWebAdView(String adClient, String adSlot, {double height = 90.0}) {
   if (adClient.isEmpty || adSlot.isEmpty) {
     return const SizedBox.shrink();
   }
@@ -19,9 +19,9 @@ Widget getWebAdView(String adClient, String adSlot) {
       final container = html.DivElement()
         ..style.width = '100%'
         ..style.height = '100%'
-        ..style.minHeight = '100px'
         ..style.textAlign = 'center'
-        ..style.overflow = 'hidden';
+        ..style.overflow = 'hidden'
+        ..style.margin = '0 auto';
 
       final ins = html.Element.tag('ins')
         ..className = 'adsbygoogle'
@@ -59,7 +59,7 @@ Widget getWebAdView(String adClient, String adSlot) {
       double width = constraints.maxWidth > 0 ? constraints.maxWidth : 300;
       return SizedBox(
         width: width,
-        height: 250,
+        height: height,
         child: HtmlElementView(viewType: viewID),
       );
     },

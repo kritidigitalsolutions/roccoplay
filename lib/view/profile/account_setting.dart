@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:roccoplay/app/theme/app_colors.dart';
 import 'package:roccoplay/widgets/ad_widget/native_ad_widget.dart';
+import '../../app/routes/app_routes.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import '../../view_model/primium_controller/premium_controller.dart';
 
@@ -142,6 +143,31 @@ class AccountSettingsPage extends StatelessWidget {
                             ),
                     );
                   }),
+
+                  const SizedBox(height: 15),
+
+                  /// DELETE ACCOUNT SECTION
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF121212),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                      leading: const Icon(Icons.delete_forever_outlined, color: Colors.redAccent),
+                      title: const Text(
+                        "Delete Account",
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.redAccent, size: 16),
+                      onTap: () => Get.toNamed(AppRoutes.deleteAccount),
+                    ),
+                  ),
 
                   const SizedBox(height: 20),
 

@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:roccoplay/widgets/ad_widget/native_ad_widget.dart';
 import '../../app/theme/app_colors.dart';
+import '../../app/routes/app_routes.dart';
 import '../../view_model/profile/settings_controller.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -59,6 +60,20 @@ class SettingsPage extends StatelessWidget {
                 _buildSectionHeader("Account"),
                 _buildActionTile("Language", "English", () {}),
                 _buildActionTile("App Version", "1.0.0", null),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  onTap: () => Get.toNamed(AppRoutes.deleteAccount),
+                  title: const Text(
+                    "Delete Account",
+                    style: TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.redAccent,
+                    size: 14,
+                  ),
+                ),
+                const SizedBox(height: 15),
 
                 NativeAdWidget(
                   adType: TemplateType.small,

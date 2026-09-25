@@ -18,6 +18,7 @@ import '../../view/profile/setting_page.dart';
 import '../../view/profile/Rate_your_app.dart';
 import '../../view/profile/refund_policy_page.dart';
 import '../../view/profile/help_page.dart';
+import '../../view/profile/delete_account_page.dart';
 import '../../widgets/catagory_widget.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import 'app_routes.dart';
@@ -77,5 +78,6 @@ class AppPages {
     GetPage(name: AppRoutes.review, page: () => const ReviewPage()),
     GetPage(name: AppRoutes.refundPolicy, page: () => const RefundPolicyPage()),
     GetPage(name: AppRoutes.help, page: () => const HelpSupportPage()),
+    GetPage(name: AppRoutes.deleteAccount, page: () => const DeleteAccountPage()),
   ];
 }

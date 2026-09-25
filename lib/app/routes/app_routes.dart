@@ -33,4 +33,5 @@ abstract class AppRoutes {
   static const review= '/review';
   static const refundPolicy= '/refundPolicy';
   static const help= '/help';
+  static const deleteAccount= '/deleteAccount';
 }

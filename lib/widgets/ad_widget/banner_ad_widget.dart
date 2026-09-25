@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:roccoplay/utils/helper/ad_helper.dart';
+import 'web_ad_view.dart';
 
 class BannerAdWidget extends StatefulWidget {
   const BannerAdWidget({super.key});
@@ -77,17 +78,22 @@ class _BannerAdWidgetState extends State<BannerAdWidget> with AutomaticKeepAlive
     super.build(context);
 
     if (kIsWeb) {
-      return const SizedBox.shrink();
+      return Center(
+        child: WebAdSenseView(
+          adClient: AdHelper.adSenseClient,
+          adSlot: AdHelper.adSenseBannerSlot,
+          height: 90,
+        ),
+      );
     }
 
     if (!isLoaded || banner == null) {
-      return const SizedBox();
+      return const SizedBox.shrink();
     }
 
     return SizedBox(
       height: banner!.size.height.toDouble(),
       width: banner!.size.width.toDouble(),
-
       child: AdWidget(ad: banner!),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:roccoplay/utils/helper/ad_helper.dart';
+import 'web_ad_view.dart';
 
 /// ✅ Native Ad Widget (Template based)
 /// Use: Search page, Download page, Series details me spaces pe
@@ -103,6 +104,19 @@ class _NativeAdWidgetState extends State<NativeAdWidget> with AutomaticKeepAlive
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    if (kIsWeb) {
+      final isSmall = widget.adType == TemplateType.small;
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        alignment: Alignment.center,
+        child: WebAdSenseView(
+          adClient: AdHelper.adSenseClient,
+          adSlot: AdHelper.adSenseNativeSlot,
+          height: isSmall ? 100 : 250,
+        ),
+      );
+    }
 
     if (!_isLoaded || _nativeAd == null) {
       return const SizedBox.shrink();

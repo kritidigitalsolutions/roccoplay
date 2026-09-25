@@ -27,6 +27,11 @@ class AdHelper {
     return 'ca-app-pub-4529616898084985/1915686628';
   }
 
+  /// 🌐 Web AdSense IDs
+  static String get adSenseClient => 'ca-pub-4529616898084985';
+  static String get adSenseBannerSlot => '5854931639';
+  static String get adSenseNativeSlot => '8249160684';
+
   /// ⚠️ Rewarded Ad - use nahi karna (client instruction)
   // static String get rewardedAdUnitId {
   //   return 'ca-app-pub-4529616898084985/7780769702';
