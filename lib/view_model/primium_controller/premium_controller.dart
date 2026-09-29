@@ -944,8 +944,8 @@ class PremiumController extends GetxController {
         "phone": phone,
         "email": _authController.userData.value?['email'] ?? '',
         "name": _authController.userData.value?['name'] ?? '',
-        "clientId": "hdfcmaster",
-        "client_id": "hdfcmaster",
+        // "clientId": "hdfcmaster",
+        // "client_id": "hdfcmaster",
         "payment_page_client_id": "hdfcmaster",
       };
 

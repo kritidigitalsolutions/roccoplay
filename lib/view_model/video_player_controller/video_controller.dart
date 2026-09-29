@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:video_player/video_player.dart';
+import '../../utils/app_session.dart';
 
 class VideoController extends GetxController {
   VideoPlayerController? videoPlayerController;
@@ -12,6 +13,8 @@ class VideoController extends GetxController {
   var isInitialized = false.obs;
   var isPlaying = false.obs;
   var showControls = true.obs;
+  var hasError = false.obs;
+  var errorMessage = ''.obs;
 
   var currentPosition = Duration.zero.obs;
   var totalDuration = Duration.zero.obs;
@@ -32,11 +35,14 @@ class VideoController extends GetxController {
   VoidCallback? _videoListener;
 
   /// 🔥 INIT
-  Future<void> initializeVideo(String url, {String? contentId}) async {
-    if (_currentUrl == url && isInitialized.value) return;
-    _currentUrl = url;
+  Future<void> initializeVideo(String url, {String? contentId, Map<String, String>? httpHeaders}) async {
+    final cleanUrl = url.trim();
+    if (_currentUrl == cleanUrl && isInitialized.value && !hasError.value) return;
+    _currentUrl = cleanUrl;
 
     isInitialized.value = false;
+    hasError.value = false;
+    errorMessage.value = '';
     _contentId = contentId;
 
     // Dispose previous controller if exists
@@ -49,9 +55,44 @@ class VideoController extends GetxController {
       DeviceOrientation.landscapeRight,
     ]);
 
-    videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(url));
+    // Construct headers to bypass CDN anti-bot & referrer restrictions (fixing HTTP 403)
+    final Map<String, String> requestHeaders = {
+      'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Referer': 'https://roccoplay.in/',
+      'Origin': 'https://roccoplay.in',
+      ...?httpHeaders,
+    };
 
-    await videoPlayerController!.initialize();
+    final token = AppSession.getToken();
+    if (token != null && token.isNotEmpty) {
+      requestHeaders['Authorization'] = 'Bearer $token';
+    }
+
+    try {
+      videoPlayerController = VideoPlayerController.networkUrl(
+        Uri.parse(cleanUrl),
+        httpHeaders: requestHeaders,
+      );
+
+      await videoPlayerController!.initialize();
+    } catch (e) {
+      debugPrint("❌ [VideoController] First init attempt failed: $e. Retrying with fallback headers...");
+      try {
+        _cleanupOldController();
+        final fallbackHeaders = Map<String, String>.from(requestHeaders)..remove('Authorization');
+        videoPlayerController = VideoPlayerController.networkUrl(
+          Uri.parse(cleanUrl),
+          httpHeaders: fallbackHeaders,
+        );
+        await videoPlayerController!.initialize();
+      } catch (e2) {
+        debugPrint("❌ [VideoController] Fallback init attempt failed: $e2");
+        hasError.value = true;
+        errorMessage.value = "Failed to load video. Please check your network connection or try again.";
+        return;
+      }
+    }
 
     isInitialized.value = true;
     totalDuration.value = videoPlayerController!.value.duration;
@@ -79,6 +120,12 @@ class VideoController extends GetxController {
       final c = videoPlayerController;
       if (c == null) return;
       final value = c.value;
+
+      if (value.hasError) {
+        hasError.value = true;
+        errorMessage.value = value.errorDescription ?? "Playback error occurred.";
+        return;
+      }
 
       // Only update position if changed by >= 250ms (cuts 60fps → ~4 updates/sec)
       final posDiff = (value.position - _lastEmittedPosition).abs();

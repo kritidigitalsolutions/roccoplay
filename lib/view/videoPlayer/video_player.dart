@@ -188,6 +188,53 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
       child: Scaffold(
         backgroundColor: Colors.black,
         body: Obx(() {
+          if (controller.hasError.value) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 60),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      controller.errorMessage.value.isNotEmpty
+                          ? controller.errorMessage.value
+                          : "Failed to load video.",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    onPressed: () {
+                      controller.initializeVideo(
+                        widget.url,
+                        contentId: widget.contentId,
+                      );
+                    },
+                    icon: const Icon(Icons.refresh, color: Colors.white),
+                    label: const Text(
+                      "Retry",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () => Get.back(),
+                    child: const Text(
+                      "Go Back",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
           if (!controller.isInitialized.value) {
             return const Center(child: CircularProgressIndicator());
           }
