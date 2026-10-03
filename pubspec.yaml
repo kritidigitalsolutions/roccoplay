@@ -45,7 +45,7 @@ dependencies:
 
 
   cupertino_icons: ^1.0.8
-  google_mobile_ads: ^9.1.0
+  google_mobile_ads: 9.0.0
   facebook_app_events: ^0.30.3
 
 dev_dependencies:

@@ -7,6 +7,8 @@ class ExpandablePlanCard extends StatefulWidget {
   final String duration;
   final List<String> features;
   final bool isHighlighted;
+  final bool? isExpanded;
+  final VoidCallback? onExpansionChanged;
   final VoidCallback? onTap;
 
   const ExpandablePlanCard({
@@ -16,6 +18,8 @@ class ExpandablePlanCard extends StatefulWidget {
     required this.duration,
     this.features = const [],
     this.isHighlighted = false,
+    this.isExpanded,
+    this.onExpansionChanged,
     this.onTap,
   });
 
@@ -23,11 +27,28 @@ class ExpandablePlanCard extends StatefulWidget {
   State<ExpandablePlanCard> createState() => _ExpandablePlanCardState();
 }
 
-class _ExpandablePlanCardState extends State<ExpandablePlanCard> {
-  bool isExpanded = false;
+class _ExpandablePlanCardState extends State<ExpandablePlanCard> with AutomaticKeepAliveClientMixin {
+  bool _localExpanded = false;
+
+  bool get _isExpanded => widget.isExpanded ?? _localExpanded;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  void _handleTap() {
+    if (widget.onExpansionChanged != null) {
+      widget.onExpansionChanged!();
+    } else {
+      setState(() {
+        _localExpanded = !_localExpanded;
+      });
+    }
+    if (widget.onTap != null) widget.onTap!();
+  }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       margin: const EdgeInsets.only(bottom: 15),
@@ -36,25 +57,20 @@ class _ExpandablePlanCardState extends State<ExpandablePlanCard> {
         border: widget.isHighlighted
             ? Border.all(color: AppColors.buttonColor, width: 2)
             : null,
-        gradient: isExpanded
+        gradient: _isExpanded
             ? LinearGradient(
                 colors: [AppColors.buttonColor.withOpacity(0.8), Colors.black],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
             : null,
-        color: isExpanded ? null : Colors.grey[900],
+        color: _isExpanded ? null : Colors.grey[900],
       ),
       child: Column(
         children: [
           /// 🔥 Top Section
           InkWell(
-            onTap: () {
-              setState(() {
-                isExpanded = !isExpanded;
-              });
-              if (widget.onTap != null) widget.onTap!();
-            },
+            onTap: _handleTap,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -81,7 +97,7 @@ class _ExpandablePlanCardState extends State<ExpandablePlanCard> {
                       ),
                       const SizedBox(width: 6),
                       Icon(
-                        isExpanded
+                        _isExpanded
                             ? Icons.keyboard_arrow_up
                             : Icons.keyboard_arrow_down,
                         color: Colors.white,
@@ -94,7 +110,7 @@ class _ExpandablePlanCardState extends State<ExpandablePlanCard> {
           ),
 
           /// 🔥 Expanded Section
-          if (isExpanded)
+          if (_isExpanded)
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(

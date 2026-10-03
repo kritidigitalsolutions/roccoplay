@@ -9,11 +9,9 @@ import 'package:roccoplay/widgets/ad_widget/native_ad_widget.dart';
 import '../../app/routes/app_routes.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import '../../view_model/home_controller/home_controller.dart';
-import '../auth/signInPage.dart';
-import '../dramaDetails/dramaDetailsPage.dart';
-import '../videoPlayer/video_player.dart';
 import '../../utils/custom_snackbar.dart';
 import '../../widgets/ad_widget/banner_ad_widget.dart';
+import '../../app/theme/app_colors.dart';
 
 class DownloadsPage extends StatelessWidget {
   const DownloadsPage({super.key});
@@ -26,24 +24,60 @@ class DownloadsPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          "Downloads",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      body: Obx(() {
-        /// 🔐 NOT LOGGED IN
-        if (!authController.isLoggedIn.value) {
-          return _baseEmptyView(
-            title: "Please sign in to view your downloads",
+      body: SafeArea(
+        bottom: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool isWeb = constraints.maxWidth > 800;
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isWeb ? 850 : double.infinity),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+
+                    /// 🔹 TOP COMPACT HEADER (Consistent with Search Screen)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: RichText(
+                        text: const TextSpan(
+                          children: [
+                            TextSpan(
+                              text: "Down",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            TextSpan(
+                              text: "loads",
+                              style: TextStyle(
+                                color: AppColors.buttonColor,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    /// 🔹 CONTENT AREA (Empty state or Download list)
+                    Expanded(
+                      child: Obx(() {
+                        /// 🔐 NOT LOGGED IN
+                        if (!authController.isLoggedIn.value) {
+          return _buildEmptyState(
+            context: context,
+            title: "Sign In to View Downloads",
+            subtitle: "Sign in to access your downloaded movies and shows to watch offline anytime.",
             buttonText: "Sign In",
             onTap: () => Get.toNamed(AppRoutes.signIn),
           );
@@ -51,8 +85,10 @@ class DownloadsPage extends StatelessWidget {
 
         /// 📭 EMPTY DOWNLOADS
         if (downloadController.downloadedContent.isEmpty) {
-          return _baseEmptyView(
-            title: "No downloads yet",
+          return _buildEmptyState(
+            context: context,
+            title: "No Downloads Yet",
+            subtitle: "Download your favourite movies and shows to watch offline anytime.",
             buttonText: "Explore",
             onTap: () => homeController.selectedIndex.value = 0,
           );
@@ -65,7 +101,7 @@ class DownloadsPage extends StatelessWidget {
             const BannerAdWidget(),
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.all(15),
+                padding: const EdgeInsets.fromLTRB(15, 10, 15, 110),
                 itemCount: downloadController.downloadedContent.length,
                 itemBuilder: (context, index) {
                   final item = downloadController.downloadedContent[index];
@@ -187,65 +223,169 @@ class DownloadsPage extends StatelessWidget {
           ],
         );
       }),
+    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
-  /// 🔄 EMPTY / LOGIN VIEW
-  Widget _baseEmptyView({
+  /// 🔄 REDESIGNED CENTERED EMPTY / LOGIN STATE
+  Widget _buildEmptyState({
+    required BuildContext context,
     required String title,
+    required String subtitle,
     required String buttonText,
     required VoidCallback onTap,
   }) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 30),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            NativeAdWidget(adType: TemplateType.small),
-            const SizedBox(height: 20),
-            const Icon(
-              Icons.download_for_offline_outlined,
-              size: 90,
-              color: Colors.grey,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isWeb = constraints.maxWidth > 800;
+
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.symmetric(horizontal: isWeb ? 40 : 24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight,
             ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+            child: IntrinsicHeight(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(height: 12),
+
+                  /// 🔹 CENTERED EMPTY STATE BLOCK
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        /// 1. Subtle Circular Illustration Container with Pink Glow
+                        Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF16161F),
+                            border: Border.all(
+                              color: AppColors.buttonColor.withOpacity(0.35),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.buttonColor.withOpacity(0.12),
+                                blurRadius: 28,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.download_for_offline_outlined,
+                              size: 48,
+                              color: AppColors.buttonColor,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        /// 2. Prominent Title
+                        Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        /// 3. Comfortable Description / Subtitle
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 320),
+                          child: Text(
+                            subtitle,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.65),
+                              fontSize: 14,
+                              height: 1.45,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        /// 4. Explore Button (Positioned directly below description)
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.buttonColor,
+                            foregroundColor: Colors.white,
+                            elevation: 2,
+                            shadowColor: AppColors.buttonColor.withOpacity(0.35),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 36,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: onTap,
+                          child: Text(
+                            buttonText,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  /// 🔹 BOTTOM AD AREA (Separated cleanly from empty state)
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 16),
+                      Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: isWeb ? 500 : double.infinity,
+                          ),
+                          child: NativeAdWidget(
+                            adType: TemplateType.small,
+                            constraints: BoxConstraints(
+                              minWidth: 320,
+                              minHeight: 90,
+                              maxWidth: isWeb ? 500 : double.infinity,
+                              maxHeight: 120,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 100), // Clearance for floating CustomBottomNavbar
+                    ],
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
-            const Text(
-              "Download your favourite movies and shows to watch offline anytime.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 14),
-            ),
-            const SizedBox(height: 25),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.pinkAccent,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: onTap,
-              child: Text(
-                buttonText,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

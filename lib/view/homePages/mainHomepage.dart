@@ -57,15 +57,28 @@ class _MainHomePageState extends State<MainHomePage> {
     super.dispose();
   }
 
-  /// 🔄 Logo click handler: Web pe full reload karo, Mobile pe home pe scroll karo aur content refresh karo
+  bool _isRefreshing = false;
+
+  /// 🔄 Logo click handler:
+  /// - On Web: performWebReload()
+  /// - On Mobile:
+  ///   - If on another tab: switch to existing Home tab without route push or redundant API calls
+  ///   - If already on Home tab: smoothly scroll to top and trigger controlled refresh
   Future<void> _handleLogoClick() async {
     if (kIsWeb) {
       performWebReload();
       return;
     }
 
-    controller.onItemTapped(0);
+    final bool wasAlreadyOnHome = controller.selectedIndex.value == 0;
 
+    // Switch to Home tab if currently on another bottom navigation tab
+    if (!wasAlreadyOnHome) {
+      controller.onItemTapped(0);
+      return;
+    }
+
+    // Smoothly scroll back to top if already on Home tab
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         0,
@@ -74,18 +87,26 @@ class _MainHomePageState extends State<MainHomePage> {
       );
     }
 
-    List<Future> refreshTasks = [
-      contentController.fetchContent(),
-      contentController.fetchCategories(),
-      controller.fetchCompanyInfo(),
-    ];
+    // Controlled refresh: prevent concurrent duplicate requests from rapid/repeated taps
+    if (_isRefreshing) return;
+    _isRefreshing = true;
 
-    if (authController.isLoggedIn.value) {
-      refreshTasks.add(authController.getProfile());
-      refreshTasks.add(premiumController.fetchAllSubscriptionStatus());
+    try {
+      List<Future> refreshTasks = [
+        contentController.fetchContent(),
+        contentController.fetchCategories(),
+        controller.fetchCompanyInfo(),
+      ];
+
+      if (authController.isLoggedIn.value) {
+        refreshTasks.add(authController.getProfile());
+        refreshTasks.add(premiumController.fetchAllSubscriptionStatus());
+      }
+
+      await Future.wait(refreshTasks);
+    } finally {
+      _isRefreshing = false;
     }
-
-    await Future.wait(refreshTasks);
   }
 
   Future<void> _launchStoreUrl(String url) async {
@@ -103,17 +124,18 @@ class _MainHomePageState extends State<MainHomePage> {
     return LayoutBuilder(builder: (context, constraints) {
       bool isWeb = constraints.maxWidth > 800;
 
-      return PopScope(
-        canPop: controller.selectedIndex.value == 0, // Allow pop only if on Home tab
-        onPopInvokedWithResult: (didPop, result) {
-          if (didPop) return;
+      return Obx(
+        () => PopScope(
+          canPop: controller.selectedIndex.value == 0, // Allow pop only if on Home tab
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
 
-          // If not on Home tab, go back to Home tab
-          if (controller.selectedIndex.value != 0) {
-            controller.onItemTapped(0);
-          }
-        },
-        child: Scaffold(
+            // If not on Home tab, go back to Home tab
+            if (controller.selectedIndex.value != 0) {
+              controller.onItemTapped(0);
+            }
+          },
+          child: Scaffold(
           backgroundColor: Colors.transparent,
           body: Container(
             decoration: isWeb
@@ -175,27 +197,24 @@ class _MainHomePageState extends State<MainHomePage> {
                         int selectedIndex = controller.selectedIndex.value;
                         bool isLoggedIn = authController.isLoggedIn.value;
 
-                        if (selectedIndex != 2) {
-                          return Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            child: CustomBottomNavbar(
-                              selectedIndex: selectedIndex,
-                              onItemTapped: (index) {
-                                /// 🔥 LOGIN GUARD
-                                if (index == 4 && !isLoggedIn) {
-                                  Get.toNamed(AppRoutes.signIn);
-                                  return;
-                                }
+                        return Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: CustomBottomNavbar(
+                            selectedIndex: selectedIndex,
+                            onItemTapped: (index) {
+                              /// 🔥 LOGIN GUARD
+                              if (index == 4 && !isLoggedIn) {
+                                Get.toNamed(AppRoutes.signIn);
+                                return;
+                              }
 
-                                controller.onItemTapped(index);
-                              },
-                              isLoggedIn: isLoggedIn,
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
+                              controller.onItemTapped(index);
+                            },
+                            isLoggedIn: isLoggedIn,
+                          ),
+                        );
                       }),
                   ],
                 ),
@@ -203,7 +222,7 @@ class _MainHomePageState extends State<MainHomePage> {
             ],
           ),
         ),
-      ));
+      )));
     });
   }
 
@@ -234,7 +253,7 @@ class _MainHomePageState extends State<MainHomePage> {
           const SizedBox(width: 15),
           _notificationIcon(notificationService),
           const SizedBox(width: 20),
-          _premiumButton(premiumController),
+          _premiumButton(controller, premiumController),
           const SizedBox(width: 20),
           Obx(() {
             bool isLoggedIn = authController.isLoggedIn.value;
@@ -315,18 +334,29 @@ class _MainHomePageState extends State<MainHomePage> {
   }
 
   /// 🔹 PREMIUM BUTTON
-  Widget _premiumButton(PremiumController premiumController) {
+  Widget _premiumButton(
+    HomeController controller,
+    PremiumController premiumController,
+  ) {
     return Obx(() {
       final bool hasActive = premiumController.hasActiveSubscription;
       return ElevatedButton(
-        onPressed: () => Get.toNamed(AppRoutes.goPremium),
+        onPressed: () => controller.onItemTapped(2),
         style: ElevatedButton.styleFrom(
           backgroundColor: hasActive ? Colors.green : AppColors.buttonColor,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 0,
         ),
         child: Text(
           hasActive ? "Premium Active" : "Subscribe Now",
-          style: const TextStyle(color: Colors.white, fontSize: 14),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     });
@@ -363,7 +393,7 @@ class _MainHomePageState extends State<MainHomePage> {
                   children: [
                     _notificationIcon(notificationService),
                     const SizedBox(width: 8),
-                    _premiumButton(premiumController),
+                    _premiumButton(controller, premiumController),
                   ],
                 ),
               ],
@@ -393,15 +423,14 @@ class _MainHomePageState extends State<MainHomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(child: const BannerAdWidget()),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 10),
 
                   Obx(() {
                     if (contentController.isLoading.value &&
                         contentController.categories.isEmpty) {
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20.0),
+                      return SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.6,
+                        child: const Center(
                           child: CircularProgressIndicator(
                             color: AppColors.buttonColor,
                           ),
@@ -424,7 +453,7 @@ class _MainHomePageState extends State<MainHomePage> {
                                   content: contentController.trendingContent,
                                   isSignedIn: authController.isLoggedIn.value,
                                 ),
-                                const SizedBox(height: 25),
+                                const SizedBox(height: 20),
                               ],
                             ),
                           ),
@@ -482,7 +511,7 @@ class _MainHomePageState extends State<MainHomePage> {
                                           authController.isLoggedIn.value,
                                       isHorizontal: isHorizontal,
                                     ),
-                                    const SizedBox(height: 15),
+                                    const SizedBox(height: 20),
                                   ],
                                 ),
                               );
@@ -497,7 +526,7 @@ class _MainHomePageState extends State<MainHomePage> {
                                           authController.isLoggedIn.value,
                                       isHorizontal: isHorizontal,
                                     ),
-                                    const SizedBox(height: 15),
+                                    const SizedBox(height: 20),
                                   ],
                                 ),
                               );
@@ -514,29 +543,35 @@ class _MainHomePageState extends State<MainHomePage> {
                                   ),
                                 ),
                               );
-                              categoryWidgets.add(const SizedBox(height: 15));
+                              categoryWidgets.add(const SizedBox(height: 20));
                             }
                           }
 
                           return categoryWidgets;
                         }(),
 
-
                         /// 3. 🔹 COMING SOON (uses precomputed list)
-                        ComingSoonSection(
-                          content: contentController.comingSoonContent,
-                          isSignedIn: authController.isLoggedIn.value,
-                        ),
+                        if (contentController.comingSoonContent.isNotEmpty) ...[
+                          ComingSoonSection(
+                            content: contentController.comingSoonContent,
+                            isSignedIn: authController.isLoggedIn.value,
+                          ),
+                          const SizedBox(height: 20),
+                        ],
                       ],
                     );
                   }),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 12),
 
                   /// 🔹 COMPANY INFO & STORE LINKS (Footer)
                   _buildFooter(controller),
 
-                  const SizedBox(height: 100),
+                  SizedBox(
+                    height: isWeb
+                        ? 40
+                        : MediaQuery.of(context).padding.bottom + 90,
+                  ),
                 ],
               ),
             ),
@@ -580,18 +615,18 @@ class _MainHomePageState extends State<MainHomePage> {
 
       return Container(
         width: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 16),
         padding: const EdgeInsets.symmetric(
-          vertical: 30,
-          horizontal: 20,
+          vertical: 20,
+          horizontal: 16,
         ),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(30),
-            topRight: Radius.circular(30),
-          ),
+          color: Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.06)),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             MouseRegion(
               cursor: SystemMouseCursors.click,
@@ -599,39 +634,39 @@ class _MainHomePageState extends State<MainHomePage> {
                 onTap: _handleLogoClick,
                 child: Image.asset(
                   'assets/images/roccoplay_logo.png',
-                  height: 50,
+                  height: 36,
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             const Text(
               "ROCCO PLAY",
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                letterSpacing: 2,
+                color: Colors.white70,
+                fontSize: 15,
+                letterSpacing: 1.5,
                 fontWeight: FontWeight.bold,
               ),
             ),
 
             if (address.isNotEmpty) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               const Text(
                 "Office Address",
                 style: TextStyle(
                   color: AppColors.buttonColor,
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
                 address,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
-                  fontSize: 13,
-                  height: 1.5,
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 12,
+                  height: 1.4,
                 ),
               ),
             ],
@@ -779,7 +814,7 @@ class _MainHomePageState extends State<MainHomePage> {
               ),
             ],
 
-            const SizedBox(height: 25),
+            const SizedBox(height: 14),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -787,7 +822,7 @@ class _MainHomePageState extends State<MainHomePage> {
                 Text(
                   "© ${DateTime.now().year} Rocco Play. All rights reserved.",
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.4),
+                    color: Colors.white.withOpacity(0.35),
                     fontSize: 11,
                   ),
                 ),

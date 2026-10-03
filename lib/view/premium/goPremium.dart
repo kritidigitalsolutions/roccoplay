@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -5,7 +6,6 @@ import 'package:roccoplay/view_model/primium_controller/premium_controller.dart'
 import 'package:roccoplay/widgets/ad_widget/native_ad_widget.dart';
 import '../../app/routes/app_routes.dart';
 import '../../app/theme/app_colors.dart';
-import '../../view_model/home_controller/home_controller.dart';
 import '../../widgets/expendable_plan_card.dart';
 import '../../utils/custom_snackbar.dart';
 
@@ -19,6 +19,7 @@ class GoPremiumPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
+        bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
             bool isWeb = constraints.maxWidth > 800;
@@ -36,95 +37,154 @@ class GoPremiumPage extends StatelessWidget {
 
                   return Column(
                     children: [
-                      /// 🔹 Top Section
+                      const SizedBox(height: 4),
+
+                      /// 🔹 TOP COMPACT HEADER (Consistent with Search Screen)
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 15),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            /// Back Icon
-                            IconButton(
-                              icon: const Icon(
-                                Icons.arrow_back_ios,
-                                color: AppColors.white,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                RichText(
+                                  text: const TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: "Pla",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.5,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: "ns",
+                                        style: TextStyle(
+                                          color: AppColors.buttonColor,
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (Navigator.of(context).canPop())
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.arrow_back_ios_new_rounded,
+                                      color: AppColors.white,
+                                      size: 20,
+                                    ),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    tooltip: 'Back',
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              "Upgrade Your Plan for More Benefits",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.1,
                               ),
-                              onPressed: () {
-                                if (Get.key.currentState?.canPop() ?? false) {
-                                  Get.back(); // ✅ If opened via Get.to()
-                                } else {
-                                  Get.find<HomeController>()
-                                          .selectedIndex
-                                          .value =
-                                      0; // ✅ If opened via navbar
-                                }
-                              },
                             ),
                           ],
                         ),
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
 
-                      /// 🔹 Upgrade Text
-                      const Text(
-                        "Upgrade Your Plan for More Benefits",
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      /// 🔹 Expandable Plans List
+                      /// 🔹 Main Scrollable Content Area (Plan Cards, Ad Container)
                       Expanded(
-                        child: Obx(() {
-                          if (controller.plans.isEmpty) {
-                            return const Center(
-                              child: Text(
-                                "No plans available",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            );
-                          }
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 15),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
 
-                          return ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 15),
-                            itemCount: controller.plans.length,
-                            itemBuilder: (context, index) {
-                              final plan = controller.plans[index];
-                              return Obx(() {
-                                bool isSelected =
-                                    controller.selectedPlanIndex.value == index;
+                              /// 🔹 Expandable Plans
+                              Obx(() {
+                                if (controller.plans.isEmpty) {
+                                  return const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 40),
+                                      child: Text(
+                                        "No plans available",
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                  );
+                                }
 
-                                return ExpandablePlanCard(
-                                  title: plan.name,
-                                  price: "₹${plan.price}",
-                                  duration: "/ ${plan.duration} Days",
-                                  features: plan.features,
-                                  isHighlighted: isSelected,
-                                  onTap: () => controller.selectPlan(index),
+                                return Column(
+                                  children: controller.plans.asMap().entries.map((entry) {
+                                    final int index = entry.key;
+                                    final plan = entry.value;
+                                    final String planKey = plan.id.isNotEmpty
+                                        ? plan.id
+                                        : (plan.name.isNotEmpty
+                                            ? plan.name
+                                            : index.toString());
+
+                                    return Obx(() {
+                                      final bool isSelected =
+                                          controller.selectedPlanIndex.value == index;
+                                      final bool isExpanded =
+                                          controller.isPlanExpanded(planKey);
+
+                                      return ExpandablePlanCard(
+                                        key: ValueKey('plan_$planKey'),
+                                        title: plan.name,
+                                        price: "₹${plan.price}",
+                                        duration: "/ ${plan.duration} Days",
+                                        features: plan.features,
+                                        isHighlighted: isSelected,
+                                        isExpanded: isExpanded,
+                                        onExpansionChanged: () =>
+                                            controller.togglePlanExpansion(planKey),
+                                        onTap: () => controller.selectPlan(index),
+                                      );
+                                    });
+                                  }).toList(),
                                 );
-                              });
-                            },
-                          );
-                        }),
-                      ),
-                      NativeAdWidget(
-                        adType: TemplateType.small,
-                        constraints: BoxConstraints(
-                          minWidth: MediaQuery.of(context).size.width,
-                          minHeight: 50,
-                          maxWidth: MediaQuery.of(context).size.width,
-                          maxHeight: 100,
+                              }),
+
+                              const SizedBox(height: 10),
+
+                              /// 🔹 Native Ad Container (Positioned naturally after plan cards in document flow)
+                              NativeAdWidget(
+                                adType: TemplateType.small,
+                                constraints: BoxConstraints(
+                                  minWidth: 320,
+                                  minHeight: 90,
+                                  maxWidth: isWeb ? 600 : double.infinity,
+                                  maxHeight: 120,
+                                ),
+                              ),
+
+                              const SizedBox(height: 20),
+                            ],
+                          ),
                         ),
                       ),
 
                       /// 🔴 Sign In / Purchase / Already Purchased Button
                       Padding(
-                        padding: const EdgeInsets.all(15.0),
+                        padding: EdgeInsets.fromLTRB(
+                          15.0,
+                          10.0,
+                          15.0,
+                          (Navigator.of(context).canPop() || isWeb || kIsWeb)
+                              ? 15.0
+                              : 95.0,
+                        ),
                         child: SizedBox(
                           width: double.infinity,
                           height: 50,

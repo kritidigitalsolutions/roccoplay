@@ -4,6 +4,7 @@ import '../../app/routes/app_routes.dart';
 import '../../app/theme/app_colors.dart';
 import '../../utils/custom_snackbar.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
+import '../../view_model/home_controller/home_controller.dart';
 
 class DeleteAccountPage extends StatefulWidget {
   const DeleteAccountPage({super.key});
@@ -149,6 +150,9 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                   ),
                   onPressed: () {
                     Get.back(); // Close dialog
+                    if (Get.isRegistered<HomeController>()) {
+                      Get.find<HomeController>().selectedIndex.value = 0;
+                    }
                     Get.offAllNamed(AppRoutes.home); // Return to main page
                   },
                   child: const Text(

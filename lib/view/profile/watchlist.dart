@@ -10,6 +10,7 @@ import '../../view_model/watchlist_controller/watchlist_controller.dart';
 import '../dramaDetails/dramaDetailsPage.dart';
 import '../homePages/mainHomepage.dart';
 import '../../view_model/content_controller/content_controller.dart';
+import '../../view_model/home_controller/home_controller.dart';
 
 class WatchlistPage extends StatelessWidget {
   const WatchlistPage({super.key});
@@ -262,6 +263,9 @@ class WatchlistPage extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
+                  if (Get.isRegistered<HomeController>()) {
+                    Get.find<HomeController>().selectedIndex.value = 0;
+                  }
                   Get.offAllNamed(AppRoutes.home);
                 },
                 child: const Text(

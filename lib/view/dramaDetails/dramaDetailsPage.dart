@@ -739,7 +739,7 @@ class _DramaDetailsPageState extends State<DramaDetailsPage> {
       return;
     }
     if (isPremium && !isPurchased) {
-      Get.toNamed(AppRoutes.goPremium);
+      AppRoutes.toGoPremium();
       return;
     }
     if (url == null || url.isEmpty) {
@@ -797,7 +797,7 @@ class _DramaDetailsPageState extends State<DramaDetailsPage> {
                         ),
                         onPressed: () {
                           Get.back();
-                          Get.toNamed(AppRoutes.goPremium);
+                          AppRoutes.toGoPremium();
                         },
                         child: const Text(
                           "EXPLORE PLANS",

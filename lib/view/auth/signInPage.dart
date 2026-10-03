@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/routes/app_routes.dart';
 import '../../app/theme/app_colors.dart';
+import 'package:flutter/services.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
-import 'otpPage.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -108,21 +108,15 @@ class _SignInPageState extends State<SignInPage> {
                           autofocus: true,
                           keyboardType: TextInputType.phone,
                           style: const TextStyle(color: Colors.white),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(10),
+                          ],
                           validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return "Phone or Email is required";
-                            }
-
-                            bool isEmail = RegExp(
-                              r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$',
-                            ).hasMatch(value);
-
-                            bool isPhone = RegExp(
-                              r'^[6-9][0-9]{9}$',
-                            ).hasMatch(value);
-
-                            if (!isEmail && !isPhone) {
-                              return "Enter valid phone number or email";
+                            final text = value?.trim() ?? "";
+                            if (text.isEmpty ||
+                                !RegExp(r'^[6-9][0-9]{9}$').hasMatch(text)) {
+                              return "Please enter a valid 10-digit mobile number";
                             }
                             return null;
                           },
@@ -251,7 +245,7 @@ class _SignInPageState extends State<SignInPage> {
                                         if (_formKey.currentState!.validate()) {
                                           FocusManager.instance.primaryFocus?.unfocus();
 
-                                          String valueToSend = "+91${phoneController.text}";
+                                          String valueToSend = "+91${phoneController.text.trim()}";
 
                                           bool success = await authController.sendOtp(valueToSend);
 

@@ -21,8 +21,10 @@ class HomeController extends GetxController {
     updateIndexFromRoute();
   }
 
-  /// ✅ Synchronize selected index with the current URL route
+  /// ✅ Synchronize selected index with the current URL route (Web only)
   void updateIndexFromRoute() {
+    if (!kIsWeb) return;
+
     String currentRoute = Get.currentRoute;
     if (currentRoute == AppRoutes.home) {
       selectedIndex.value = 0;

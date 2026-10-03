@@ -179,6 +179,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       scrollBehavior: MyCustomScrollBehavior(),
       routingCallback: (routing) {
         if (routing != null && Get.isRegistered<HomeController>()) {
+          // On mobile, back navigation should preserve the existing tab state and
+          // not reset the active bottom navigation tab.
+          // Dialogs and bottom sheets must also not trigger tab index synchronization.
+          if (!kIsWeb && (routing.isBack ?? false)) return;
+          if (routing.isBottomSheet ?? false) return;
+          if (routing.isDialog ?? false) return;
+
           // Use post-frame to ensure synchronization happens after route is fully settled
           SchedulerBinding.instance.addPostFrameCallback((_) {
             Get.find<HomeController>().updateIndexFromRoute();

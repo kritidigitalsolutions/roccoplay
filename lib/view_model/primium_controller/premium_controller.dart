@@ -34,6 +34,29 @@ class PremiumController extends GetxController {
   var isSubscribing = false.obs;
   var isRedeeming = false.obs;
   var isApplyingPromo = false.obs;
+
+  // 🔹 Independent Plan Expansion State Tracking
+  final RxSet<String> expandedPlanIds = <String>{}.obs;
+
+  bool isPlanExpanded(String planId) {
+    return expandedPlanIds.contains(planId);
+  }
+
+  void togglePlanExpansion(String planId) {
+    if (expandedPlanIds.contains(planId)) {
+      expandedPlanIds.remove(planId);
+    } else {
+      expandedPlanIds.add(planId);
+    }
+  }
+
+  void setPlanExpanded(String planId, bool expanded) {
+    if (expanded) {
+      expandedPlanIds.add(planId);
+    } else {
+      expandedPlanIds.remove(planId);
+    }
+  }
   
   // Separate lists for App and Website plans
   var appPlans = <PlanModel>[].obs;

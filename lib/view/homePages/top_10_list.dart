@@ -22,83 +22,119 @@ class Top10List extends StatelessWidget {
   Widget build(BuildContext context) {
     if (content.isEmpty) return const SizedBox.shrink();
 
-    double screenWidth = MediaQuery.of(context).size.width;
-    bool isWeb = screenWidth > 800;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double availableWidth = constraints.maxWidth;
+        final bool isWeb = availableWidth > 800;
 
-    double posterWidth = isWeb
-        ? (isHorizontal ? 400 : 200)
-        : (isHorizontal ? 210 : 110);
-    double posterHeight = isWeb
-        ? (isHorizontal ? 225 : 300)
-        : (isHorizontal ? 120 : 160);
-    double sectionHeight = isWeb
-        ? (isHorizontal ? 255 : 330)
-        : (isHorizontal ? 140 : 180);
-    double numberSize = isWeb
-        ? (isHorizontal ? 200 : 210)
-        : (isHorizontal ? 110 : 110);
-    double offsetLeft = isWeb
-        ? (isHorizontal ? 85 : 75)
-        : (isHorizontal ? 45 : 40);
+        double posterWidth;
+        double posterHeight;
+        double sectionHeight;
+        double numberSize;
+        double offsetLeft;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        /// 🔥 TOP 10 TITLE
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: InkWell(
-            onTap: () {
-              Get.toNamed(
-                AppRoutes.categoryGrid,
-                arguments: {'title': title, 'content': content},
-              );
-            },
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: isWeb ? 26 : 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+        if (isHorizontal) {
+          // Horizontal banner top 10
+          if (isWeb) {
+            posterWidth = (availableWidth / 3.6).clamp(280.0, 420.0);
+            posterHeight = posterWidth / 1.777;
+            sectionHeight = posterHeight + 20;
+            numberSize = posterHeight * 0.9;
+            offsetLeft = numberSize * 0.42;
+          } else {
+            posterWidth = ((availableWidth - 32 - 12) / 1.45).clamp(200.0, 280.0);
+            posterHeight = posterWidth / 1.777;
+            sectionHeight = posterHeight + 14;
+            numberSize = posterHeight * 0.88;
+            offsetLeft = numberSize * 0.38;
+          }
+        } else {
+          // Vertical poster top 10
+          if (isWeb) {
+            posterWidth = (availableWidth / 6.2).clamp(160.0, 220.0);
+            posterHeight = posterWidth * 1.45;
+            sectionHeight = posterHeight + 20;
+            numberSize = posterHeight * 0.75;
+            offsetLeft = numberSize * 0.38;
+          } else {
+            posterWidth = ((availableWidth - 32 - (2 * 12)) / 2.6).clamp(120.0, 160.0);
+            posterHeight = posterWidth * 1.45;
+            sectionHeight = posterHeight + 14;
+            numberSize = posterHeight * 0.72;
+            offsetLeft = numberSize * 0.35;
+          }
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// 🔥 TOP 10 TITLE
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: () {
+                  Get.toNamed(
+                    AppRoutes.categoryGrid,
+                    arguments: {'title': title, 'content': content},
+                  );
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: isWeb ? 24 : 19,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.white70,
+                      size: 13,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
-              ],
+              ),
             ),
-          ),
-        ),
 
-        const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
-        /// 🔥 SLIDER
-        SizedBox(
-          height: sectionHeight,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            clipBehavior: Clip.none,
-            itemCount: content.length > 10 ? 10 : content.length,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemBuilder: (context, index) {
-              final item = content[index];
-              return _Top10HoverItem(
-                item: item,
-                index: index,
-                posterWidth: posterWidth,
-                posterHeight: posterHeight,
-                numberSize: numberSize,
-                offsetLeft: offsetLeft,
-                isSignedIn: isSignedIn,
-                useBanner: isHorizontal,
-                isWeb: isWeb,
-              );
-            },
-          ),
-        ),
-      ],
+            /// 🔥 SLIDER
+            SizedBox(
+              height: sectionHeight,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.antiAlias,
+                itemCount: content.length > 10 ? 10 : content.length,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemBuilder: (context, index) {
+                  final item = content[index];
+                  return _Top10HoverItem(
+                    item: item,
+                    index: index,
+                    posterWidth: posterWidth,
+                    posterHeight: posterHeight,
+                    numberSize: numberSize,
+                    offsetLeft: offsetLeft,
+                    isSignedIn: isSignedIn,
+                    useBanner: isHorizontal,
+                    isWeb: isWeb,
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -1,22 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
+import '../../data/models/response_model/content_response_model/content_model.dart';
+import '../../view_model/content_controller/content_controller.dart';
 import 'cast_crewPage.dart';
 
 class TopArtistsPage extends StatelessWidget {
-  TopArtistsPage({super.key});
+  const TopArtistsPage({super.key});
 
-  final List<Map<String, String>> artists = [
-    {"name": "Shahid Kapoor", "image": "assets/images/shahid_Kapoor.jpg"},
-    {"name": "Shah Rukh Khan", "image": "assets/images/srk.jpeg"},
-    {"name": "Deepika Padukone", "image": "assets/images/depika.jpeg"},
-    {"name": "Salman Khan", "image": "assets/images/salman.jpeg"},
-    {"name": "Alia Bhatt", "image": "assets/images/alia.jpeg"},
-    {"name": "Ranveer Singh", "image": "assets/images/ranvir.jpg"},
-    {"name": "Katrina Kaif", "image": "assets/images/katrina.jpeg"},
-  ];
+  List<Cast> _getRealArtists() {
+    if (!Get.isRegistered<ContentController>()) return [];
+    final contentController = Get.find<ContentController>();
+    final Map<String, Cast> uniqueArtists = {};
+
+    for (final content in contentController.allContent) {
+      if (content.cast != null) {
+        for (final castMember in content.cast!) {
+          final name = castMember.name.trim();
+          if (name.isNotEmpty) {
+            uniqueArtists.putIfAbsent(name.toLowerCase(), () => castMember);
+          }
+        }
+      }
+    }
+
+    return uniqueArtists.values.toList();
+  }
+
+  Widget _buildArtistImage(String path) {
+    final cleanPath = path.trim();
+    if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+      return Image.network(
+        cleanPath,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Image.asset(
+          'assets/images/user.png',
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Center(
+            child: Icon(Icons.person, color: Colors.white54, size: 32),
+          ),
+        ),
+      );
+    } else if (cleanPath.isNotEmpty && cleanPath.startsWith('assets/')) {
+      return Image.asset(
+        cleanPath,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Center(
+          child: Icon(Icons.person, color: Colors.white54, size: 32),
+        ),
+      );
+    }
+    return Image.asset(
+      'assets/images/user.png',
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => const Center(
+        child: Icon(Icons.person, color: Colors.white54, size: 32),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final artists = _getRealArtists();
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -46,49 +92,64 @@ class TopArtistsPage extends StatelessWidget {
 
             /// 🔹 Grid Artists
             Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.all(15),
-                itemCount: artists.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 15,
-                  childAspectRatio: 0.65,
-                ),
-                itemBuilder: (context, index) {
-                  final artist = artists[index];
+              child: artists.isEmpty
+                  ? const Center(
+                      child: Text(
+                        "No Artists Found",
+                        style: TextStyle(color: Colors.white54, fontSize: 16),
+                      ),
+                    )
+                  : GridView.builder(
+                      padding: const EdgeInsets.all(15),
+                      itemCount: artists.length,
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 0.75,
+                      ),
+                      itemBuilder: (context, index) {
+                        final artist = artists[index];
+                        final name = artist.name.trim();
+                        final image = artist.image.trim();
 
-                  return GestureDetector(
-                    onTap: () {
-                      print("Clicked on ${artist["name"]}");
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CastDetailsPage(
-                            castName: artist["name"]!,
-                            castImage: artist["image"]!,
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CastDetailsPage(
+                                  castName: name,
+                                  castImage: image,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: _buildArtistImage(image),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      );
-                    },
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 110,
-                          width: 110,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.rectangle,
-                            image: DecorationImage(
-                              image: AssetImage(artist["image"]!),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ],
         ),

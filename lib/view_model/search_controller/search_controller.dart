@@ -9,9 +9,18 @@ class AppSearchController extends GetxController {
   final TextEditingController searchController = TextEditingController();
   
   var searchResults = <ContentModel>[].obs;
+  var selectedCategory = "All".obs;
   final ContentController _contentController = Get.find<ContentController>();
 
   Timer? _debounceTimer;
+
+  void setCategory(String category) {
+    if (selectedCategory.value == category) return;
+    selectedCategory.value = category;
+    if (searchQuery.value.isNotEmpty) {
+      _performSearch(searchQuery.value);
+    }
+  }
 
   void updateSearchQuery(String query) {
     searchQuery.value = query;
@@ -29,9 +38,28 @@ class AppSearchController extends GetxController {
   }
 
   void _performSearch(String query) {
-    // 1. Filter contents by title
+    final lowerQuery = query.toLowerCase().trim();
+
+    // 1. Filter contents by title, genre, or cast
     List<ContentModel> filtered = _contentController.allContent.where((item) {
-      return item.title.toLowerCase().contains(query.toLowerCase());
+      final matchesTitle = item.title.toLowerCase().contains(lowerQuery);
+      final matchesGenre = item.genre.any((g) => g.toLowerCase().contains(lowerQuery));
+      final matchesCast = item.cast?.any((c) => c.name.toLowerCase().contains(lowerQuery)) ?? false;
+      final matchesQuery = matchesTitle || matchesGenre || matchesCast;
+
+      if (!matchesQuery) return false;
+
+      // Filter by selected category chip if not 'All'
+      if (selectedCategory.value == "Movies") {
+        return item.contentType.toLowerCase() == 'movie';
+      } else if (selectedCategory.value == "Web Series") {
+        return item.contentType.toLowerCase() == 'series';
+      } else if (selectedCategory.value == "Artists") {
+        return item.cast != null && item.cast!.any((c) => c.name.toLowerCase().contains(lowerQuery));
+      } else if (selectedCategory.value == "Genres") {
+        return item.genre.any((g) => g.toLowerCase().contains(lowerQuery));
+      }
+      return true;
     }).toList();
 
     // 2. Sort by like counts from ContentController cache
@@ -58,3 +86,4 @@ class AppSearchController extends GetxController {
     super.onClose();
   }
 }
+

@@ -13,12 +13,15 @@ import '../../view/profile/terms_condition_page.dart';
 import '../../view/popUp/redeem_voucher_page.dart';
 import '../../view/dramaDetails/topArtistpage.dart';
 import '../../view/popUp/search_with_mic.dart';
+import '../../view/search_pages/trending_searches_page.dart';
 import '../../view/videoPlayer/video_player.dart';
 import '../../view/profile/setting_page.dart';
 import '../../view/profile/Rate_your_app.dart';
 import '../../view/profile/refund_policy_page.dart';
+import 'package:flutter/foundation.dart';
 import '../../view/profile/help_page.dart';
 import '../../view/profile/delete_account_page.dart';
+import '../../view/premium/goPremium.dart';
 import '../../widgets/catagory_widget.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import 'app_routes.dart';
@@ -27,7 +30,10 @@ class AppPages {
   static final pages = [
     GetPage(name: AppRoutes.home, page: () => const MainHomePage()),
     GetPage(name: AppRoutes.search, page: () => const MainHomePage()),
-    GetPage(name: AppRoutes.goPremium, page: () => const MainHomePage()),
+    GetPage(
+      name: AppRoutes.goPremium,
+      page: () => kIsWeb ? const MainHomePage() : const GoPremiumPage(),
+    ),
     GetPage(name: AppRoutes.downloads, page: () => const MainHomePage()),
     GetPage(name: AppRoutes.profile, page: () => const MainHomePage()),
     GetPage(name: AppRoutes.splash, page: () => const SplashScreen()),
@@ -57,6 +63,7 @@ class AppPages {
     GetPage(name: AppRoutes.termsAndConditions, page: () => const TermsAndConditionsPage()),
     GetPage(name: AppRoutes.redeemVoucher, page: () => RedeemVoucherPage()),
     GetPage(name: AppRoutes.artist, page: () => TopArtistsPage()),
+    GetPage(name: AppRoutes.trendingSearches, page: () => const TrendingSearchesPage()),
     GetPage(name: AppRoutes.searchWithMic, page: () => const VoiceListeningPage()),
     GetPage(
       name: AppRoutes.categoryGrid,

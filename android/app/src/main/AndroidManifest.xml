@@ -130,5 +130,10 @@
         <package android:name="com.mobikwik" />
         <package android:name="com.freecharge.android" />
         <package android:name="com.amazon.mShop.android.shopping" />
+
+        <!-- Speech recognition service query for speech_to_text -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
     </queries>
 </manifest>

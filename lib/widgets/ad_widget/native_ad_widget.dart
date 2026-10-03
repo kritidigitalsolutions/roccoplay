@@ -95,9 +95,9 @@ class _NativeAdWidgetState extends State<NativeAdWidget> with AutomaticKeepAlive
     final isSmall = widget.adType == TemplateType.small;
     return BoxConstraints(
       minWidth: 320,
-      minHeight: isSmall ? 80 : 320,
+      minHeight: isSmall ? 90 : 320,
       maxWidth: 400,
-      maxHeight: isSmall ? 100 : 400,
+      maxHeight: isSmall ? 120 : 400,
     );
   }
 
