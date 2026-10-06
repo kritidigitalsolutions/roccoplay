@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:roccoplay/utils/service/razorpay_web_service.dart';
+import 'package:roccoplay/utils/service/payment_web_service.dart';
 import 'package:roccoplay/utils/service/script_loader.dart';
 import 'package:roccoplay/utils/service/meta_event_service.dart';
 import 'package:roccoplay/utils/service/firebase_analytics_service.dart';
@@ -684,21 +685,12 @@ class PremiumController extends GetxController {
           }
 
           if (kIsWeb) {
-            final Uri uri = Uri.parse(paymentUrl);
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-              _showWebPaymentStatusDialog(
-                orderId: orderId,
-                planId: planId,
-                onCheckStatus: verifyZaakpayPayment,
-              );
-            } else {
-              CustomSnackbar.show(
-                title: "Error",
-                message: "Could not open payment page",
-                isError: true,
-              );
-            }
+            PaymentWebHelper.submitPostForm(paymentUrl, params);
+            _showWebPaymentStatusDialog(
+              orderId: orderId,
+              planId: planId,
+              onCheckStatus: verifyZaakpayPayment,
+            );
           } else {
             final result = await Get.to(
               () => PaymentWebViewPage(
@@ -982,21 +974,12 @@ class PremiumController extends GetxController {
           }
 
           if (kIsWeb) {
-            final Uri uri = Uri.parse(paymentUrl);
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-              _showWebPaymentStatusDialog(
-                orderId: orderId,
-                planId: planId,
-                onCheckStatus: verifyHdfcPayment,
-              );
-            } else {
-              CustomSnackbar.show(
-                title: "Error",
-                message: "Could not open payment page",
-                isError: true,
-              );
-            }
+            PaymentWebHelper.submitPostForm(paymentUrl, params);
+            _showWebPaymentStatusDialog(
+              orderId: orderId,
+              planId: planId,
+              onCheckStatus: verifyHdfcPayment,
+            );
           } else {
             final result = await Get.to(
               () => PaymentWebViewPage(
@@ -1101,21 +1084,12 @@ class PremiumController extends GetxController {
 
         if (paymentUrl != null && orderId != null) {
           if (kIsWeb) {
-            final Uri uri = Uri.parse(paymentUrl);
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-              _showWebPaymentStatusDialog(
-                orderId: orderId,
-                planId: planId,
-                onCheckStatus: verifySabPaisaPayment,
-              );
-            } else {
-              CustomSnackbar.show(
-                title: "Error",
-                message: "Could not open payment page",
-                isError: true,
-              );
-            }
+            PaymentWebHelper.submitPostForm(paymentUrl, params);
+            _showWebPaymentStatusDialog(
+              orderId: orderId,
+              planId: planId,
+              onCheckStatus: verifySabPaisaPayment,
+            );
           } else {
             final result = await Get.to(
               () => PaymentWebViewPage(
