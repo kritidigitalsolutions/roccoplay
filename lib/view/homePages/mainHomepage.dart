@@ -596,9 +596,10 @@ class _MainHomePageState extends State<MainHomePage> {
     return Obx(() {
       final info = controller.companyInfo.value;
       final status = info?['status']?.toString().toLowerCase().trim();
+      final bool isPublished = (status == 'publish' || status == 'published');
 
-      // Show footer ONLY if status is 'publish' or 'published'
-      if (status != 'publish' && status != 'published') {
+      // 1. App me agar status draft h (not published), to sab kuch hide karo
+      if (!kIsWeb && !isPublished) {
         return const SizedBox.shrink();
       }
 
@@ -622,7 +623,7 @@ class _MainHomePageState extends State<MainHomePage> {
               info['playStoreUrl'] != null &&
               info['playStoreUrl'].toString().isNotEmpty)
           ? info['playStoreUrl']
-          : 'https://play.google.com/store/apps/details?id=com.roccoplay';
+          : 'https://play.google.com/store/apps/details?id=com.roccoplay.app';
 
       final appStoreUrl = (info != null &&
               info['appStoreUrl'] != null &&
