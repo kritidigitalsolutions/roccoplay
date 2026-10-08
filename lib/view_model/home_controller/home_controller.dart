@@ -43,7 +43,11 @@ class HomeController extends GetxController {
       final apiService = Get.find<BaseApiService>();
       final response = await apiService.getApi(AppConstants.companyInfo);
       if (response != null && response['success'] == true) {
-        companyInfo.value = response['data'];
+        if (response['data'] is Map<String, dynamic>) {
+          companyInfo.value = Map<String, dynamic>.from(response['data']);
+        } else if (response['data'] is List && (response['data'] as List).isNotEmpty) {
+          companyInfo.value = Map<String, dynamic>.from((response['data'] as List).first);
+        }
       }
     } catch (e) {
       // Error handled silently

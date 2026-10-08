@@ -21,6 +21,7 @@ class ContentModel {
   final String? releaseDate;
   final bool isPublished;
   final List<Season>? seasons;
+  final int position;
 
   ContentModel({
     required this.id,
@@ -45,6 +46,7 @@ class ContentModel {
     this.releaseDate,
     this.isPublished = true,
     this.seasons,
+    this.position = 0,
   });
 
   factory ContentModel.fromJson(Map<String, dynamic> json) {
@@ -67,7 +69,7 @@ class ContentModel {
           : null,
       category: List<String>.from(json['category'] ?? []),
       slug: json['slug'] ?? '',
-      contentType: json['type'] ?? '',
+      contentType: json['type'] ?? json['contentType'] ?? '',
       isComingSoon: json['isComingSoon'] ?? false,
       isTrending: json['isTrending'] ?? false,
       releaseDate: json['releaseDate'],
@@ -75,6 +77,7 @@ class ContentModel {
       seasons: json['seasons'] != null
           ? List<Season>.from(json['seasons'].map((x) => Season.fromJson(x)))
           : null,
+      position: json['position'] ?? 0,
     );
   }
 
@@ -102,6 +105,7 @@ class ContentModel {
       'releaseDate': releaseDate,
       'isPublished': isPublished,
       'seasons': seasons?.map((e) => e.toJson()).toList(),
+      'position': position,
     };
   }
 }

@@ -14,6 +14,7 @@ import '../../data/network/base_api_service.dart';
 import '../../data/repositories/premium_repository.dart';
 import '../../utils/constants.dart';
 import '../../utils/custom_snackbar.dart';
+import '../../utils/app_session.dart';
 import '../auth_controller/auth_controller.dart';
 import '../../view/premium/payment_webview_page.dart';
 import '../../view/premium/payment_success_page.dart';
@@ -69,10 +70,18 @@ class PremiumController extends GetxController {
   var isLoadingGateways = false.obs;
   var paymentGateways = Rxn<Map<String, dynamic>>();
 
-  // ✅ Helper to check if ANY plan is active for current platform
-  bool get hasActiveSubscription =>
-      subscriptionData.value != null &&
-      subscriptionData.value!['status'] == 'active';
+  // ✅ Helper to check if ANY plan is active
+  bool get hasActiveSubscription {
+    bool isStatusActive(dynamic data) {
+      if (data == null) return false;
+      final status = data['status']?.toString().toLowerCase().trim();
+      return status == 'active' || status == 'success' || status == 'true' || status == 'paid';
+    }
+
+    return isStatusActive(subscriptionData.value) ||
+        isStatusActive(webSubscriptionData.value) ||
+        isStatusActive(appSubscriptionData.value);
+  }
 
   /// Helper to check if a backend response indicates explicit payment success
   bool _isResponsePaymentSuccess(dynamic response) {
@@ -201,10 +210,25 @@ class PremiumController extends GetxController {
   }
 
   Future<void> fetchAllSubscriptionStatus() async {
-    if (!isUserLoggedIn.value) return;
+    final bool loggedIn = isUserLoggedIn.value || AppSession.getLogin();
+    if (!loggedIn) {
+      appSubscriptionData.value = null;
+      webSubscriptionData.value = null;
+      return;
+    }
     isLoadingStatus.value = true;
-    await fetchSubscriptionStatus(currentPlatform.value);
-    isLoadingStatus.value = false;
+    try {
+      await Future.wait([
+        fetchSubscriptionStatus("website"),
+        fetchSubscriptionStatus("hinge"),
+        if (currentPlatform.value != "website" && currentPlatform.value != "hinge")
+          fetchSubscriptionStatus(currentPlatform.value),
+      ]);
+    } catch (e) {
+      debugPrint("⚠️ [FETCH ALL SUB STATUS ERR] $e");
+    } finally {
+      isLoadingStatus.value = false;
+    }
   }
 
   Future<void> fetchSubscriptionStatus(String platform) async {
@@ -213,10 +237,11 @@ class PremiumController extends GetxController {
       final response = await _repository.getSubscriptionStatus(platform: platform);
       debugPrint("📥 [SUBSCRIPTION STATUS RES] Response: $response");
       if (response != null && response['success'] == true) {
+        final subData = response['subscription'] ?? response['data'] ?? response['userSubscription'];
         if (platform == "website") {
-          webSubscriptionData.value = response['subscription'];
+          webSubscriptionData.value = subData != null ? Map<String, dynamic>.from(subData) : null;
         } else {
-          appSubscriptionData.value = response['subscription'];
+          appSubscriptionData.value = subData != null ? Map<String, dynamic>.from(subData) : null;
         }
         debugPrint("📌 [SUBSCRIPTION DATA] Active Status: $hasActiveSubscription, Subscription: ${subscriptionData.value}");
       }
@@ -1398,23 +1423,19 @@ class PremiumController extends GetxController {
   List<Map<String, dynamic>> _getActiveOrderedGateways(
       Map<String, dynamic> data) {
     List<Map<String, dynamic>> activeList = [];
+    final bool isWeb = kIsWeb || currentPlatform.value == 'website';
 
-    if (data['activeOrderedGateways'] is List &&
+    List rawList = [];
+    if (isWeb && data['webGateways'] is List && (data['webGateways'] as List).isNotEmpty) {
+      rawList = data['webGateways'];
+    } else if (!isWeb && data['appGateways'] is List && (data['appGateways'] as List).isNotEmpty) {
+      rawList = data['appGateways'];
+    } else if (data['activeOrderedGateways'] is List &&
         (data['activeOrderedGateways'] as List).isNotEmpty) {
-      for (var item in data['activeOrderedGateways']) {
-        if (item is Map) {
-          final map = Map<String, dynamic>.from(item);
-          if (map['enabled'] == true) activeList.add(map);
-        }
-      }
+      rawList = data['activeOrderedGateways'];
     } else if (data['orderedGateways'] is List &&
         (data['orderedGateways'] as List).isNotEmpty) {
-      for (var item in data['orderedGateways']) {
-        if (item is Map) {
-          final map = Map<String, dynamic>.from(item);
-          if (map['enabled'] == true) activeList.add(map);
-        }
-      }
+      rawList = data['orderedGateways'];
     } else if (data['gatewayOrder'] is List && data['gateways'] is Map) {
       final gatewaysMap = data['gateways'] as Map;
       for (var id in data['gatewayOrder']) {
@@ -1422,7 +1443,7 @@ class PremiumController extends GetxController {
         if (gatewaysMap.containsKey(key) && gatewaysMap[key] is Map) {
           final map = Map<String, dynamic>.from(gatewaysMap[key]);
           if (!map.containsKey('id')) map['id'] = key;
-          if (map['enabled'] == true) activeList.add(map);
+          rawList.add(map);
         }
       }
     } else {
@@ -1432,9 +1453,37 @@ class PremiumController extends GetxController {
         if (val is Map) {
           final map = Map<String, dynamic>.from(val);
           if (!map.containsKey('id')) map['id'] = key.toString();
-          if (map['enabled'] == true) activeList.add(map);
+          rawList.add(map);
         }
       });
+    }
+
+    for (var item in rawList) {
+      if (item is Map) {
+        final map = Map<String, dynamic>.from(item);
+        final enabled = map['enabled'] == true;
+
+        bool showForPlatform = true;
+        if (isWeb) {
+          if (map['showInWeb'] == false) {
+            showForPlatform = false;
+          }
+          if (map['visibility'] is Map && (map['visibility'] as Map)['web'] == false) {
+            showForPlatform = false;
+          }
+        } else {
+          if (map['showInApp'] == false) {
+            showForPlatform = false;
+          }
+          if (map['visibility'] is Map && (map['visibility'] as Map)['app'] == false) {
+            showForPlatform = false;
+          }
+        }
+
+        if (enabled && showForPlatform) {
+          activeList.add(map);
+        }
+      }
     }
 
     activeList.sort((a, b) {

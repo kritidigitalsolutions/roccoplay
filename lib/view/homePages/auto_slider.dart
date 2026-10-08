@@ -27,16 +27,38 @@ class _AutoSliderState extends State<AutoSlider> {
   int currentPage = 0;
   Timer? _timer;
 
+  int _getInitialPage(int length) {
+    if (length <= 0) return 0;
+    return (1000 ~/ length) * length;
+  }
+
   @override
   void initState() {
     super.initState();
-    // Default PageController, will be updated in build if necessary
+    int initialPage = _getInitialPage(widget.content.length);
     _pageController = PageController(
       viewportFraction: 0.75,
-      initialPage: 1000,
+      initialPage: initialPage,
     );
-    currentPage = 1000;
+    currentPage = initialPage;
     _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant AutoSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    bool lengthChanged = oldWidget.content.length != widget.content.length;
+    bool firstItemChanged = oldWidget.content.isNotEmpty &&
+        widget.content.isNotEmpty &&
+        oldWidget.content.first.id != widget.content.first.id;
+
+    if ((lengthChanged || firstItemChanged) && widget.content.isNotEmpty) {
+      int initialPage = _getInitialPage(widget.content.length);
+      currentPage = initialPage;
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(initialPage);
+      }
+    }
   }
 
   void _startTimer() {

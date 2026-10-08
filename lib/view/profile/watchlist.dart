@@ -34,27 +34,39 @@ class WatchlistPage extends StatelessWidget {
           style: TextStyle(color: AppColors.white),
         ),
       ),
-      body: Obx(() {
-        /// 🔄 LOADING
-        if (controller.isLoading.value) {
-          return const Center(
-            child: CircularProgressIndicator(color: Colors.pink),
-          );
-        }
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await controller.getWatchlist();
+        },
+        color: AppColors.buttonColor,
+        child: Obx(() {
+          /// 🔄 LOADING
+          if (controller.isLoading.value) {
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.pink),
+            );
+          }
 
-        /// ❌ EMPTY STATE
-        if (controller.watchlist.isEmpty) {
-          return _emptyState(context);
-        }
+          /// ❌ EMPTY STATE
+          if (controller.watchlist.isEmpty) {
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.8,
+                child: _emptyState(context),
+              ),
+            );
+          }
 
-        /// ✅ LIST (with native ads interspersed every [_adInterval] items)
-        final int itemCount = controller.watchlist.length;
-        // Har _adInterval items ke baad ek ad slot add karo
-        final int adSlots = (itemCount - 1) ~/ _adInterval;
-        final int totalCount = itemCount + adSlots;
+          /// ✅ LIST (with native ads interspersed every [_adInterval] items)
+          final int itemCount = controller.watchlist.length;
+          // Har _adInterval items ke baad ek ad slot add karo
+          final int adSlots = (itemCount - 1) ~/ _adInterval;
+          final int totalCount = itemCount + adSlots;
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(10),
+          return ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(10),
           itemCount: totalCount,
           itemBuilder: (context, position) {
             // 🔥 Ad slot check: position 4, 9, 14... (0-indexed) pe ad dikhana hai
@@ -210,8 +222,9 @@ class WatchlistPage extends StatelessWidget {
           },
         );
       }),
-    );
-  }
+    ),
+  );
+}
 
   /// 🔥 EMPTY UI
   Widget _emptyState(BuildContext context) {

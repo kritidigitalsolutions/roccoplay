@@ -36,4 +36,23 @@ class ContentRepository {
       rethrow;
     }
   }
+
+  Future<List<ContentModel>> getCategoryContentBySlug(String slug) async {
+    try {
+      final response =
+          await apiProvider.getApi(AppConstants.getCategoryContentBySlug(slug));
+      if (response['success'] == true) {
+        List<dynamic> data = response['content'] ?? [];
+        List<ContentModel> list = data
+            .map((item) => ContentModel.fromJson(item))
+            .where((content) => content.isPublished)
+            .toList();
+        list.sort((a, b) => a.position.compareTo(b.position));
+        return list;
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
 }

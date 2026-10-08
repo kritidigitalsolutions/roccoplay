@@ -1,5 +1,5 @@
 class AppConstants {
-  // static const String baseUrl = 'http://192.168.1.3:8000/api';
+  // static const String baseUrl = 'http://192.168.1.9:8000/api';
   static const String baseUrl = 'https://api.roccoplay.in/api';
 
   // Auth Endpoints
@@ -32,6 +32,8 @@ class AppConstants {
   /// content
   static const String getAllContent = '$baseUrl/content';
   static const String getCategories = '$baseUrl/categories';
+  static String getCategoryContentBySlug(String slug) =>
+      '$baseUrl/categories/$slug/content';
 
   /// payment
   static const String createOrder = '$baseUrl/payment/create-order';

@@ -22,25 +22,54 @@ class ContentController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchContent();
     fetchCategories();
+    fetchContent();
+  }
+
+  /// 🔄 Clears all content state & forces UI to show loading, then re-fetches fresh data from API
+  Future<void> hardRefreshContent() async {
+    isLoading.value = true;
+    allContent.clear();
+    trendingContent.clear();
+    categories.clear();
+    categoryContentMap.clear();
+    comingSoonContent.clear();
+
+    await Future.wait([
+      fetchCategories(),
+      fetchContent(),
+    ]);
   }
 
   Future<void> fetchContent() async {
     try {
       isLoading.value = true;
       final content = await _repository.getAllContent();
+      
+      // Preserve any items already added to allContent from category responses
+      final existingIds = content.map((e) => e.id).toSet();
+      for (final item in allContent) {
+        if (!existingIds.contains(item.id)) {
+          content.add(item);
+        }
+      }
       allContent.assignAll(content);
       
-      // Filter trending for slider
-      trendingContent.assignAll(content.where((c) => (c.isTrending || c.category.contains('trending')) && c.isComingSoon == false).toList());
-      
-      // Precompute coming soon
-      comingSoonContent.assignAll(content.where((c) => c.isComingSoon == true).toList());
+      // Filter trending for slider: prefer category content endpoint order if available
+      if (categoryContentMap.containsKey('trending') &&
+          categoryContentMap['trending']!.isNotEmpty) {
+        trendingContent.assignAll(categoryContentMap['trending']!);
+      } else {
+        trendingContent.assignAll(content
+            .where((c) =>
+                (c.isTrending || c.category.contains('trending')) &&
+                c.isComingSoon == false)
+            .toList());
+      }
 
-      // Rebuild category content map
-      _rebuildCategoryContentMap();
-      
+      // Precompute coming soon
+      comingSoonContent.assignAll(
+          content.where((c) => c.isComingSoon == true).toList());
     } catch (e) {
       // Error handled silently
     } finally {
@@ -51,29 +80,43 @@ class ContentController extends GetxController {
   Future<void> fetchCategories() async {
     try {
       final fetchedCategories = await _repository.getCategories();
+      fetchedCategories.sort((a, b) => a.priority.compareTo(b.priority));
       categories.assignAll(fetchedCategories);
-      categories.sort((a, b) => a.priority.compareTo(b.priority));
 
-      // Rebuild category content map when categories change
-      _rebuildCategoryContentMap();
+      // Fetch content for each category using GET /api/categories/:slug/content
+      final Map<String, List<ContentModel>> newCategoryMap = {};
+      final List<ContentModel> collectedCategoryContent = [];
+
+      await Future.wait(fetchedCategories.map((category) async {
+        if (category.slug.isEmpty) return;
+        final list = await _repository.getCategoryContentBySlug(category.slug);
+        if (list.isNotEmpty) {
+          list.sort((a, b) => a.position.compareTo(b.position));
+          newCategoryMap[category.slug] = list;
+          collectedCategoryContent.addAll(list);
+        }
+      }));
+
+      categoryContentMap.assignAll(newCategoryMap);
+
+      // Set trendingContent from the position-sorted category list if present
+      if (newCategoryMap.containsKey('trending') &&
+          newCategoryMap['trending']!.isNotEmpty) {
+        trendingContent.assignAll(newCategoryMap['trending']!);
+      }
+
+      // Merge items into allContent
+      if (collectedCategoryContent.isNotEmpty) {
+        final existingIds = allContent.map((e) => e.id).toSet();
+        for (final item in collectedCategoryContent) {
+          if (!existingIds.contains(item.id)) {
+            allContent.add(item);
+            existingIds.add(item.id);
+          }
+        }
+      }
     } catch (e) {
       // Error handled silently
     }
-  }
-
-  /// Precompute category → content list mapping (called after content or categories update)
-  void _rebuildCategoryContentMap() {
-    if (allContent.isEmpty || categories.isEmpty) return;
-    final map = <String, List<ContentModel>>{};
-    for (final category in categories) {
-      if (category.slug == 'trending') continue;
-      final items = allContent
-          .where((c) => c.category.contains(category.slug) && c.isComingSoon == false)
-          .toList();
-      if (items.isNotEmpty) {
-        map[category.slug] = items;
-      }
-    }
-    categoryContentMap.value = map;
   }
 }

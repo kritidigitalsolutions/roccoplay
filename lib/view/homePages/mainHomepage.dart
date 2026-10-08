@@ -10,6 +10,7 @@ import '../../app/routes/app_routes.dart';
 import '../../app/theme/app_colors.dart';
 import '../../view_model/content_controller/content_controller.dart';
 import '../../view_model/primium_controller/premium_controller.dart';
+import '../../view_model/profile/privacy_controller.dart';
 import '../navbar/bottomNavbar.dart';
 import '../navbar/downloads.dart';
 import 'auto_slider.dart';
@@ -21,7 +22,11 @@ import '../premium/goPremium.dart';
 import '../profile/profilePage.dart';
 import '../../view_model/home_controller/home_controller.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
+import '../../view_model/watchlist_controller/watchlist_controller.dart';
+import '../../utils/app_session.dart';
 import '../../utils/notification_service.dart';
+import '../../widgets/ad_widget/app_open_ad_helper.dart';
+import '../../widgets/ad_widget/interstitial_ad_helper.dart';
 
 class MainHomePage extends StatefulWidget {
   const MainHomePage({super.key});
@@ -74,15 +79,46 @@ class _MainHomePageState extends State<MainHomePage> {
       );
     }
 
+    await _performHardRefresh();
+  }
+
+  /// 🔄 Performs a complete hard refresh of all app data, controllers, and state
+  Future<void> _performHardRefresh() async {
+    if (kIsWeb) {
+      performWebReload();
+      return;
+    }
+
     List<Future> refreshTasks = [
-      contentController.fetchContent(),
-      contentController.fetchCategories(),
+      contentController.hardRefreshContent(),
       controller.fetchCompanyInfo(),
+      premiumController.fetchAllPlans(),
+      premiumController.fetchPaymentGateways(),
+      premiumController.fetchAllSubscriptionStatus(),
     ];
 
-    if (authController.isLoggedIn.value) {
+    if (authController.isLoggedIn.value || AppSession.getLogin()) {
       refreshTasks.add(authController.getProfile());
-      refreshTasks.add(premiumController.fetchAllSubscriptionStatus());
+      if (Get.isRegistered<WatchlistController>()) {
+        refreshTasks.add(Get.find<WatchlistController>().getWatchlist());
+      }
+    }
+
+    if (Get.isRegistered<NotificationService>()) {
+      refreshTasks.add(NotificationService.to.fetchNotifications());
+    }
+
+    if (Get.isRegistered<PrivacyController>()) {
+      final privacyCtrl = Get.find<PrivacyController>();
+      refreshTasks.add(privacyCtrl.fetchPrivacyPolicy());
+      refreshTasks.add(privacyCtrl.fetchTerms());
+      refreshTasks.add(privacyCtrl.fetchRefundPolicy());
+      refreshTasks.add(privacyCtrl.fetchHelpData());
+    }
+
+    if (!kIsWeb) {
+      AppOpenAdHelper.loadAd();
+      InterstitialAdHelper.loadAd();
     }
 
     await Future.wait(refreshTasks);
@@ -373,19 +409,7 @@ class _MainHomePageState extends State<MainHomePage> {
         /// SCROLL
         Expanded(
           child: RefreshIndicator(
-            onRefresh: () async {
-              List<Future> refreshTasks = [
-                contentController.fetchContent(),
-                contentController.fetchCategories(),
-              ];
-
-              if (authController.isLoggedIn.value) {
-                refreshTasks.add(authController.getProfile());
-                refreshTasks.add(premiumController.fetchAllSubscriptionStatus());
-              }
-
-              await Future.wait(refreshTasks);
-            },
+            onRefresh: _performHardRefresh,
             color: AppColors.buttonColor,
             child: SingleChildScrollView(
               controller: _scrollController,
@@ -429,11 +453,21 @@ class _MainHomePageState extends State<MainHomePage> {
                             ),
                           ),
 
-                        /// 2. 🔹 OTHER CATEGORIES (Strictly alternating vertical & horizontal layouts)
+                        /// 2. 🔹 ALL CATEGORIES SORTED BY PRIORITY (Including Top 10 & Coming Soon)
                         ...() {
                           final visibleCategories = contentController.categories
                               .where((cat) => cat.slug != 'trending')
                               .where((cat) {
+                                final cleanSlug = cat.slug
+                                    .toLowerCase()
+                                    .replaceAll(RegExp(r'[-_\s]'), '');
+                                final isComingSoon = cleanSlug.contains('coming') ||
+                                    cleanSlug.contains('comming');
+                                if (isComingSoon) {
+                                  final items = catMap[cat.slug];
+                                  return (items != null && items.isNotEmpty) ||
+                                      contentController.comingSoonContent.isNotEmpty;
+                                }
                                 final items = catMap[cat.slug];
                                 return items != null && items.isNotEmpty;
                               })
@@ -444,9 +478,7 @@ class _MainHomePageState extends State<MainHomePage> {
 
                           for (int i = 0; i < visibleCategories.length; i++) {
                             final category = visibleCategories[i];
-                            final categoryContent = catMap[category.slug]!;
 
-                            // Dynamic detection of Top 10 category
                             final cleanSlug = category.slug
                                 .toLowerCase()
                                 .replaceAll(RegExp(r'[-_\s]'), '');
@@ -457,19 +489,16 @@ class _MainHomePageState extends State<MainHomePage> {
                                 cleanName == 'top10' ||
                                 category.layout == 'top10';
 
-                            // Dynamically alternate layout
-                            final bool isHorizontal;
-                            if (isTop10) {
-                              // Top 10 is always Horizontal Cards with Big Digits
-                              isHorizontal = true;
-                              nextIsHorizontal = false; // Next alternates to Vertical
-                            } else {
-                              isHorizontal = nextIsHorizontal;
-                              nextIsHorizontal = !nextIsHorizontal;
-                            }
+                            final isComingSoon = cleanSlug.contains('coming') ||
+                                cleanSlug.contains('comming');
 
                             Widget categoryWidget;
                             if (isTop10) {
+                              final categoryContent = catMap[category.slug]!;
+                              // Top 10 is always Horizontal Cards with Big Digits
+                              final bool isHorizontal = true;
+                              nextIsHorizontal = false; // Next alternates to Vertical
+
                               categoryWidget = RepaintBoundary(
                                 child: Column(
                                   children: [
@@ -486,7 +515,30 @@ class _MainHomePageState extends State<MainHomePage> {
                                   ],
                                 ),
                               );
+                            } else if (isComingSoon) {
+                              final categoryContent = catMap[category.slug];
+                              final comingSoonItems = (categoryContent != null && categoryContent.isNotEmpty)
+                                  ? categoryContent
+                                  : contentController.comingSoonContent;
+
+                              categoryWidget = RepaintBoundary(
+                                child: Column(
+                                  children: [
+                                    ComingSoonSection(
+                                      content: comingSoonItems,
+                                      isSignedIn:
+                                          authController.isLoggedIn.value,
+                                    ),
+                                    const SizedBox(height: 15),
+                                  ],
+                                ),
+                              );
                             } else {
+                              final categoryContent = catMap[category.slug]!;
+                              // Dynamically alternate layout
+                              final bool isHorizontal = nextIsHorizontal;
+                              nextIsHorizontal = !nextIsHorizontal;
+
                               categoryWidget = RepaintBoundary(
                                 child: Column(
                                   children: [
@@ -520,13 +572,6 @@ class _MainHomePageState extends State<MainHomePage> {
 
                           return categoryWidgets;
                         }(),
-
-
-                        /// 3. 🔹 COMING SOON (uses precomputed list)
-                        ComingSoonSection(
-                          content: contentController.comingSoonContent,
-                          isSignedIn: authController.isLoggedIn.value,
-                        ),
                       ],
                     );
                   }),
@@ -536,7 +581,7 @@ class _MainHomePageState extends State<MainHomePage> {
                   /// 🔹 COMPANY INFO & STORE LINKS (Footer)
                   _buildFooter(controller),
 
-                  const SizedBox(height: 100),
+                  SizedBox(height: isWeb ? 100 : 120),
                 ],
               ),
             ),
@@ -550,6 +595,13 @@ class _MainHomePageState extends State<MainHomePage> {
   Widget _buildFooter(HomeController controller) {
     return Obx(() {
       final info = controller.companyInfo.value;
+      final status = info?['status']?.toString().toLowerCase().trim();
+
+      // Show footer ONLY if status is 'publish' or 'published'
+      if (status != 'publish' && status != 'published') {
+        return const SizedBox.shrink();
+      }
+
       final addressList = [
         if (info != null) info['addressLine1'],
         if (info != null &&
@@ -688,7 +740,6 @@ class _MainHomePageState extends State<MainHomePage> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 25),
 
               /// 🔹 APP STORE & PLAY STORE LINKS

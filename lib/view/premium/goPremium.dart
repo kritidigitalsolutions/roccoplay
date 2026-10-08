@@ -80,18 +80,34 @@ class GoPremiumPage extends StatelessWidget {
 
                       /// 🔹 Expandable Plans List
                       Expanded(
-                        child: Obx(() {
-                          if (controller.plans.isEmpty) {
-                            return const Center(
-                              child: Text(
-                                "No plans available",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            );
-                          }
+                        child: RefreshIndicator(
+                          onRefresh: () async {
+                            await Future.wait([
+                              controller.fetchAllPlans(),
+                              controller.fetchPaymentGateways(),
+                              controller.fetchAllSubscriptionStatus(),
+                            ]);
+                          },
+                          color: AppColors.buttonColor,
+                          child: Obx(() {
+                            if (controller.plans.isEmpty) {
+                              return ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                children: const [
+                                  SizedBox(height: 100),
+                                  Center(
+                                    child: Text(
+                                      "No plans available",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
 
-                          return ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 15),
+                            return ListView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(horizontal: 15),
                             itemCount: controller.plans.length,
                             itemBuilder: (context, index) {
                               final plan = controller.plans[index];
@@ -112,6 +128,7 @@ class GoPremiumPage extends StatelessWidget {
                           );
                         }),
                       ),
+                    ),
                       NativeAdWidget(
                         adType: TemplateType.small,
                         constraints: BoxConstraints(
