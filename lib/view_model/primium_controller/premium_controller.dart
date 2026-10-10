@@ -70,17 +70,12 @@ class PremiumController extends GetxController {
   var isLoadingGateways = false.obs;
   var paymentGateways = Rxn<Map<String, dynamic>>();
 
-  // ✅ Helper to check if ANY plan is active
+  // ✅ Helper to check if plan is active for current platform
   bool get hasActiveSubscription {
-    bool isStatusActive(dynamic data) {
-      if (data == null) return false;
-      final status = data['status']?.toString().toLowerCase().trim();
-      return status == 'active' || status == 'success' || status == 'true' || status == 'paid';
-    }
-
-    return isStatusActive(subscriptionData.value) ||
-        isStatusActive(webSubscriptionData.value) ||
-        isStatusActive(appSubscriptionData.value);
+    final data = subscriptionData.value;
+    if (data == null) return false;
+    final status = data['status']?.toString().toLowerCase().trim();
+    return status == 'active' || status == 'success' || status == 'true' || status == 'paid';
   }
 
   /// Helper to check if a backend response indicates explicit payment success
@@ -218,12 +213,11 @@ class PremiumController extends GetxController {
     }
     isLoadingStatus.value = true;
     try {
-      await Future.wait([
-        fetchSubscriptionStatus("website"),
-        fetchSubscriptionStatus("hinge"),
-        if (currentPlatform.value != "website" && currentPlatform.value != "hinge")
-          fetchSubscriptionStatus(currentPlatform.value),
-      ]);
+      if (kIsWeb) {
+        await fetchSubscriptionStatus("website");
+      } else {
+        await fetchSubscriptionStatus(currentPlatform.value);
+      }
     } catch (e) {
       debugPrint("⚠️ [FETCH ALL SUB STATUS ERR] $e");
     } finally {
@@ -243,10 +237,21 @@ class PremiumController extends GetxController {
         } else {
           appSubscriptionData.value = subData != null ? Map<String, dynamic>.from(subData) : null;
         }
-        debugPrint("📌 [SUBSCRIPTION DATA] Active Status: $hasActiveSubscription, Subscription: ${subscriptionData.value}");
+      } else {
+        if (platform == "website") {
+          webSubscriptionData.value = null;
+        } else {
+          appSubscriptionData.value = null;
+        }
       }
+      debugPrint("📌 [SUBSCRIPTION DATA] Active Status: $hasActiveSubscription, Subscription: ${subscriptionData.value}");
     } catch (e) {
       debugPrint("⚠️ [SUBSCRIPTION STATUS ERR] $e");
+      if (platform == "website") {
+        webSubscriptionData.value = null;
+      } else {
+        appSubscriptionData.value = null;
+      }
     }
   }
 

@@ -22,27 +22,39 @@ class MainActivity: FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.roccoplay.app/proxy").setMethodCallHandler { call, result ->
-            if (call.method == "getSystemProxy") {
-                val proxyMap = HashMap<String, Any?>()
-                val host = System.getProperty("http.proxyHost")
-                val port = System.getProperty("http.proxyPort")
+            when (call.method) {
+                "getSystemProxy" -> {
+                    val proxyMap = HashMap<String, Any?>()
+                    val host = System.getProperty("http.proxyHost")
+                    val port = System.getProperty("http.proxyPort")
 
-                if (!host.isNullOrEmpty()) {
-                    proxyMap["host"] = host
-                    proxyMap["port"] = port?.toIntOrNull() ?: 8080
-                } else {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                        val cm = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-                        val proxyInfo = cm.defaultProxy
-                        if (proxyInfo != null && !proxyInfo.host.isNullOrEmpty()) {
-                            proxyMap["host"] = proxyInfo.host
-                            proxyMap["port"] = proxyInfo.port
+                    if (!host.isNullOrEmpty()) {
+                        proxyMap["host"] = host
+                        proxyMap["port"] = port?.toIntOrNull() ?: 8080
+                    } else {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                            val cm = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                            val proxyInfo = cm.defaultProxy
+                            if (proxyInfo != null && !proxyInfo.host.isNullOrEmpty()) {
+                                proxyMap["host"] = proxyInfo.host
+                                proxyMap["port"] = proxyInfo.port
+                            }
                         }
                     }
+                    result.success(proxyMap)
                 }
-                result.success(proxyMap)
-            } else {
-                result.notImplemented()
+                "keepScreenOn" -> {
+                    val enable = call.argument<Boolean>("enable") ?: true
+                    if (enable) {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+                    result.success(true)
+                }
+                else -> {
+                    result.notImplemented()
+                }
             }
         }
     }

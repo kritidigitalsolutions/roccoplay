@@ -1,14 +1,29 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:video_player/video_player.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../utils/app_session.dart';
 
 class VideoController extends GetxController {
   VideoPlayerController? videoPlayerController;
   final storage = GetStorage();
+
+  static const MethodChannel _proxyChannel = MethodChannel('com.roccoplay.app/proxy');
+
+  void _enableKeepScreenOn(bool enable) {
+    try {
+      if (!kIsWeb) {
+        WakelockPlus.toggle(enable: enable);
+        _proxyChannel.invokeMethod('keepScreenOn', {'enable': enable});
+      }
+    } catch (e) {
+      debugPrint("⚠️ [VideoController] Keep screen on error: $e");
+    }
+  }
 
   var isInitialized = false.obs;
   var isPlaying = false.obs;
@@ -111,6 +126,7 @@ class VideoController extends GetxController {
 
     await videoPlayerController!.play();
     isPlaying.value = true;
+    _enableKeepScreenOn(true);
 
     // Reset throttle tracking
     _lastEmittedPosition = videoPlayerController!.value.position;
@@ -155,6 +171,7 @@ class VideoController extends GetxController {
 
   /// 🧹 Cleanup old controller before re-init
   void _cleanupOldController() {
+    _enableKeepScreenOn(false);
     _hideTimer?.cancel();
     _saveTimer?.cancel();
     isPlaying.value = false;
@@ -280,6 +297,7 @@ class VideoController extends GetxController {
   /// ❌ DISPOSE
   @override
   void onClose() {
+    _enableKeepScreenOn(false);
     _savePosition();
     _hideTimer?.cancel();
     _saveTimer?.cancel();
