@@ -55,11 +55,15 @@ class MetaEventService {
   }) async {
     if (kIsWeb) return;
     try {
+      debugPrint("🎯 [META EVENT] Logging InitiatedCheckout: planId=$planId, amount=$amount, currency=$currency");
       await _facebookAppEvents.logEvent(
         name: "InitiatedCheckout",
         parameters: {"plan_id": planId, "value": amount, "currency": currency},
       );
-    } catch (_) {}
+      debugPrint("✅ [META EVENT] InitiatedCheckout logged successfully");
+    } catch (e) {
+      debugPrint("❌ [META EVENT ERROR] subscriptionStart failed: $e");
+    }
   }
 
   /// Meta Event: Final Payment / Purchase Complete
@@ -70,12 +74,16 @@ class MetaEventService {
   }) async {
     if (kIsWeb) return;
     try {
+      debugPrint("🎯 [META EVENT] Logging purchase: amount=$amount, currency=$currency, planId=$planId");
       await _facebookAppEvents.logPurchase(amount: amount, currency: currency);
       await _facebookAppEvents.logEvent(
         name: "SubscriptionComplete",
         parameters: {"plan_id": planId, "value": amount, "currency": currency},
       );
-    } catch (_) {}
+      debugPrint("✅ [META EVENT] Purchase & SubscriptionComplete logged successfully");
+    } catch (e) {
+      debugPrint("❌ [META EVENT ERROR] paymentComplete failed: $e");
+    }
   }
 
   /// Meta Event: Video Play

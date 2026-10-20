@@ -296,12 +296,12 @@ class PremiumController extends GetxController {
       MetaEventService.instance.subscriptionStart(
         planId: planId,
         amount: response['finalAmount'],
-        currency: 'IN',
+        currency: 'INR',
       );
       FirebaseAnalyticsService.instance.subscriptionStart(
         planId: planId,
         amount: response['finalAmount'],
-        currency: 'IN',
+        currency: 'INR',
       );
 
       if (response != null && response['success'] == true) {
@@ -402,29 +402,21 @@ class PremiumController extends GetxController {
 
       if (verifyResponse != null && verifyResponse['success'] == true) {
         await fetchSubscriptionStatus(currentPlatform.value);
-        if (hasActiveSubscription) {
-          MetaEventService.instance.paymentComplete(
-            planId: planId,
-            amount: amount.toDouble(),
-            currency: 'IN',
-          );
-          FirebaseAnalyticsService.instance.paymentComplete(
-            planId: planId,
-            amount: amount.toDouble(),
-            currency: 'IN',
-          );
-          CustomSnackbar.show(
-            title: "Success",
-            message: "Payment Success",
-            isSuccess: true,
-          );
-        } else {
-          CustomSnackbar.show(
-            title: "Payment Failed",
-            message: "Subscription could not be activated",
-            isError: true,
-          );
-        }
+        MetaEventService.instance.paymentComplete(
+          planId: planId,
+          amount: amount.toDouble(),
+          currency: 'INR',
+        );
+        FirebaseAnalyticsService.instance.paymentComplete(
+          planId: planId,
+          amount: amount.toDouble(),
+          currency: 'INR',
+        );
+        CustomSnackbar.show(
+          title: "Success",
+          message: "Payment Success",
+          isSuccess: true,
+        );
       } else {
         CustomSnackbar.show(
           title: "Payment Failed",
@@ -1223,7 +1215,7 @@ class PremiumController extends GetxController {
     debugPrint("📊 [VERIFY SABPAISA SUMMARY] isSuccess=$isSuccess, hasActiveSubscription=$isSubActive");
 
     try {
-      if (isSuccess && isSubActive) {
+      if (isSuccess) {
         debugPrint("🎉 [VERIFY SABPAISA SUCCESS] Navigating to PaymentSuccessPage");
         final plan = plans.isNotEmpty && selectedPlanIndex.value < plans.length
             ? plans[selectedPlanIndex.value]
@@ -1371,7 +1363,7 @@ class PremiumController extends GetxController {
     debugPrint("📊 [VERIFY HDFC SUMMARY] isSuccess=$isSuccess, hasActiveSubscription=$isSubActive");
 
     try {
-      if (isSuccess && isSubActive) {
+      if (isSuccess) {
         debugPrint("🎉 [VERIFY HDFC SUCCESS] Navigating to PaymentSuccessPage");
         final plan = plans.isNotEmpty && selectedPlanIndex.value < plans.length
             ? plans[selectedPlanIndex.value]
