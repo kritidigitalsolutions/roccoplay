@@ -51,6 +51,7 @@ class AuthController extends GetxController {
     try {
       if (Get.isRegistered<NotificationService>()) {
         NotificationService.to.uploadToken();
+        NotificationService.to.fetchUnreadCount();
         NotificationService.to.fetchNotifications();
       }
     } catch (e) {

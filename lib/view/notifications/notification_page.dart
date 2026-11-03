@@ -4,13 +4,42 @@ import 'package:intl/intl.dart';
 import '../../utils/notification_service.dart';
 import '../../app/theme/app_colors.dart';
 
-class NotificationPage extends StatelessWidget {
+class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final notificationService = NotificationService.to;
+  State<NotificationPage> createState() => _NotificationPageState();
+}
 
+class _NotificationPageState extends State<NotificationPage> {
+  final NotificationService notificationService = NotificationService.to;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (notificationService.hasMore.value &&
+          !notificationService.isLoadingMore.value &&
+          !notificationService.isLoading.value) {
+        notificationService.loadMoreNotifications();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.black,
       appBar: AppBar(
@@ -41,7 +70,8 @@ class NotificationPage extends StatelessWidget {
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: isWeb ? 700 : double.infinity),
             child: RefreshIndicator(
-              onRefresh: () => notificationService.fetchNotifications(),
+              onRefresh: () =>
+                  notificationService.fetchNotifications(refresh: true),
               color: AppColors.buttonColor,
               child: Obx(() {
                 if (notificationService.isLoading.value && notificationService.notifications.isEmpty) {
@@ -53,9 +83,23 @@ class NotificationPage extends StatelessWidget {
                 }
 
                 return ListView.builder(
-                  itemCount: notificationService.notifications.length,
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: notificationService.notifications.length +
+                      (notificationService.isLoadingMore.value ? 1 : 0),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   itemBuilder: (context, index) {
+                    if (index == notificationService.notifications.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.buttonColor,
+                            strokeWidth: 2.5,
+                          ),
+                        ),
+                      );
+                    }
                     final notification = notificationService.notifications[index];
                     return _buildNotificationItem(context, notification, index, notificationService);
                   },
@@ -90,7 +134,9 @@ class NotificationPage extends StatelessWidget {
 
   Widget _buildNotificationItem(BuildContext context, Map<String, dynamic> notification,
       int index, NotificationService service) {
-    final DateTime time = DateTime.parse(notification['time']);
+    final DateTime time =
+        DateTime.tryParse(notification['time']?.toString() ?? '') ??
+            DateTime.now();
     final String formattedTime = DateFormat('dd MMM, hh:mm a').format(time);
     final bool isRead = notification['isRead'] ?? false;
 

@@ -126,8 +126,8 @@ Future<void> main() async {
   ///  Run App FIRST (IMPORTANT)
   runApp(const MyApp());
 
-  ///  Initialize Notifications AFTER UI LOAD (FIX)
-  Future.delayed(const Duration(seconds: 1), () {
+  /// Initialize Notifications IMMEDIATELY AFTER FIRST FRAME
+  WidgetsBinding.instance.addPostFrameCallback((_) {
     NotificationService.to.init();
   });
 

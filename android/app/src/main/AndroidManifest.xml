@@ -28,6 +28,12 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
+            <!-- FCM & Local Notification Click Intent Filter -->
+            <intent-filter>
+                <action android:name="FLUTTER_NOTIFICATION_CLICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
             <!-- Deep linking (Restricted to content paths so payment /api/ endpoints stay in WebView) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
@@ -59,6 +65,10 @@
       <meta-data
          android:name="com.facebook.sdk.ClientToken"
          android:value="@string/facebook_client_token"/>
+
+      <meta-data
+          android:name="com.google.firebase.messaging.default_notification_channel_id"
+          android:value="roccoplay_channel"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

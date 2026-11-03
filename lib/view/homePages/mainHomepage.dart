@@ -105,6 +105,7 @@ class _MainHomePageState extends State<MainHomePage> {
     }
 
     if (Get.isRegistered<NotificationService>()) {
+      refreshTasks.add(NotificationService.to.fetchUnreadCount());
       refreshTasks.add(NotificationService.to.fetchNotifications());
     }
 
@@ -310,42 +311,58 @@ class _MainHomePageState extends State<MainHomePage> {
   /// 🔹 NOTIFICATION ICON
   Widget _notificationIcon(NotificationService notificationService) {
     return Obx(() {
-      int unreadCount = notificationService.notifications
-          .where((n) => n['isRead'] == false)
-          .length;
-      return Stack(
-        children: [
-          IconButton(
-            onPressed: () => Get.toNamed(AppRoutes.notifications),
-            icon: const Icon(
-              Icons.notifications_outlined,
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
-          if (unreadCount > 0)
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                child: Text(
-                  unreadCount > 9 ? '9+' : '$unreadCount',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
+      int unreadCount = notificationService.unreadCount.value > 0
+          ? notificationService.unreadCount.value
+          : notificationService.notifications
+              .where((n) => n['isRead'] == false)
+              .length;
+      return InkWell(
+        onTap: () {
+          debugPrint("🔔 Notification icon tapped! Navigating to notifications page");
+          Get.toNamed(AppRoutes.notifications);
+        },
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.all(4.0),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(6.0),
+                child: Icon(
+                  Icons.notifications_outlined,
+                  color: Colors.white,
+                  size: 26,
                 ),
               ),
-            ),
-        ],
+              if (unreadCount > 0)
+                Positioned(
+                  right: 2,
+                  top: 2,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints:
+                          const BoxConstraints(minWidth: 16, minHeight: 16),
+                      child: Text(
+                        unreadCount > 9 ? '9+' : '$unreadCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       );
     });
   }

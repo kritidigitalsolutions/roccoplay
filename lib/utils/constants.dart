@@ -1,5 +1,5 @@
 class AppConstants {
-  // static const String baseUrl = 'http://192.168.1.9:8000/api';
+  // static const String baseUrl = 'http://192.168.1.28:8000/api';
   static const String baseUrl = 'https://api.roccoplay.in/api';
 
   // Auth Endpoints
@@ -11,10 +11,14 @@ class AppConstants {
   static const String createProfile = '$baseUrl/user/profile-info';
 
   /// fcm
-  static const String updateFcmToken = '$baseUrl/user/fcm-token';
+  static const String updateFcmToken = '$baseUrl/notifications/fcm-token';
 
   /// notifications
   static const String getNotifications = '$baseUrl/notifications';
+  static const String getUnreadNotificationCount =
+      '$baseUrl/notifications/unread-count';
+  static String getNotificationDetail(String id) =>
+      '$baseUrl/notifications/$id';
   static String markNotificationRead(String id) =>
       '$baseUrl/notifications/$id/read';
   static const String markAllNotificationsRead =
