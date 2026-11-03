@@ -6,10 +6,10 @@ import '../content_controller/content_controller.dart';
 
 class AppSearchController extends GetxController {
   var searchQuery = "".obs;
-  final TextEditingController searchController = TextEditingController();
+  TextEditingController searchController = TextEditingController();
   
   var searchResults = <ContentModel>[].obs;
-  final ContentController _contentController = Get.find<ContentController>();
+  ContentController get _contentController => Get.find<ContentController>();
 
   Timer? _debounceTimer;
 
@@ -29,6 +29,7 @@ class AppSearchController extends GetxController {
   }
 
   void _performSearch(String query) {
+    if (!Get.isRegistered<ContentController>()) return;
     // 1. Filter contents by title
     List<ContentModel> filtered = _contentController.allContent.where((item) {
       return item.title.toLowerCase().contains(query.toLowerCase());
@@ -46,7 +47,9 @@ class AppSearchController extends GetxController {
 
   void clearSearch() {
     _debounceTimer?.cancel();
-    searchController.clear();
+    try {
+      searchController.clear();
+    } catch (_) {}
     searchQuery.value = "";
     searchResults.clear();
   }
@@ -54,7 +57,11 @@ class AppSearchController extends GetxController {
   @override
   void onClose() {
     _debounceTimer?.cancel();
-    searchController.dispose();
+    try {
+      searchController.dispose();
+    } catch (_) {}
+    // Re-create a fresh controller so if retained in IndexedStack it never crashes
+    searchController = TextEditingController();
     super.onClose();
   }
 }

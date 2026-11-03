@@ -29,6 +29,7 @@ import 'data/network/base_api_service.dart';
 import 'utils/app_session.dart';
 import 'utils/notification_service.dart';
 import 'view_model/auth_controller/auth_controller.dart';
+import 'view_model/content_controller/content_controller.dart';
 import 'view_model/primium_controller/premium_controller.dart';
 import 'widgets/ad_widget/app_open_ad_helper.dart';
 import 'widgets/ad_widget/interstitial_ad_helper.dart';
@@ -36,12 +37,12 @@ import 'widgets/ad_widget/interstitial_ad_helper.dart';
 class MyCustomScrollBehavior extends MaterialScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {
-        PointerDeviceKind.touch,
-        // On web, exclude mouse so trackpad/wheel scrolling is smooth
-        if (!kIsWeb) PointerDeviceKind.mouse,
-        PointerDeviceKind.stylus,
-        PointerDeviceKind.unknown,
-      };
+    PointerDeviceKind.touch,
+    // On web, exclude mouse so trackpad/wheel scrolling is smooth
+    if (!kIsWeb) PointerDeviceKind.mouse,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.unknown,
+  };
 }
 
 @pragma('vm:entry-point')
@@ -119,6 +120,7 @@ Future<void> main() async {
 
   ///  Controllers
   Get.put(AuthController(), permanent: true);
+  Get.put(ContentController(), permanent: true);
   Get.put(PremiumController(), permanent: true);
   Get.put(InteractionController(), permanent: true);
   Get.put(WatchlistController(), permanent: true);

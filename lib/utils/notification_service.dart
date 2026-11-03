@@ -13,6 +13,8 @@ import '../data/models/response_model/content_response_model/content_model.dart'
 import '../data/network/base_api_service.dart';
 import '../utils/app_session.dart';
 import '../utils/constants.dart';
+import '../view/dramaDetails/dramaDetailsPage.dart';
+import '../view_model/auth_controller/auth_controller.dart';
 import '../view_model/content_controller/content_controller.dart';
 
 @pragma('vm:entry-point')
@@ -27,16 +29,19 @@ class NotificationService extends GetxController {
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
+  static ContentModel? pendingContentNavigation;
+
   final RxList<Map<String, dynamic>> notifications =
       <Map<String, dynamic>>[].obs;
   final RxBool isLoading = false.obs;
   final RxBool isLoadingMore = false.obs;
-  final RxBool hasMore = false.obs;
   final RxInt unreadCount = 0.obs;
 
+  // Pagination state
   int currentPage = 1;
   int totalPages = 1;
-  int totalNotifications = 0;
+  bool hasMore = true;
+  final int pageLimit = 20;
 
   String? _currentToken;
 
@@ -45,15 +50,19 @@ class NotificationService extends GetxController {
 
     try {
       /// 🔐 Request Permission
-      NotificationSettings settings =
-          await _firebaseMessaging.requestPermission(
+      NotificationSettings settings = await _firebaseMessaging
+          .requestPermission(alert: true, badge: true, sound: true);
+
+      debugPrint(
+        "🔔 FCM Notification permission status: ${settings.authorizationStatus}",
+      );
+
+      /// 🔔 Ensure Foreground Notification Presentation Options are active
+      await _firebaseMessaging.setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
         sound: true,
       );
-
-      debugPrint(
-          "🔔 FCM Notification permission status: ${settings.authorizationStatus}");
 
       // Get FCM Token
       _currentToken = await _firebaseMessaging.getToken();
@@ -75,8 +84,9 @@ class NotificationService extends GetxController {
     if (!kIsWeb) {
       const AndroidInitializationSettings androidSettings =
           AndroidInitializationSettings('@mipmap/ic_launcher');
-      const InitializationSettings initSettings =
-          InitializationSettings(android: androidSettings);
+      const InitializationSettings initSettings = InitializationSettings(
+        android: androidSettings,
+      );
 
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
         'roccoplay_channel',
@@ -89,16 +99,20 @@ class NotificationService extends GetxController {
 
       final androidPlugin = _localNotificationsPlugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+            AndroidFlutterLocalNotificationsPlugin
+          >();
 
       if (androidPlugin != null) {
         await androidPlugin.createNotificationChannel(channel);
+        try {
+          await androidPlugin.requestNotificationsPermission();
+        } catch (_) {}
       }
 
       await _localNotificationsPlugin.initialize(
         initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
-          // 👉 Click on Foreground System Notification -> Navigate to content detail
+          debugPrint("📲 [Local Notification Tap] payload: ${response.payload}");
           if (response.payload != null && response.payload!.isNotEmpty) {
             try {
               final decoded = jsonDecode(response.payload!);
@@ -112,7 +126,6 @@ class NotificationService extends GetxController {
           }
           Get.toNamed(AppRoutes.notifications);
         },
-        onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
       );
 
       // Check if app was opened by tapping a local notification
@@ -153,10 +166,14 @@ class NotificationService extends GetxController {
     });
 
     /// 🚀 Notification Click when App was terminated
-    FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
+    FirebaseMessaging.instance.getInitialMessage().then((
+      RemoteMessage? message,
+    ) {
       if (message != null) {
         _handleMessage(message);
-        final Map<String, dynamic> data = Map<String, dynamic>.from(message.data);
+        final Map<String, dynamic> data = Map<String, dynamic>.from(
+          message.data,
+        );
         if (message.notification != null) {
           data['title'] ??= message.notification!.title;
           data['message'] ??= message.notification!.body;
@@ -183,16 +200,14 @@ class NotificationService extends GetxController {
     try {
       final BaseApiService apiService = Get.find<BaseApiService>();
       try {
-        await apiService.postApi(
-          AppConstants.updateFcmToken,
-          {'fcmToken': _currentToken},
-        );
+        await apiService.postApi(AppConstants.updateFcmToken, {
+          'fcmToken': _currentToken,
+        });
       } catch (_) {
         // Fallback to PATCH if POST is not accepted
-        await apiService.pacthApi(
-          AppConstants.updateFcmToken,
-          {'fcmToken': _currentToken},
-        );
+        await apiService.pacthApi(AppConstants.updateFcmToken, {
+          'fcmToken': _currentToken,
+        });
       }
       debugPrint("✅ FCM token updated successfully");
     } catch (e) {
@@ -204,38 +219,51 @@ class NotificationService extends GetxController {
   Future<void> fetchUnreadCount() async {
     final token = AppSession.getToken();
     if (token == null || token.isEmpty) {
-      unreadCount.value =
-          notifications.where((n) => n['isRead'] == false).length;
+      unreadCount.value = notifications
+          .where((n) => n['isRead'] == false)
+          .length;
       return;
     }
 
     try {
       final BaseApiService apiService = Get.find<BaseApiService>();
-      final response =
-          await apiService.getApi(AppConstants.getUnreadNotificationCount);
+      final response = await apiService.getApi(
+        AppConstants.getUnreadNotificationCount,
+      );
       if (response != null && response['success'] == true) {
         unreadCount.value = response['unreadCount'] ?? 0;
       }
     } catch (e) {
-      unreadCount.value =
-          notifications.where((n) => n['isRead'] == false).length;
+      unreadCount.value = notifications
+          .where((n) => n['isRead'] == false)
+          .length;
     }
   }
 
   /// 📥 2. Fetch Notifications from Backend (Paginated)
-  Future<void> fetchNotifications({int page = 1, int limit = 20, bool refresh = false}) async {
+  Future<void> fetchNotifications({
+    int page = 1,
+    int limit = 20,
+    bool refresh = false,
+  }) async {
+    final targetPage = refresh ? 1 : page;
     try {
-      if (page == 1 || refresh) {
+      if (targetPage == 1) {
         currentPage = 1;
+        hasMore = true;
         isLoading.value = true;
+      } else {
+        isLoadingMore.value = true;
       }
+
       final BaseApiService apiService = Get.find<BaseApiService>();
       final response = await apiService.getApi(
-          '${AppConstants.getNotifications}?page=$currentPage&limit=$limit&unreadOnly=false');
+        '${AppConstants.getNotifications}?page=$targetPage&limit=$limit&unreadOnly=false',
+      );
 
       if (response != null && response['success'] == true) {
         final List fetchedList = response['notifications'] ?? [];
-        final List<Map<String, dynamic>> items = fetchedList.map((e) {
+        final newItems = fetchedList.map((e) {
           final map = Map<String, dynamic>.from(e as Map);
           return {
             'id': map['id'] ?? map['_id'],
@@ -243,10 +271,11 @@ class NotificationService extends GetxController {
             'title': map['title'] ?? '',
             'body': map['message'] ?? map['body'] ?? '',
             'message': map['message'] ?? map['body'] ?? '',
-            'time': map['createdAt'] ??
+            'time':
+                map['createdAt'] ??
                 map['sentAt'] ??
                 map['time'] ??
-                DateTime.now().toIso8601String(),
+                DateTime.now().toString(),
             'isRead': map['isRead'] ?? false,
             'type': map['type'] ?? 'GENERAL',
             'imageUrl': map['imageUrl'] ?? '',
@@ -258,98 +287,50 @@ class NotificationService extends GetxController {
           };
         }).toList();
 
-        notifications.assignAll(items);
-
         if (response['pagination'] != null) {
-          final pagination = Map<String, dynamic>.from(response['pagination']);
-          currentPage = pagination['currentPage'] ?? 1;
-          totalPages = pagination['totalPages'] ?? 1;
-          totalNotifications = pagination['totalNotifications'] ?? items.length;
-          hasMore.value = pagination['hasMore'] ?? (currentPage < totalPages);
+          final pag = response['pagination'];
+          currentPage = pag['currentPage'] ?? targetPage;
+          totalPages = pag['totalPages'] ?? 1;
+          hasMore = pag['hasMore'] ?? (currentPage < totalPages);
         } else {
-          hasMore.value = items.length >= limit;
+          hasMore = newItems.length >= limit;
+          currentPage = targetPage;
         }
 
+        if (targetPage == 1) {
+          notifications.assignAll(newItems);
+        } else {
+          final existingIds = notifications.map((n) => n['id']).toSet();
+          for (var item in newItems) {
+            if (!existingIds.contains(item['id'])) {
+              notifications.add(item);
+            }
+          }
+        }
         _saveNotifications();
       }
     } catch (e) {
       debugPrint("⚠️ fetchNotifications error: $e");
     } finally {
       isLoading.value = false;
+      isLoadingMore.value = false;
       fetchUnreadCount();
     }
   }
 
-  /// 🔄 Load More Notifications (Next Page for Infinite Scroll)
+  /// 🔄 Load next page when reaching bottom of notifications
   Future<void> loadMoreNotifications() async {
-    if (isLoading.value || isLoadingMore.value || !hasMore.value) return;
-
-    try {
-      isLoadingMore.value = true;
-      final int nextPage = currentPage + 1;
-      final BaseApiService apiService = Get.find<BaseApiService>();
-      final response = await apiService.getApi(
-          '${AppConstants.getNotifications}?page=$nextPage&limit=20&unreadOnly=false');
-
-      if (response != null && response['success'] == true) {
-        final List fetchedList = response['notifications'] ?? [];
-        final List<Map<String, dynamic>> newItems = fetchedList.map((e) {
-          final map = Map<String, dynamic>.from(e as Map);
-          return {
-            'id': map['id'] ?? map['_id'],
-            '_id': map['_id'] ?? map['id'],
-            'title': map['title'] ?? '',
-            'body': map['message'] ?? map['body'] ?? '',
-            'message': map['message'] ?? map['body'] ?? '',
-            'time': map['createdAt'] ??
-                map['sentAt'] ??
-                map['time'] ??
-                DateTime.now().toIso8601String(),
-            'isRead': map['isRead'] ?? false,
-            'type': map['type'] ?? 'GENERAL',
-            'imageUrl': map['imageUrl'] ?? '',
-            'attachmentType': map['attachmentType'] ?? '',
-            'content': map['content'],
-            'subscriptionPlan': map['subscriptionPlan'],
-            'actionUrl': map['actionUrl'] ?? '',
-            'metadata': map['metadata'],
-          };
-        }).toList();
-
-        final existingIds = notifications.map((n) => n['id']).toSet();
-        for (var item in newItems) {
-          if (!existingIds.contains(item['id'])) {
-            notifications.add(item);
-          }
-        }
-
-        if (response['pagination'] != null) {
-          final pagination = Map<String, dynamic>.from(response['pagination']);
-          currentPage = pagination['currentPage'] ?? nextPage;
-          totalPages = pagination['totalPages'] ?? totalPages;
-          totalNotifications =
-              pagination['totalNotifications'] ?? notifications.length;
-          hasMore.value = pagination['hasMore'] ?? (currentPage < totalPages);
-        } else {
-          currentPage = nextPage;
-          hasMore.value = newItems.length >= 20;
-        }
-
-        _saveNotifications();
-      }
-    } catch (e) {
-      debugPrint("⚠️ loadMoreNotifications error: $e");
-    } finally {
-      isLoadingMore.value = false;
-    }
+    if (isLoading.value || isLoadingMore.value || !hasMore) return;
+    await fetchNotifications(page: currentPage + 1, limit: pageLimit);
   }
 
   /// 🔍 4. Get Single Notification Detail (Auto Marks as Read on server)
   Future<Map<String, dynamic>?> getNotificationDetail(String id) async {
     try {
       final BaseApiService apiService = Get.find<BaseApiService>();
-      final response =
-          await apiService.getApi(AppConstants.getNotificationDetail(id));
+      final response = await apiService.getApi(
+        AppConstants.getNotificationDetail(id),
+      );
       if (response != null &&
           response['success'] == true &&
           response['notification'] != null) {
@@ -376,7 +357,8 @@ class NotificationService extends GetxController {
     if (index >= notifications.length) return;
     if (notifications[index]['isRead'] == true) return;
 
-    final String? id = notifications[index]['id']?.toString() ??
+    final String? id =
+        notifications[index]['id']?.toString() ??
         notifications[index]['_id']?.toString();
 
     // Optimistic UI update
@@ -401,8 +383,10 @@ class NotificationService extends GetxController {
   Future<void> markAllAsRead() async {
     try {
       final BaseApiService apiService = Get.find<BaseApiService>();
-      final response =
-          await apiService.pacthApi(AppConstants.markAllNotificationsRead, {});
+      final response = await apiService.pacthApi(
+        AppConstants.markAllNotificationsRead,
+        {},
+      );
 
       if (response != null && response['success'] == true) {
         for (var n in notifications) {
@@ -422,7 +406,8 @@ class NotificationService extends GetxController {
     if (index >= notifications.length) return;
 
     final wasUnread = notifications[index]['isRead'] == false;
-    final String? id = notifications[index]['id']?.toString() ??
+    final String? id =
+        notifications[index]['id']?.toString() ??
         notifications[index]['_id']?.toString();
 
     notifications.removeAt(index);
@@ -448,89 +433,124 @@ class NotificationService extends GetxController {
     _saveNotifications();
   }
 
+  /// Helper to safely parse maps that might be stringified (JSON or Dart map string)
+  Map<String, dynamic> _parseFlexibleMap(dynamic value) {
+    if (value == null) return {};
+    if (value is Map) return Map<String, dynamic>.from(value);
+    if (value is String) {
+      final str = value.trim();
+      if (str.isEmpty || str == 'null') return {};
+      try {
+        final decoded = jsonDecode(str);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+
+      // Fallback: match key-value pairs like {id: 123, title: ABC}
+      final Map<String, dynamic> result = {};
+      final regex = RegExp(r'(\w+)\s*:\s*([^,}]+)');
+      for (final m in regex.allMatches(str)) {
+        final k = m.group(1)?.trim();
+        final v = m.group(2)?.trim();
+        if (k != null && v != null) {
+          result[k] = v;
+        }
+      }
+      return result;
+    }
+    return {};
+  }
+
   /// 🎯 SYSTEM NOTIFICATION CLICK HANDLER:
   /// "system notification mai click karke uss content ke detail page mai open ho jaye
   /// lcik karke phele tho all content ko load karna fir ushi perticalr content ke page detail mai jna hai"
   Future<void> handleSystemNotificationTap(Map<String, dynamic> data) async {
     debugPrint("🎬 [Notification Tap Handler] data: $data");
 
-    // 1. Parse nested data if needed
-    Map<String, dynamic> contentMap = {};
-    if (data['content'] != null) {
-      if (data['content'] is Map) {
-        contentMap = Map<String, dynamic>.from(data['content']);
-      } else if (data['content'] is String) {
-        try {
-          contentMap = Map<String, dynamic>.from(jsonDecode(data['content']));
-        } catch (_) {}
-      }
+    // 0. If notification ID was passed, find full details from cached notifications
+    final notifId = (data['notificationId'] ?? data['_id'] ?? data['id'])
+        ?.toString();
+    Map<String, dynamic>? cachedNotif;
+    if (notifId != null && notifId.isNotEmpty) {
+      cachedNotif = notifications.firstWhereOrNull(
+        (n) => n['id'] == notifId || n['_id'] == notifId,
+      );
     }
 
-    Map<String, dynamic> metadataMap = {};
-    if (data['metadata'] != null) {
-      if (data['metadata'] is Map) {
-        metadataMap = Map<String, dynamic>.from(data['metadata']);
-      } else if (data['metadata'] is String) {
-        try {
-          metadataMap = Map<String, dynamic>.from(jsonDecode(data['metadata']));
-        } catch (_) {}
-      }
-    }
+    // 1. Parse content and metadata
+    final Map<String, dynamic> contentMap = _parseFlexibleMap(
+      cachedNotif?['content'] ?? data['content'],
+    );
+    final Map<String, dynamic> metadataMap = _parseFlexibleMap(
+      cachedNotif?['metadata'] ?? data['metadata'],
+    );
 
-    final String contentId = (contentMap['id'] ??
-            metadataMap['contentId'] ??
-            data['contentId'] ??
-            data['content_id'] ??
-            data['id'] ??
-            '')
-        .toString();
+    final String actionUrl =
+        (cachedNotif?['actionUrl'] ??
+                data['actionUrl'] ??
+                data['action_url'] ??
+                metadataMap['actionUrl'] ??
+                '')
+            .toString();
 
-    final String slug = (contentMap['slug'] ??
-            metadataMap['slug'] ??
-            data['slug'] ??
-            '')
-        .toString();
+    final String attachmentType =
+        (cachedNotif?['attachmentType'] ??
+                data['attachmentType'] ??
+                data['attachment_type'] ??
+                metadataMap['attachmentType'] ??
+                '')
+            .toString()
+            .toLowerCase();
 
-    final String actionUrl = (data['actionUrl'] ??
-            data['action_url'] ??
-            metadataMap['actionUrl'] ??
-            '')
-        .toString();
-
-    final String attachmentType = (data['attachmentType'] ??
-            data['attachment_type'] ??
-            metadataMap['attachmentType'] ??
-            '')
+    final String type = (cachedNotif?['type'] ?? data['type'] ?? '')
         .toString()
-        .toLowerCase();
+        .toUpperCase();
 
-    final String type = (data['type'] ?? '').toString().toUpperCase();
-
-    // If it's a subscription notification -> navigate to Go Premium
+    // Check if subscription notification
     if (attachmentType == 'subscription' ||
         type == 'SUBSCRIPTION' ||
         actionUrl.contains('/plan') ||
         (metadataMap['planId'] != null &&
             metadataMap['planId'].toString().isNotEmpty)) {
-      Get.toNamed(AppRoutes.goPremium);
+      _navigateToRoute(AppRoutes.goPremium);
       return;
     }
 
-    // Extract slug from actionUrl if available (e.g. "/movie/bablusha")
+    // Extract target content ID (NEVER use notification ID)
+    final String contentId =
+        (contentMap['id'] ??
+                metadataMap['contentId'] ??
+                data['contentId'] ??
+                data['content_id'] ??
+                '')
+            .toString();
+
+    // Extract slug
     String slugFromUrl = '';
     if (actionUrl.isNotEmpty) {
-      final parts = actionUrl.split('/').where((s) => s.isNotEmpty).toList();
-      if (parts.length >= 2 &&
-          (parts[0] == 'movie' ||
-              parts[0] == 'series' ||
-              parts[0] == 'content')) {
+      final cleanUrl = actionUrl.replaceAll(RegExp(r'^[/#]+'), '');
+      final parts = cleanUrl.split('/').where((s) => s.isNotEmpty).toList();
+      if (parts.length >= 2) {
         slugFromUrl = parts[1];
+      } else if (parts.isNotEmpty) {
+        slugFromUrl = parts[0];
       }
     }
 
-    final String finalSlug = slug.isNotEmpty ? slug : slugFromUrl;
+    final String slug =
+        (contentMap['slug'] ??
+                metadataMap['slug'] ??
+                data['slug'] ??
+                slugFromUrl)
+            .toString();
+
+    // Extract title
     final String title =
-        (contentMap['title'] ?? data['title'] ?? '').toString();
+        (contentMap['title'] ??
+                metadataMap['title'] ??
+                data['contentTitle'] ??
+                (data['title'] != 'test' ? data['title'] : '') ??
+                '')
+            .toString();
 
     // 2. Load all content first!
     ContentController contentController;
@@ -548,86 +568,175 @@ class NotificationService extends GetxController {
       }
     }
 
-    // 3. Find matching content in allContent
+    // 3. Search for matching content
     ContentModel? matchedContent;
 
+    // Search in allContent by ID
     if (contentId.isNotEmpty) {
-      matchedContent = contentController.allContent
-          .firstWhereOrNull((c) => c.id == contentId);
-    }
-
-    if (matchedContent == null && finalSlug.isNotEmpty) {
       matchedContent = contentController.allContent.firstWhereOrNull(
-          (c) => c.slug.toLowerCase() == finalSlug.toLowerCase());
+        (c) => c.id == contentId,
+      );
     }
 
+    // Search in allContent by slug
+    if (matchedContent == null && slug.isNotEmpty) {
+      matchedContent = contentController.allContent.firstWhereOrNull(
+        (c) => c.slug.toLowerCase() == slug.toLowerCase(),
+      );
+    }
+
+    // Search in categoryContentMap
+    if (matchedContent == null) {
+      for (final list in contentController.categoryContentMap.values) {
+        if (contentId.isNotEmpty) {
+          matchedContent = list.firstWhereOrNull((c) => c.id == contentId);
+          if (matchedContent != null) break;
+        }
+        if (slug.isNotEmpty) {
+          matchedContent = list.firstWhereOrNull(
+            (c) => c.slug.toLowerCase() == slug.toLowerCase(),
+          );
+          if (matchedContent != null) break;
+        }
+      }
+    }
+
+    // Search by title
     if (matchedContent == null && title.isNotEmpty) {
-      matchedContent = contentController.allContent.firstWhereOrNull((c) =>
-          c.title.toLowerCase().trim() == title.toLowerCase().trim() ||
-          c.title.toLowerCase().contains(title.toLowerCase()));
+      matchedContent = contentController.allContent.firstWhereOrNull(
+        (c) =>
+            c.title.toLowerCase().trim() == title.toLowerCase().trim() ||
+            c.title.toLowerCase().contains(title.toLowerCase()),
+      );
     }
 
-    // If not found yet, try one more fresh fetch
+    // If still null, try one fresh fetch
     if (matchedContent == null) {
       try {
+        await contentController.fetchCategories();
         await contentController.fetchContent();
         if (contentId.isNotEmpty) {
-          matchedContent = contentController.allContent
-              .firstWhereOrNull((c) => c.id == contentId);
-        }
-        if (matchedContent == null && finalSlug.isNotEmpty) {
           matchedContent = contentController.allContent.firstWhereOrNull(
-              (c) => c.slug.toLowerCase() == finalSlug.toLowerCase());
+            (c) => c.id == contentId,
+          );
+        }
+        if (matchedContent == null && slug.isNotEmpty) {
+          matchedContent = contentController.allContent.firstWhereOrNull(
+            (c) => c.slug.toLowerCase() == slug.toLowerCase(),
+          );
         }
       } catch (_) {}
     }
 
-    // 4. Navigate to DramaDetailsPage with matched content
+    // 4. If matched, navigate directly to DramaDetailsPage!
     if (matchedContent != null) {
-      Get.toNamed(AppRoutes.dramaDetails, arguments: matchedContent);
+      _navigateToDramaDetails(matchedContent);
       return;
     }
 
-    // 5. Fallback ContentModel if content info is in notification
-    if (contentId.isNotEmpty || title.isNotEmpty) {
-      final poster = (contentMap['poster'] ??
-              data['poster'] ??
-              data['imageUrl'] ??
-              '')
-          .toString();
-      final banner = (contentMap['banner'] ??
-              data['banner'] ??
-              data['imageUrl'] ??
-              poster)
-          .toString();
-      final contentType =
-          (contentMap['contentType'] ?? data['contentType'] ?? 'movie')
-              .toString();
+    // 5. Fallback ContentModel so page opens even if not in cache
+    final poster =
+        (contentMap['poster'] ?? data['poster'] ?? data['imageUrl'] ?? '')
+            .toString();
+    final banner =
+        (contentMap['banner'] ?? data['banner'] ?? data['imageUrl'] ?? poster)
+            .toString();
+    final contentType =
+        (contentMap['contentType'] ??
+                metadataMap['contentType'] ??
+                data['contentType'] ??
+                'series')
+            .toString();
+    final finalTitle = title.isNotEmpty
+        ? title
+        : (slug.isNotEmpty ? slug : 'Content Details');
+    final finalId = contentId.isNotEmpty
+        ? contentId
+        : (slug.isNotEmpty
+              ? slug
+              : DateTime.now().millisecondsSinceEpoch.toString());
 
-      final fallback = ContentModel(
-        id: contentId.isNotEmpty ? contentId : 'unknown',
-        title: title.isNotEmpty ? title : 'Content Details',
-        description: (data['message'] ?? data['body'] ?? title).toString(),
-        genre: [],
-        releaseYear: DateTime.now().year,
-        duration: '',
-        language: '',
-        poster: poster,
-        banner: banner.isNotEmpty ? banner : poster,
-        videoUrl: '',
-        trailerUrl: '',
-        isPremium: false,
-        rating: 0.0,
-        category: [],
-        slug: finalSlug,
-        contentType: contentType,
-      );
-      Get.toNamed(AppRoutes.dramaDetails, arguments: fallback);
+    final fallback = ContentModel(
+      id: finalId,
+      title: finalTitle,
+      description:
+          (contentMap['description'] ??
+                  data['message'] ??
+                  data['body'] ??
+                  finalTitle)
+              .toString(),
+      genre: [],
+      releaseYear: DateTime.now().year,
+      duration: '',
+      language: '',
+      poster: poster.isNotEmpty ? poster : banner,
+      banner: banner.isNotEmpty ? banner : poster,
+      videoUrl: '',
+      trailerUrl: '',
+      isPremium: false,
+      rating: 0.0,
+      cast: [],
+      category: ['series', 'drama'],
+      slug: slug,
+      contentType: contentType,
+      seasons: [],
+    );
+
+    _navigateToDramaDetails(fallback);
+  }
+
+  void _navigateToRoute(String routeName) {
+    if (Get.currentRoute == AppRoutes.splash) {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        Get.toNamed(routeName);
+      });
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.toNamed(routeName);
+    });
+  }
+
+  void _navigateToDramaDetails(ContentModel content) {
+    debugPrint(
+      "🚀 [Navigate to DramaDetails] title: ${content.title}, id: ${content.id}",
+    );
+
+    // If app is currently on splash screen, navigate to home then open details
+    if (Get.currentRoute == AppRoutes.splash) {
+      pendingContentNavigation = content;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.offAllNamed(AppRoutes.home);
+        Future.delayed(const Duration(milliseconds: 350), () {
+          Get.toNamed(
+            AppRoutes.dramaDetails,
+            arguments: content,
+            preventDuplicates: false,
+          );
+        });
+      });
       return;
     }
 
-    // Fallback: open notifications screen
-    Get.toNamed(AppRoutes.notifications);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        Get.toNamed(
+          AppRoutes.dramaDetails,
+          arguments: content,
+          preventDuplicates: false,
+        );
+      } catch (e) {
+        debugPrint("⚠️ Get.toNamed failed: $e, using direct Get.to");
+        Get.to(
+          () => DramaDetailsPage(
+            isSignedIn: Get.isRegistered<AuthController>()
+                ? Get.find<AuthController>().isLoggedIn.value
+                : false,
+            content: content,
+          ),
+        );
+      }
+    });
   }
 
   void _handleMessage(RemoteMessage message) {
@@ -636,41 +745,44 @@ class NotificationService extends GetxController {
   }
 
   /// 🧹 Clean and extract direct image URL (handles Google Search redirect URLs)
-  String _sanitizeImageUrl(String url) {
+  static String sanitizeImageUrl(String url) {
     if (url.isEmpty) return '';
     try {
-      final trimmed = url.trim();
+      var trimmed = url.trim();
       // Google image search redirect: https://www.google.com/imgres?q=...&imgurl=https%3A%2F%2F...
-      if (trimmed.contains('google.com/imgres') || trimmed.contains('imgurl=')) {
+      if (trimmed.contains('google.com/imgres') ||
+          trimmed.contains('imgurl=')) {
         final uri = Uri.tryParse(trimmed);
         if (uri != null && uri.queryParameters.containsKey('imgurl')) {
           final extracted = uri.queryParameters['imgurl'];
           if (extracted != null && extracted.isNotEmpty) {
-            return Uri.decodeFull(extracted);
+            trimmed = Uri.decodeFull(extracted);
           }
         }
       }
-      return Uri.decodeFull(trimmed);
+      return trimmed.replaceAll(' ', '%20');
     } catch (_) {
-      return url.trim();
+      return url.trim().replaceAll(' ', '%20');
     }
   }
 
   /// 🖼️ Helper to download image for Android system notification tray (BigPictureStyle)
   Future<ByteArrayAndroidBitmap?> _downloadNotificationImage(String url) async {
     try {
-      final sanitized = _sanitizeImageUrl(url);
+      final sanitized = sanitizeImageUrl(url);
       final uri = Uri.tryParse(sanitized);
       if (uri == null) return null;
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'User-Agent':
-              'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-          'Accept': 'image/*,*/*;q=0.8',
-        },
-      ).timeout(const Duration(seconds: 8));
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'User-Agent':
+                  'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+              'Accept': 'image/*,*/*;q=0.8',
+            },
+          )
+          .timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200 && response.bodyBytes.length > 200) {
         final contentType = response.headers['content-type'] ?? '';
@@ -681,113 +793,188 @@ class NotificationService extends GetxController {
         return ByteArrayAndroidBitmap(response.bodyBytes);
       }
     } catch (e) {
-      debugPrint("⚠️ Failed to download system notification image from $url: $e");
+      debugPrint(
+        "⚠️ Failed to download system notification image from $url: $e",
+      );
     }
     return null;
   }
 
   /// 📲 Show Local Notification in System Tray with Rich Image
   Future<void> _showLocalNotification(RemoteMessage message) async {
-    final title = message.notification?.title ??
-        message.data['title'] ??
-        'RoccoPlay';
-    final body = message.notification?.body ??
-        message.data['message'] ??
-        message.data['body'] ??
-        '';
+    try {
+      final title =
+          message.notification?.title ?? message.data['title'] ?? 'RoccoPlay';
+      final body =
+          message.notification?.body ??
+          message.data['message'] ??
+          message.data['body'] ??
+          '';
 
-    // 🖼️ Collect all candidate image URLs in order of preference
-    final List<String> candidateUrls = [];
-
-    // 1. Direct imageUrl from notification or data
-    String? rawImageUrl = message.notification?.android?.imageUrl ??
-        message.data['imageUrl'] ??
-        message.data['image'];
-    if (rawImageUrl != null && rawImageUrl.isNotEmpty) {
-      candidateUrls.add(_sanitizeImageUrl(rawImageUrl));
-      candidateUrls.add(rawImageUrl);
-    }
-
-    // 2. Content banner and poster from nested content
-    if (message.data['content'] != null) {
-      try {
-        final contentRaw = message.data['content'];
-        final contentMap =
-            contentRaw is String ? jsonDecode(contentRaw) : contentRaw;
-        if (contentMap is Map) {
-          if (contentMap['banner'] != null &&
-              contentMap['banner'].toString().isNotEmpty) {
-            candidateUrls.add(contentMap['banner'].toString());
-          }
-          if (contentMap['poster'] != null &&
-              contentMap['poster'].toString().isNotEmpty) {
-            candidateUrls.add(contentMap['poster'].toString());
-          }
-        }
-      } catch (_) {}
-    }
-
-    // 3. Root banner and poster fields
-    if (message.data['banner'] != null &&
-        message.data['banner'].toString().isNotEmpty) {
-      candidateUrls.add(message.data['banner'].toString());
-    }
-    if (message.data['poster'] != null &&
-        message.data['poster'].toString().isNotEmpty) {
-      candidateUrls.add(message.data['poster'].toString());
-    }
-
-    // Attempt downloading candidate images until one succeeds
-    ByteArrayAndroidBitmap? bigPictureBitmap;
-    for (final candidate in candidateUrls) {
-      if (candidate.isEmpty) continue;
-      bigPictureBitmap = await _downloadNotificationImage(candidate);
-      if (bigPictureBitmap != null) {
-        debugPrint("✅ Notification image downloaded successfully from: $candidate");
-        break;
-      }
-    }
-
-    BigPictureStyleInformation? styleInfo;
-    if (bigPictureBitmap != null) {
-      styleInfo = BigPictureStyleInformation(
-        bigPictureBitmap,
-        contentTitle: title,
-        summaryText: body,
-        hideExpandedLargeIcon: true,
+      // Prepare complete payload map for tap navigation
+      final Map<String, dynamic> payloadMap = Map<String, dynamic>.from(
+        message.data,
       );
+      if (title.isNotEmpty) payloadMap['title'] = title;
+      if (body.isNotEmpty) payloadMap['message'] = body;
+
+      // 🖼️ Collect all candidate image URLs in order of preference
+      final List<String> candidateUrls = [];
+      void addCandidate(dynamic raw) {
+        if (raw == null) return;
+        final s = raw.toString().trim();
+        if (s.isEmpty || s == 'null') return;
+        final clean = sanitizeImageUrl(s);
+        if (clean.isNotEmpty &&
+            !clean.contains('google.com/search') &&
+            !candidateUrls.contains(clean)) {
+          candidateUrls.add(clean);
+        }
+      }
+
+      // 1. Direct imageUrl from notification or data
+      addCandidate(message.notification?.android?.imageUrl);
+      addCandidate(message.data['imageUrl']);
+      addCandidate(message.data['image']);
+
+      // 2. Content banner and poster from nested content
+      if (message.data['content'] != null) {
+        try {
+          final contentRaw = message.data['content'];
+          final contentMap = contentRaw is String
+              ? jsonDecode(contentRaw)
+              : contentRaw;
+          if (contentMap is Map) {
+            addCandidate(contentMap['banner']);
+            addCandidate(contentMap['poster']);
+          }
+        } catch (_) {}
+      }
+
+      // 3. Root banner and poster fields
+      addCandidate(message.data['banner']);
+      addCandidate(message.data['poster']);
+
+      // Attempt downloading candidate images with fallback across all candidates
+      ByteArrayAndroidBitmap? bigPictureBitmap;
+      String? successfulImageUrl;
+      for (final candidate in candidateUrls) {
+        bigPictureBitmap = await _downloadNotificationImage(candidate);
+        if (bigPictureBitmap != null) {
+          successfulImageUrl = candidate;
+          debugPrint(
+            "✅ Notification image downloaded successfully from: $candidate",
+          );
+          break;
+        }
+      }
+
+      BigPictureStyleInformation? styleInfo;
+      if (bigPictureBitmap != null) {
+        styleInfo = BigPictureStyleInformation(
+          bigPictureBitmap,
+          largeIcon: bigPictureBitmap,
+          contentTitle: title,
+          summaryText: body,
+          hideExpandedLargeIcon: false,
+        );
+      }
+
+      final AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+            'roccoplay_channel',
+            'RoccoPlay Notifications',
+            channelDescription: 'Important notifications from RoccoPlay',
+            importance: Importance.max,
+            priority: Priority.max,
+            showWhen: true,
+            icon: '@mipmap/ic_launcher',
+            styleInformation: styleInfo,
+            largeIcon: bigPictureBitmap,
+            autoCancel: true,
+            ongoing: false,
+            playSound: true,
+            enableVibration: true,
+            channelShowBadge: true,
+            visibility: NotificationVisibility.public,
+          );
+
+      final NotificationDetails platformDetails = NotificationDetails(
+        android: androidDetails,
+      );
+
+      // Safe 32-bit positive integer ID for Android NotificationManager
+      final int notificationId = (message.hashCode & 0x7FFFFFFF) == 0
+          ? DateTime.now().millisecondsSinceEpoch.remainder(100000)
+          : (message.hashCode & 0x7FFFFFFF);
+
+      await _localNotificationsPlugin.show(
+        notificationId,
+        title,
+        body,
+        platformDetails,
+        payload: jsonEncode(payloadMap),
+      );
+
+      // 🔔 ALSO Show an in-app animated banner if the app is currently in foreground
+      _showInAppNotificationBanner(
+        title: title,
+        body: body,
+        data: payloadMap,
+        imageUrl: successfulImageUrl ?? candidateUrls.firstOrNull,
+      );
+    } catch (e) {
+      debugPrint("⚠️ _showLocalNotification error: $e");
     }
+  }
 
-    final AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'roccoplay_channel',
-      'RoccoPlay Notifications',
-      channelDescription: 'Important notifications from RoccoPlay',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-      icon: '@mipmap/ic_launcher',
-      styleInformation: styleInfo,
-      autoCancel: true,
-      ongoing: false,
-    );
-
-    final NotificationDetails platformDetails =
-        NotificationDetails(android: androidDetails);
-
-    // Prepare complete payload map for tap navigation
-    final Map<String, dynamic> payloadMap =
-        Map<String, dynamic>.from(message.data);
-    if (title.isNotEmpty) payloadMap['title'] = title;
-    if (body.isNotEmpty) payloadMap['message'] = body;
-
-    await _localNotificationsPlugin.show(
-      message.hashCode,
-      title,
-      body,
-      platformDetails,
-      payload: jsonEncode(payloadMap),
-    );
+  /// 🔔 In-App banner when notification arrives while app is in foreground
+  void _showInAppNotificationBanner({
+    required String title,
+    required String body,
+    required Map<String, dynamic> data,
+    String? imageUrl,
+  }) {
+    if (Get.context == null) return;
+    try {
+      Get.snackbar(
+        title,
+        body.isNotEmpty ? body : "Tap to view details",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: const Color(0xFF1E1E28),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        borderRadius: 14,
+        borderColor: AppColors.buttonColor.withOpacity(0.4),
+        borderWidth: 1,
+        icon: (imageUrl != null && imageUrl.isNotEmpty)
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  imageUrl,
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.notifications_active,
+                    color: AppColors.buttonColor,
+                    size: 26,
+                  ),
+                ),
+              )
+            : const Icon(
+                Icons.notifications_active,
+                color: AppColors.buttonColor,
+                size: 26,
+              ),
+        onTap: (_) {
+          handleSystemNotificationTap(data);
+        },
+      );
+    } catch (e) {
+      debugPrint("⚠️ _showInAppNotificationBanner error: $e");
+    }
   }
 
   void _loadNotifications() {

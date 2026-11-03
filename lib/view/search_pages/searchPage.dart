@@ -37,9 +37,11 @@ class _SearchPageState extends State<SearchPage> {
     super.initState();
     controller = Get.isRegistered<AppSearchController>()
         ? Get.find<AppSearchController>()
-        : Get.put(AppSearchController());
+        : Get.put(AppSearchController(), permanent: true);
     authController = Get.find<AuthController>();
-    contentController = Get.find<ContentController>();
+    contentController = Get.isRegistered<ContentController>()
+        ? Get.find<ContentController>()
+        : Get.put(ContentController(), permanent: true);
 
     _computeTopSeries();
   }
