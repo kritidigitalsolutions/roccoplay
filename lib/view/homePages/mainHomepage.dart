@@ -26,6 +26,7 @@ import '../profile/profilePage.dart';
 import '../../view_model/home_controller/home_controller.dart';
 import '../../view_model/auth_controller/auth_controller.dart';
 import '../../view_model/watchlist_controller/watchlist_controller.dart';
+import '../../view_model/popup_controller/popup_controller.dart';
 import '../../utils/app_session.dart';
 import '../../utils/notification_service.dart';
 import '../../widgets/ad_widget/app_open_ad_helper.dart';
@@ -61,6 +62,11 @@ class _MainHomePageState extends State<MainHomePage> {
     // ✅ Sync index with initial route
     WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.updateIndexFromRoute();
+      // 🎁 Fetch active app popup
+      final popupController = Get.isRegistered<AppPopupController>()
+          ? Get.find<AppPopupController>()
+          : Get.put(AppPopupController(), permanent: true);
+      popupController.fetchActivePopup();
     });
   }
 
@@ -93,7 +99,7 @@ class _MainHomePageState extends State<MainHomePage> {
       '',
       titleText: const SizedBox.shrink(),
       messageText: const Text(
-        'Press back again to exi',
+        'Press back again to exit',
         style: TextStyle(color: Colors.white),
         textAlign: TextAlign.center,
       ),
@@ -162,6 +168,10 @@ class _MainHomePageState extends State<MainHomePage> {
       refreshTasks.add(privacyCtrl.fetchTerms());
       refreshTasks.add(privacyCtrl.fetchRefundPolicy());
       refreshTasks.add(privacyCtrl.fetchHelpData());
+    }
+
+    if (Get.isRegistered<AppPopupController>()) {
+      refreshTasks.add(Get.find<AppPopupController>().fetchActivePopup(autoShow: true));
     }
 
     if (!kIsWeb) {

@@ -25,6 +25,11 @@ class AppConstants {
       '$baseUrl/notifications/read-all';
   static String deleteNotification(String id) => '$baseUrl/notifications/$id';
 
+  /// app popup
+  static const String getActivePopup = '$baseUrl/app-popup/active?platform=app';
+  static String actionCompletedPopup(String id) =>
+      '$baseUrl/app-popup/$id/action-completed';
+
   /// legal
   static const String privacyPolicyUrl = '$baseUrl/legal/privacy-policy';
   static const String termsAndConditionsUrl = '$baseUrl/legal/terms-conditions';

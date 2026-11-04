@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -95,6 +96,17 @@ class NotificationService extends GetxController {
         importance: Importance.max,
         playSound: true,
         enableVibration: true,
+        showBadge: true,
+      );
+
+      const AndroidNotificationChannel channelV2 = AndroidNotificationChannel(
+        'roccoplay_channel_v2',
+        'RoccoPlay Notifications',
+        description: 'Important notifications from RoccoPlay',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       );
 
       final androidPlugin = _localNotificationsPlugin
@@ -104,6 +116,7 @@ class NotificationService extends GetxController {
 
       if (androidPlugin != null) {
         await androidPlugin.createNotificationChannel(channel);
+        await androidPlugin.createNotificationChannel(channelV2);
         try {
           await androidPlugin.requestNotificationsPermission();
         } catch (_) {}
@@ -112,7 +125,9 @@ class NotificationService extends GetxController {
       await _localNotificationsPlugin.initialize(
         initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
-          debugPrint("📲 [Local Notification Tap] payload: ${response.payload}");
+          debugPrint(
+            "📲 [Local Notification Tap] payload: ${response.payload}",
+          );
           if (response.payload != null && response.payload!.isNotEmpty) {
             try {
               final decoded = jsonDecode(response.payload!);
@@ -137,7 +152,7 @@ class NotificationService extends GetxController {
           try {
             final decoded = jsonDecode(payload);
             if (decoded is Map<String, dynamic>) {
-              Future.delayed(const Duration(milliseconds: 700), () {
+              Future.delayed(const Duration(milliseconds: 500), () {
                 handleSystemNotificationTap(decoded);
               });
             }
@@ -148,6 +163,9 @@ class NotificationService extends GetxController {
 
     /// 📩 Foreground Messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint(
+        "📩 [FCM onMessage] Foreground message arrived: ${message.messageId}",
+      );
       _handleMessage(message);
       if (!kIsWeb) {
         _showLocalNotification(message);
@@ -170,6 +188,9 @@ class NotificationService extends GetxController {
       RemoteMessage? message,
     ) {
       if (message != null) {
+        debugPrint(
+          "🚀 [FCM getInitialMessage] Cold boot from notification: ${message.data}",
+        );
         _handleMessage(message);
         final Map<String, dynamic> data = Map<String, dynamic>.from(
           message.data,
@@ -178,8 +199,7 @@ class NotificationService extends GetxController {
           data['title'] ??= message.notification!.title;
           data['message'] ??= message.notification!.body;
         }
-        // Small delay to ensure Get router and controllers are initialized
-        Future.delayed(const Duration(milliseconds: 700), () {
+        Future.delayed(const Duration(milliseconds: 500), () {
           handleSystemNotificationTap(data);
         });
       }
@@ -552,12 +572,12 @@ class NotificationService extends GetxController {
                 '')
             .toString();
 
-    // 2. Load all content first!
+    // 2. Ensure content is loaded (especially during cold boot)
     ContentController contentController;
     if (Get.isRegistered<ContentController>()) {
       contentController = Get.find<ContentController>();
     } else {
-      contentController = Get.put(ContentController());
+      contentController = Get.put(ContentController(), permanent: true);
     }
 
     if (contentController.allContent.isEmpty) {
@@ -568,7 +588,6 @@ class NotificationService extends GetxController {
       }
     }
 
-    // 3. Search for matching content
     ContentModel? matchedContent;
 
     // Search in allContent by ID
@@ -610,31 +629,13 @@ class NotificationService extends GetxController {
       );
     }
 
-    // If still null, try one fresh fetch
-    if (matchedContent == null) {
-      try {
-        await contentController.fetchCategories();
-        await contentController.fetchContent();
-        if (contentId.isNotEmpty) {
-          matchedContent = contentController.allContent.firstWhereOrNull(
-            (c) => c.id == contentId,
-          );
-        }
-        if (matchedContent == null && slug.isNotEmpty) {
-          matchedContent = contentController.allContent.firstWhereOrNull(
-            (c) => c.slug.toLowerCase() == slug.toLowerCase(),
-          );
-        }
-      } catch (_) {}
-    }
-
-    // 4. If matched, navigate directly to DramaDetailsPage!
+    // 3. If matched in cache, navigate directly to DramaDetailsPage!
     if (matchedContent != null) {
       _navigateToDramaDetails(matchedContent);
       return;
     }
 
-    // 5. Fallback ContentModel so page opens even if not in cache
+    // 4. Fallback ContentModel from notification payload (opens INSTANTLY)
     final poster =
         (contentMap['poster'] ?? data['poster'] ?? data['imageUrl'] ?? '')
             .toString();
@@ -702,12 +703,13 @@ class NotificationService extends GetxController {
       "🚀 [Navigate to DramaDetails] title: ${content.title}, id: ${content.id}",
     );
 
+    pendingContentNavigation = content;
+
     // If app is currently on splash screen, navigate to home then open details
     if (Get.currentRoute == AppRoutes.splash) {
-      pendingContentNavigation = content;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Get.offAllNamed(AppRoutes.home);
-        Future.delayed(const Duration(milliseconds: 350), () {
+        Future.delayed(const Duration(milliseconds: 300), () {
           Get.toNamed(
             AppRoutes.dramaDetails,
             arguments: content,
@@ -782,12 +784,13 @@ class NotificationService extends GetxController {
               'Accept': 'image/*,*/*;q=0.8',
             },
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(milliseconds: 2000));
 
-      if (response.statusCode == 200 && response.bodyBytes.length > 200) {
+      if (response.statusCode == 200 &&
+          response.bodyBytes.length > 200 &&
+          response.bodyBytes.length < 500000) {
         final contentType = response.headers['content-type'] ?? '';
         if (contentType.contains('text/html')) {
-          debugPrint("⚠️ Image URL returned HTML page instead of image: $url");
           return null;
         }
         return ByteArrayAndroidBitmap(response.bodyBytes);
@@ -855,25 +858,26 @@ class NotificationService extends GetxController {
       addCandidate(message.data['banner']);
       addCandidate(message.data['poster']);
 
-      // Attempt downloading candidate images with fallback across all candidates
+      // Attempt downloading candidate images safely
       ByteArrayAndroidBitmap? bigPictureBitmap;
       String? successfulImageUrl;
       for (final candidate in candidateUrls) {
-        bigPictureBitmap = await _downloadNotificationImage(candidate);
-        if (bigPictureBitmap != null) {
-          successfulImageUrl = candidate;
-          debugPrint(
-            "✅ Notification image downloaded successfully from: $candidate",
-          );
-          break;
-        }
+        try {
+          bigPictureBitmap = await _downloadNotificationImage(candidate);
+          if (bigPictureBitmap != null) {
+            successfulImageUrl = candidate;
+            debugPrint(
+              "✅ Notification image downloaded successfully from: $candidate",
+            );
+            break;
+          }
+        } catch (_) {}
       }
 
       BigPictureStyleInformation? styleInfo;
       if (bigPictureBitmap != null) {
         styleInfo = BigPictureStyleInformation(
           bigPictureBitmap,
-          largeIcon: bigPictureBitmap,
           contentTitle: title,
           summaryText: body,
           hideExpandedLargeIcon: false,
@@ -890,7 +894,6 @@ class NotificationService extends GetxController {
             showWhen: true,
             icon: '@mipmap/ic_launcher',
             styleInformation: styleInfo,
-            largeIcon: bigPictureBitmap,
             autoCancel: true,
             ongoing: false,
             playSound: true,

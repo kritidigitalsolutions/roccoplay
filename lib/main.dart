@@ -31,6 +31,7 @@ import 'utils/notification_service.dart';
 import 'view_model/auth_controller/auth_controller.dart';
 import 'view_model/content_controller/content_controller.dart';
 import 'view_model/primium_controller/premium_controller.dart';
+import 'view_model/popup_controller/popup_controller.dart';
 import 'widgets/ad_widget/app_open_ad_helper.dart';
 import 'widgets/ad_widget/interstitial_ad_helper.dart';
 
@@ -124,6 +125,7 @@ Future<void> main() async {
   Get.put(PremiumController(), permanent: true);
   Get.put(InteractionController(), permanent: true);
   Get.put(WatchlistController(), permanent: true);
+  Get.put(AppPopupController(), permanent: true);
 
   ///  Run App FIRST (IMPORTANT)
   runApp(const MyApp());

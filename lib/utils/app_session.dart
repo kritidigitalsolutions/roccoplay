@@ -36,5 +36,25 @@ class AppSession {
     await box.delete(loginKey);
     await box.delete(tokenKey);
   }
+
+  /// 🎁 Check if a popup action has already been completed in local storage
+  static bool isPopupCompleted(String popupId) {
+    if (popupId.isEmpty) return false;
+    try {
+      var box = Hive.box(boxName);
+      return box.get('popup_completed_$popupId', defaultValue: false) == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 💾 Save popup action completed in local storage
+  static Future<void> setPopupCompleted(String popupId) async {
+    if (popupId.isEmpty) return;
+    try {
+      var box = Hive.box(boxName);
+      await box.put('popup_completed_$popupId', true);
+    } catch (_) {}
+  }
 }
 

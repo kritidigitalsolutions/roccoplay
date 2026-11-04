@@ -6,6 +6,7 @@ import '../../data/network/base_api_service.dart';
 import '../../utils/app_session.dart';
 import '../../utils/constants.dart';
 import '../auth_controller/auth_controller.dart';
+import '../popup_controller/popup_controller.dart';
 
 class HomeController extends GetxController {
   var selectedIndex = 0.obs;
@@ -19,6 +20,15 @@ class HomeController extends GetxController {
     checkLoginStatus();
     fetchCompanyInfo();
     updateIndexFromRoute();
+    fetchAppPopup();
+  }
+
+  /// 🎁 Fetch and display active app popup
+  void fetchAppPopup() {
+    final popupController = Get.isRegistered<AppPopupController>()
+        ? Get.find<AppPopupController>()
+        : Get.put(AppPopupController(), permanent: true);
+    popupController.fetchActivePopup();
   }
 
   /// ✅ Synchronize selected index with the current URL route

@@ -13,37 +13,67 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   late VideoPlayerController _controller;
+  bool _isNavigated = false;
 
   @override
   void initState() {
     super.initState();
 
+    // 🚀 If app was launched via notification tap, navigate immediately without waiting for splash video
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (NotificationService.pendingContentNavigation != null) {
+        _finishAndNavigate(NotificationService.pendingContentNavigation);
+        return;
+      }
+    });
+
     _controller = VideoPlayerController.asset("assets/videos/Roccoplay_.mp4")
       ..initialize().then((_) {
-        setState(() {});
-        _controller.play();
+        if (mounted && !_isNavigated) {
+          setState(() {});
+          _controller.play();
+        }
       });
 
     /// Navigate when video finishes
     _controller.addListener(() {
       if (_controller.value.position >= _controller.value.duration &&
-          !_controller.value.isPlaying) {
-        if (mounted) {
-          final pending = NotificationService.pendingContentNavigation;
-          NotificationService.pendingContentNavigation = null;
-          Get.offAllNamed(AppRoutes.home);
-          if (pending != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Get.toNamed(AppRoutes.dramaDetails, arguments: pending);
-            });
-          }
+          !_controller.value.isPlaying &&
+          !_isNavigated) {
+        if (Get.currentRoute == AppRoutes.splash) {
+          _finishAndNavigate();
         }
       }
     });
   }
 
+  void _finishAndNavigate([dynamic content]) {
+    if (_isNavigated) return;
+    _isNavigated = true;
+
+    try {
+      _controller.pause();
+    } catch (_) {}
+
+    final pending = content ?? NotificationService.pendingContentNavigation;
+    NotificationService.pendingContentNavigation = null;
+
+    Get.offAllNamed(AppRoutes.home);
+
+    if (pending != null) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        Get.toNamed(
+          AppRoutes.dramaDetails,
+          arguments: pending,
+          preventDuplicates: false,
+        );
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _isNavigated = true;
     _controller.dispose();
     super.dispose();
   }
