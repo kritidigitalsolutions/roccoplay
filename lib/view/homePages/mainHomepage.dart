@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:roccoplay/utils/service/meta_event_service.dart';
@@ -41,7 +44,8 @@ class _MainHomePageState extends State<MainHomePage> {
   late final PremiumController premiumController;
   late final ContentController contentController;
   final ScrollController _scrollController = ScrollController();
-
+  bool _canExit = false;
+  Timer? _exitTimer;
   @override
   void initState() {
     super.initState();
@@ -53,7 +57,7 @@ class _MainHomePageState extends State<MainHomePage> {
         : Get.put(HomeController(), permanent: true);
     authController = Get.find<AuthController>();
     premiumController = Get.find<PremiumController>();
-    
+
     // ✅ Sync index with initial route
     WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.updateIndexFromRoute();
@@ -62,8 +66,47 @@ class _MainHomePageState extends State<MainHomePage> {
 
   @override
   void dispose() {
+    _exitTimer?.cancel();
+    _scrollController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleBack() {
+    // Home tab pe nahi ho to pehle Home pe jao
+    if (controller.selectedIndex.value != 0) {
+      controller.onItemTapped(0);
+      return;
+    }
+
+    // Doosri baar back dabaya (2 sec ke andar) -> exit
+    if (_canExit) {
+      SystemNavigator.pop();
+      return;
+    }
+
+    // Pehli baar back
+    _canExit = true;
+    Get.closeAllSnackbars();
+    Get.snackbar(
+      '',
+      '',
+      titleText: const SizedBox.shrink(),
+      messageText: const Text(
+        'Press back again to exi',
+        style: TextStyle(color: Colors.white),
+        textAlign: TextAlign.center,
+      ),
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.black87,
+      margin: const EdgeInsets.only(bottom: 90, left: 40, right: 40),
+      duration: const Duration(seconds: 2),
+    );
+
+    _exitTimer?.cancel();
+    _exitTimer = Timer(const Duration(seconds: 2), () {
+      _canExit = false;
+    });
   }
 
   /// 🔄 Logo click handler: Web pe full reload karo, Mobile pe home pe scroll karo aur content refresh karo
@@ -141,111 +184,117 @@ class _MainHomePageState extends State<MainHomePage> {
   Widget build(BuildContext context) {
     final notificationService = NotificationService.to;
 
-    return LayoutBuilder(builder: (context, constraints) {
-      bool isWeb = constraints.maxWidth > 800;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isWeb = constraints.maxWidth > 800;
 
-      return PopScope(
-        canPop: controller.selectedIndex.value == 0, // Allow pop only if on Home tab
-        onPopInvokedWithResult: (didPop, result) {
-          if (didPop) return;
-
-          // If not on Home tab, go back to Home tab
-          if (controller.selectedIndex.value != 0) {
-            controller.onItemTapped(0);
-          }
-        },
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Container(
-            decoration: isWeb
-                ? const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Color(0xFF0F0F1A),
-                        AppColors.black,
-                      ],
-                    ),
-                  )
-                : const BoxDecoration(color: AppColors.black),
-            child: Column(
-              children: [
-              /// ✅ WEB TOP NAVBAR
-              if (isWeb) _buildWebTopNavbar(controller, authController, premiumController, notificationService),
-
-              Expanded(
-                child: Stack(
-                  children: [
-                    /// ✅ PAGE CONTENT
-                    SafeArea(
-                      child: Obx(
-                        () => IndexedStack(
-                          index: controller.selectedIndex.value,
-                          children: [
-                            _buildHomeContent(
-                              context,
-                              controller,
-                              authController,
-                              contentController,
-                              premiumController,
-                              notificationService,
-                              isWeb,
-                            ),
-                            const SearchPage(),
-                            const GoPremiumPage(),
-                            const DownloadsPage(),
-
-                            /// ✅ ONLY PROFILE HERE
-                            ProfilePage(
-                              onLogout: () {
-                                MetaEventService.instance.logout();
-                                FirebaseAnalyticsService.instance.logout();
-                                controller.logout();
-                                authController.setLoginStatus(false);
-                              },
-                            ),
-                          ],
+        return Obx(
+          () => PopScope(
+            canPop: controller.selectedIndex.value == 0,
+            onPopInvokedWithResult: (didPop, result) {
+              if (didPop) return;
+              _handleBack();
+            },
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              body: Container(
+                decoration: isWeb
+                    ? const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0xFF0F0F1A), AppColors.black],
                         ),
+                      )
+                    : const BoxDecoration(color: AppColors.black),
+                child: Column(
+                  children: [
+                    /// ✅ WEB TOP NAVBAR
+                    if (isWeb)
+                      _buildWebTopNavbar(
+                        controller,
+                        authController,
+                        premiumController,
+                        notificationService,
+                      ),
+
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          /// ✅ PAGE CONTENT
+                          SafeArea(
+                            child: Obx(
+                              () => IndexedStack(
+                                index: controller.selectedIndex.value,
+                                children: [
+                                  _buildHomeContent(
+                                    context,
+                                    controller,
+                                    authController,
+                                    contentController,
+                                    premiumController,
+                                    notificationService,
+                                    isWeb,
+                                  ),
+                                  const SearchPage(),
+                                  const GoPremiumPage(),
+                                  const DownloadsPage(),
+
+                                  /// ✅ ONLY PROFILE HERE
+                                  ProfilePage(
+                                    onLogout: () {
+                                      MetaEventService.instance.logout();
+                                      FirebaseAnalyticsService.instance
+                                          .logout();
+                                      controller.logout();
+                                      authController.setLoginStatus(false);
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          /// ✅ BOTTOM NAVBAR (Mobile Only)
+                          if (!isWeb)
+                            Obx(() {
+                              int selectedIndex =
+                                  controller.selectedIndex.value;
+                              bool isLoggedIn = authController.isLoggedIn.value;
+
+                              if (selectedIndex != 2) {
+                                return Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  child: CustomBottomNavbar(
+                                    selectedIndex: selectedIndex,
+                                    onItemTapped: (index) {
+                                      /// 🔥 LOGIN GUARD
+                                      if (index == 4 && !isLoggedIn) {
+                                        Get.toNamed(AppRoutes.signIn);
+                                        return;
+                                      }
+
+                                      controller.onItemTapped(index);
+                                    },
+                                    isLoggedIn: isLoggedIn,
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            }),
+                        ],
                       ),
                     ),
-
-                    /// ✅ BOTTOM NAVBAR (Mobile Only)
-                    if (!isWeb)
-                      Obx(() {
-                        int selectedIndex = controller.selectedIndex.value;
-                        bool isLoggedIn = authController.isLoggedIn.value;
-
-                        if (selectedIndex != 2) {
-                          return Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            child: CustomBottomNavbar(
-                              selectedIndex: selectedIndex,
-                              onItemTapped: (index) {
-                                /// 🔥 LOGIN GUARD
-                                if (index == 4 && !isLoggedIn) {
-                                  Get.toNamed(AppRoutes.signIn);
-                                  return;
-                                }
-
-                                controller.onItemTapped(index);
-                              },
-                              isLoggedIn: isLoggedIn,
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      ));
-    });
+        );
+      },
+    );
   }
 
   /// 🔹 WEB TOP NAVBAR
@@ -258,8 +307,12 @@ class _MainHomePageState extends State<MainHomePage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.9), // Slightly more opaque since no blur
-        border: const Border(bottom: BorderSide(color: Colors.white10, width: 1)),
+        color: Colors.black.withOpacity(
+          0.9,
+        ), // Slightly more opaque since no blur
+        border: const Border(
+          bottom: BorderSide(color: Colors.white10, width: 1),
+        ),
       ),
       child: Row(
         children: [
@@ -267,7 +320,10 @@ class _MainHomePageState extends State<MainHomePage> {
             cursor: SystemMouseCursors.click,
             child: GestureDetector(
               onTap: _handleLogoClick,
-              child: Image.asset('assets/images/roccoplay_logo.png', height: 45),
+              child: Image.asset(
+                'assets/images/roccoplay_logo.png',
+                height: 45,
+              ),
             ),
           ),
           const Spacer(),
@@ -318,8 +374,8 @@ class _MainHomePageState extends State<MainHomePage> {
       int unreadCount = notificationService.unreadCount.value > 0
           ? notificationService.unreadCount.value
           : notificationService.notifications
-              .where((n) => n['isRead'] == false)
-              .length;
+                .where((n) => n['isRead'] == false)
+                .length;
       return Stack(
         children: [
           IconButton(
@@ -399,7 +455,10 @@ class _MainHomePageState extends State<MainHomePage> {
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
                     onTap: _handleLogoClick,
-                    child: Image.asset('assets/images/roccoplay_logo.png', height: 40),
+                    child: Image.asset(
+                      'assets/images/roccoplay_logo.png',
+                      height: 40,
+                    ),
                   ),
                 ),
                 Row(
@@ -468,19 +527,23 @@ class _MainHomePageState extends State<MainHomePage> {
                                 final cleanSlug = cat.slug
                                     .toLowerCase()
                                     .replaceAll(RegExp(r'[-_\s]'), '');
-                                final isComingSoon = cleanSlug.contains('coming') ||
+                                final isComingSoon =
+                                    cleanSlug.contains('coming') ||
                                     cleanSlug.contains('comming');
                                 if (isComingSoon) {
                                   final items = catMap[cat.slug];
                                   return (items != null && items.isNotEmpty) ||
-                                      contentController.comingSoonContent.isNotEmpty;
+                                      contentController
+                                          .comingSoonContent
+                                          .isNotEmpty;
                                 }
                                 final items = catMap[cat.slug];
                                 return items != null && items.isNotEmpty;
                               })
                               .toList();
 
-                          bool nextIsHorizontal = false; // Alternates: 1st vertical, 2nd horizontal, 3rd vertical...
+                          bool nextIsHorizontal =
+                              false; // Alternates: 1st vertical, 2nd horizontal, 3rd vertical...
                           final List<Widget> categoryWidgets = [];
 
                           for (int i = 0; i < visibleCategories.length; i++) {
@@ -492,11 +555,13 @@ class _MainHomePageState extends State<MainHomePage> {
                             final cleanName = category.name
                                 .toLowerCase()
                                 .replaceAll(RegExp(r'[-_\s]'), '');
-                            final isTop10 = cleanSlug == 'top10' ||
+                            final isTop10 =
+                                cleanSlug == 'top10' ||
                                 cleanName == 'top10' ||
                                 category.layout == 'top10';
 
-                            final isComingSoon = cleanSlug.contains('coming') ||
+                            final isComingSoon =
+                                cleanSlug.contains('coming') ||
                                 cleanSlug.contains('comming');
 
                             Widget categoryWidget;
@@ -504,7 +569,8 @@ class _MainHomePageState extends State<MainHomePage> {
                               final categoryContent = catMap[category.slug]!;
                               // Top 10 is always Horizontal Cards with Big Digits
                               final bool isHorizontal = true;
-                              nextIsHorizontal = false; // Next alternates to Vertical
+                              nextIsHorizontal =
+                                  false; // Next alternates to Vertical
 
                               categoryWidget = RepaintBoundary(
                                 child: Column(
@@ -524,7 +590,9 @@ class _MainHomePageState extends State<MainHomePage> {
                               );
                             } else if (isComingSoon) {
                               final categoryContent = catMap[category.slug];
-                              final comingSoonItems = (categoryContent != null && categoryContent.isNotEmpty)
+                              final comingSoonItems =
+                                  (categoryContent != null &&
+                                      categoryContent.isNotEmpty)
                                   ? categoryContent
                                   : contentController.comingSoonContent;
 
@@ -626,13 +694,15 @@ class _MainHomePageState extends State<MainHomePage> {
           .where((e) => e != null && e.toString().trim().isNotEmpty)
           .join(", ");
 
-      final playStoreUrl = (info != null &&
+      final playStoreUrl =
+          (info != null &&
               info['playStoreUrl'] != null &&
               info['playStoreUrl'].toString().isNotEmpty)
           ? info['playStoreUrl']
           : 'https://play.google.com/store/apps/details?id=com.roccoplay.app';
 
-      final appStoreUrl = (info != null &&
+      final appStoreUrl =
+          (info != null &&
               info['appStoreUrl'] != null &&
               info['appStoreUrl'].toString().isNotEmpty)
           ? info['appStoreUrl']
@@ -640,10 +710,7 @@ class _MainHomePageState extends State<MainHomePage> {
 
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(
-          vertical: 30,
-          horizontal: 20,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
           borderRadius: const BorderRadius.only(
@@ -719,7 +786,10 @@ class _MainHomePageState extends State<MainHomePage> {
                     onPressed: () => Get.toNamed(AppRoutes.privacyPolicy),
                     child: const Text(
                       "Privacy Policy",
-                      style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.lightBlueAccent,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   const Text("|", style: TextStyle(color: Colors.white24)),
@@ -727,7 +797,10 @@ class _MainHomePageState extends State<MainHomePage> {
                     onPressed: () => Get.toNamed(AppRoutes.termsAndConditions),
                     child: const Text(
                       "Terms & Conditions",
-                      style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.lightBlueAccent,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   const Text("|", style: TextStyle(color: Colors.white24)),
@@ -735,7 +808,10 @@ class _MainHomePageState extends State<MainHomePage> {
                     onPressed: () => Get.toNamed(AppRoutes.refundPolicy),
                     child: const Text(
                       "Refund Policy",
-                      style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.lightBlueAccent,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   const Text("|", style: TextStyle(color: Colors.white24)),
@@ -743,7 +819,10 @@ class _MainHomePageState extends State<MainHomePage> {
                     onPressed: () => Get.toNamed(AppRoutes.help),
                     child: const Text(
                       "Help & Support",
-                      style: TextStyle(color: Colors.lightBlueAccent, fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.lightBlueAccent,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
@@ -779,7 +858,11 @@ class _MainHomePageState extends State<MainHomePage> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    icon: const Icon(Icons.android, color: Colors.greenAccent, size: 22),
+                    icon: const Icon(
+                      Icons.android,
+                      color: Colors.greenAccent,
+                      size: 22,
+                    ),
                     label: const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -814,7 +897,11 @@ class _MainHomePageState extends State<MainHomePage> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    icon: const Icon(Icons.apple, color: Colors.white, size: 24),
+                    icon: const Icon(
+                      Icons.apple,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                     label: const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,

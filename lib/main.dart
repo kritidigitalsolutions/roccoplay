@@ -180,8 +180,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       themeMode: ThemeMode.dark,
       scrollBehavior: MyCustomScrollBehavior(),
       routingCallback: (routing) {
-        if (routing != null && Get.isRegistered<HomeController>()) {
-          // Use post-frame to ensure synchronization happens after route is fully settled
+        // Only synchronize tab index with URL on Web to avoid resetting mobile tab on route pop
+        if (kIsWeb && routing != null && Get.isRegistered<HomeController>()) {
           SchedulerBinding.instance.addPostFrameCallback((_) {
             Get.find<HomeController>().updateIndexFromRoute();
           });

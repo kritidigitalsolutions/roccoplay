@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:roccoplay/app/routes/app_routes.dart';
 import 'package:roccoplay/view_model/auth_controller/auth_controller.dart';
 import 'package:roccoplay/view_model/content_controller/content_controller.dart';
+import 'package:roccoplay/view_model/home_controller/home_controller.dart';
 import 'package:roccoplay/view_model/search_controller/search_controller.dart';
 
 import '../../app/theme/app_colors.dart';
@@ -31,10 +32,13 @@ class _SearchPageState extends State<SearchPage> {
   ];
 
   List<ContentModel> _cachedTopSeries = [];
-
+  late final HomeController homeController; // add this
   @override
   void initState() {
     super.initState();
+    homeController = Get.isRegistered<HomeController>()
+        ? Get.find<HomeController>()
+        : Get.put(HomeController(), permanent: true);
     controller = Get.isRegistered<AppSearchController>()
         ? Get.find<AppSearchController>()
         : Get.put(AppSearchController(), permanent: true);
@@ -48,7 +52,9 @@ class _SearchPageState extends State<SearchPage> {
 
   void _computeTopSeries() {
     final List<ContentModel> topSeries = contentController.allContent
-        .where((item) => item.contentType == 'series' && item.isComingSoon == false)
+        .where(
+          (item) => item.contentType == 'series' && item.isComingSoon == false,
+        )
         .toList();
 
     topSeries.sort((a, b) {
@@ -62,90 +68,114 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: LayoutBuilder(builder: (context, constraints) {
-          bool isWeb = constraints.maxWidth > 800;
-          return Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: isWeb ? 800 : double.infinity),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    /// SEARCH BAR
-                    Padding(
-                      padding: const EdgeInsets.all(15),
-                      child: TextField(
-                        controller: controller.searchController,
-                        onChanged: (value) => controller.updateSearchQuery(value),
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: "Search for movies, shows & more",
-                          hintStyle: const TextStyle(color: Colors.white54),
-                          filled: true,
-                          fillColor: Colors.grey[900],
-                          prefixIcon: const Icon(Icons.search, color: Colors.white),
-                          suffixIcon: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Obx(() => controller.searchQuery.value.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear, color: Colors.white),
-                                      onPressed: controller.clearSearch,
-                                    )
-                                  : const SizedBox.shrink()),
-                              IconButton(
-                                icon: const Icon(Icons.mic, color: Colors.white),
-                                onPressed: () async {
-                                  final result = await Get.toNamed(AppRoutes.searchWithMic);
-                                  if (result != null && result is String) {
-                                    controller.searchController.text = result;
-                                    controller.updateSearchQuery(result);
-                                  }
-                                },
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+
+        if (MediaQuery.of(context).size.width <= 800) {
+          homeController.onItemTapped(0); // Home tab
+        } else {
+          Get.back();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final bool isWeb = constraints.maxWidth > 800;
+
+              return Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: isWeb ? 800 : double.infinity,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        /// SEARCH BAR
+                        Padding(
+                          padding: const EdgeInsets.all(15),
+                          child: TextField(
+                            controller: controller.searchController,
+                            onChanged: controller.updateSearchQuery,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: "Search for movies, shows & more",
+                              hintStyle: const TextStyle(color: Colors.white54),
+                              filled: true,
+                              fillColor: Colors.grey[900],
+                              prefixIcon: const Icon(
+                                Icons.search,
+                                color: Colors.white,
                               ),
-                            ],
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
+                              suffixIcon: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Obx(
+                                    () =>
+                                        controller.searchQuery.value.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(
+                                              Icons.clear,
+                                              color: Colors.white,
+                                            ),
+                                            onPressed: controller.clearSearch,
+                                          )
+                                        : const SizedBox.shrink(),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.mic,
+                                      color: Colors.white,
+                                    ),
+                                    onPressed: () async {
+                                      final result = await Get.toNamed(
+                                        AppRoutes.searchWithMic,
+                                      );
+                                      if (result != null && result is String) {
+                                        controller.searchController.text =
+                                            result;
+                                        controller.updateSearchQuery(result);
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
 
-                    /// SEARCH RESULTS OR DEFAULT VIEW
-                    Obx(() {
-                      if (controller.searchQuery.value.isNotEmpty) {
-                        return Column(
-                          children: [
-                            const BannerAdWidget(),
-                            _buildSearchResults(controller, authController),
-                          ],
-                        );
-                      } else {
-                        return Column(
-                          children: [
-                            const BannerAdWidget(),
-                            _buildDefaultSearchView(context, isWeb),
-                          ],
-                        );
-                      }
-                    }),
-                  ],
+                        /// SEARCH RESULTS OR DEFAULT VIEW
+                        const BannerAdWidget(),
+                        Obx(
+                          () => controller.searchQuery.value.isNotEmpty
+                              ? _buildSearchResults(controller, authController)
+                              : _buildDefaultSearchView(context, isWeb),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          );
-        }),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
 
   /// 🔍 SEARCH RESULTS VIEW
-  Widget _buildSearchResults(AppSearchController controller, AuthController authController) {
+  Widget _buildSearchResults(
+    AppSearchController controller,
+    AuthController authController,
+  ) {
     if (controller.searchResults.isEmpty) {
       return const Center(
         child: Padding(
@@ -167,10 +197,7 @@ class _SearchPageState extends State<SearchPage> {
         final item = controller.searchResults[index];
         return ListTile(
           onTap: () {
-            Get.toNamed(
-              AppRoutes.dramaDetails,
-              arguments: item,
-            );
+            Get.toNamed(AppRoutes.dramaDetails, arguments: item);
           },
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(5),
@@ -180,19 +207,30 @@ class _SearchPageState extends State<SearchPage> {
               height: 70,
               fit: BoxFit.cover,
               cacheWidth: 100,
-              errorBuilder: (context, error, stackTrace) =>
-                  Image.asset("assets/images/farzi.jpg", width: 50, height: 70, fit: BoxFit.cover),
+              errorBuilder: (context, error, stackTrace) => Image.asset(
+                "assets/images/farzi.jpg",
+                width: 50,
+                height: 70,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           title: Text(
             item.title,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           subtitle: Text(
             "${item.releaseYear} • ${item.language}",
             style: const TextStyle(color: Colors.white54, fontSize: 12),
           ),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+          trailing: const Icon(
+            Icons.arrow_forward_ios,
+            size: 14,
+            color: Colors.grey,
+          ),
         );
       },
     );
@@ -236,10 +274,7 @@ class _SearchPageState extends State<SearchPage> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(5),
                       onTap: () {
-                        Get.toNamed(
-                          AppRoutes.dramaDetails,
-                          arguments: item,
-                        );
+                        Get.toNamed(AppRoutes.dramaDetails, arguments: item);
                       },
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(5),
@@ -250,7 +285,12 @@ class _SearchPageState extends State<SearchPage> {
                           fit: BoxFit.cover,
                           cacheWidth: isWeb ? 360 : 280,
                           errorBuilder: (context, error, stackTrace) =>
-                              Image.asset("assets/images/farzi.jpg", width: isWeb ? 180 : 140, height: isWeb ? 260 : 200, fit: BoxFit.cover),
+                              Image.asset(
+                                "assets/images/farzi.jpg",
+                                width: isWeb ? 180 : 140,
+                                height: isWeb ? 260 : 200,
+                                fit: BoxFit.cover,
+                              ),
                         ),
                       ),
                     ),
@@ -282,11 +322,7 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                 ),
                 SizedBox(width: 6),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: Colors.white,
-                ),
+                Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white),
               ],
             ),
           ),
