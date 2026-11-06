@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
@@ -25,8 +28,44 @@ class AdvancedVideoPlayer extends StatefulWidget {
 
 class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
   late final VideoController controller;
-  final RxBool isLocked = false.obs;
   final RxString quality = "Auto".obs;
+  Orientation? _lastOrientation;
+
+  // 🔒 Lock Controls with 2.5s Auto-Hide
+  final RxBool isLocked = false.obs;
+  final RxBool showLockIcon = false.obs;
+  Timer? _lockIconTimer;
+
+  void _onScreenTapped() {
+    if (isLocked.value) {
+      // Screen is locked: show lock icon for 2.5 seconds, then auto-hide
+      showLockIcon.value = true;
+      _lockIconTimer?.cancel();
+      _lockIconTimer = Timer(const Duration(milliseconds: 2500), () {
+        showLockIcon.value = false;
+      });
+    } else {
+      controller.toggleControls();
+    }
+  }
+
+  void _onLockTapped() {
+    isLocked.value = !isLocked.value;
+    if (isLocked.value) {
+      // Locked: hide all controls, show locked icon for 2.5s then auto-hide
+      controller.showControls.value = false;
+      showLockIcon.value = true;
+      _lockIconTimer?.cancel();
+      _lockIconTimer = Timer(const Duration(milliseconds: 2500), () {
+        showLockIcon.value = false;
+      });
+    } else {
+      // Unlocked: hide lock icon timer, reveal controls with normal 3s auto-hide
+      showLockIcon.value = false;
+      _lockIconTimer?.cancel();
+      controller.resetHideTimer();
+    }
+  }
 
   // 🔥 Har kitne seconds pe mid-roll ad aana chahiye (12 min)
   static const int _adIntervalSeconds = 12 * 60;
@@ -78,10 +117,16 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
 
   @override
   void dispose() {
+    _lockIconTimer?.cancel();
     // 🔥 Video player se bahar jaate hi App Open Ad wapas allow karo
     AppOpenAdHelper.suppressed = false;
     _positionWorker?.dispose();
     _durationWorker?.dispose();
+    // 📱 Normal system UI (Status bar & Navigation bar) aur portrait restore karo
+    if (!kIsWeb) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    }
     // 🔥 Properly delete controller so timers/listeners are cleaned up
     Get.delete<VideoController>(force: true);
     super.dispose();
@@ -177,6 +222,19 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    // 📱 Landscape mode me notification/status bar hide karke pure fullscreen immersive karo
+    final currentOrientation = MediaQuery.of(context).orientation;
+    if (_lastOrientation != currentOrientation) {
+      _lastOrientation = currentOrientation;
+      if (!kIsWeb) {
+        if (currentOrientation == Orientation.landscape) {
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+        } else {
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+        }
+      }
+    }
+
     return PopScope(
       // ❌ System ko default pop kabhi mat karne do — hum khud control karenge
       canPop: false,
@@ -241,17 +299,13 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
 
           return MouseRegion(
             onHover: (_) {
-              if (!controller.showControls.value && !isLocked.value) {
+              if (!isLocked.value && !controller.showControls.value) {
                 controller.toggleControls();
               }
             },
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (!isLocked.value) {
-                  controller.toggleControls();
-                }
-              },
+              onTap: _onScreenTapped,
               child: Stack(
                 children: [
                   /// 🎬 VIDEO (RepaintBoundary isolates platform view repaints)
@@ -271,28 +325,51 @@ class _AdvancedVideoPlayerState extends State<AdvancedVideoPlayer> {
                       child: Container(color: Colors.transparent),
                     ),
 
-                  /// 🔒 LOCK BUTTON
-                  Positioned(
-                    left: 10,
-                    top: MediaQuery.of(context).size.height / 2,
-                    child: Obx(
-                      () => IconButton(
-                        icon: Icon(
-                          isLocked.value ? Icons.lock : Icons.lock_open,
-                          color: Colors.white,
+                  /// 🔒 AUTO-HIDING LOCK BUTTON (Disappears after 2-3 sec)
+                  Obx(() {
+                    final bool isVisible = isLocked.value
+                        ? showLockIcon.value
+                        : controller.showControls.value;
+
+                    if (!isVisible) return const SizedBox.shrink();
+
+                    return Positioned(
+                      left: 16,
+                      top: MediaQuery.of(context).size.height / 2 - 24,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.65),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.35),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        onPressed: () {
-                          isLocked.value = !isLocked.value;
-                          controller.showControls.value = !isLocked.value;
-                        },
+                        child: IconButton(
+                          icon: Icon(
+                            isLocked.value ? Icons.lock : Icons.lock_open,
+                            color: isLocked.value
+                                ? const Color(0xFFFF5252)
+                                : Colors.white,
+                            size: 24,
+                          ),
+                          onPressed: _onLockTapped,
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
 
                   /// 🎮 CONTROLS (RepaintBoundary isolates control repaints from video)
                   RepaintBoundary(
                     child: Obx(
-                      () => controller.showControls.value && !isLocked.value
+                      () => (!isLocked.value && controller.showControls.value)
                           ? _controls(context)
                           : const SizedBox(),
                     ),

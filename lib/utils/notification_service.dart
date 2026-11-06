@@ -84,7 +84,7 @@ class NotificationService extends GetxController {
     /// 🔔 Initialize Local Notifications (SKIP ON WEB)
     if (!kIsWeb) {
       const AndroidInitializationSettings androidSettings =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
+          AndroidInitializationSettings('@mipmap/launcher_icon');
       const InitializationSettings initSettings = InitializationSettings(
         android: androidSettings,
       );
@@ -892,7 +892,7 @@ class NotificationService extends GetxController {
             importance: Importance.max,
             priority: Priority.max,
             showWhen: true,
-            icon: '@mipmap/ic_launcher',
+            icon: '@mipmap/launcher_icon',
             styleInformation: styleInfo,
             autoCancel: true,
             ongoing: false,

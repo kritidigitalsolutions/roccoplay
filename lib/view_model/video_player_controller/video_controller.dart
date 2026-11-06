@@ -225,6 +225,11 @@ class VideoController extends GetxController {
     }
   }
 
+  void resetHideTimer() {
+    showControls.value = true;
+    _startHideTimer();
+  }
+
   /// ⏱ AUTO HIDE
   void _startHideTimer() {
     _hideTimer?.cancel();
@@ -278,12 +283,18 @@ class VideoController extends GetxController {
   void toggleRotation(Orientation currentOrientation) {
     if (currentOrientation == Orientation.landscape) {
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      if (!kIsWeb) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      }
       isLandscape.value = false;
     } else {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
+      if (!kIsWeb) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      }
       isLandscape.value = true;
     }
   }
@@ -310,8 +321,11 @@ class VideoController extends GetxController {
       old.dispose();
       videoPlayerController = null;
     }
-    // Reset to portrait when leaving
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    // Reset to portrait and normal system UI when leaving
+    if (!kIsWeb) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    }
     super.onClose();
   }
 }
