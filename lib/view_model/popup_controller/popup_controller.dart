@@ -72,10 +72,13 @@ class AppPopupController extends GetxController {
           final candidateUrls = AppPopupDialog.getCandidateUrls(popup);
           if (candidateUrls.isNotEmpty && Get.context != null) {
             try {
-              final provider =
-                  AppPopupDialog.getImageProvider(candidateUrls.first);
-              await precacheImage(provider, Get.context!)
-                  .timeout(const Duration(milliseconds: 2500));
+              final provider = AppPopupDialog.getImageProvider(
+                candidateUrls.first,
+              );
+              await precacheImage(
+                provider,
+                Get.context!,
+              ).timeout(const Duration(milliseconds: 2500));
             } catch (e) {
               debugPrint("⚠️ [AppPopup] Precache error/timeout: $e");
             }
@@ -119,7 +122,9 @@ class AppPopupController extends GetxController {
     _autoDismissTimer?.cancel();
     _autoDismissTimer = Timer(const Duration(seconds: 20), () {
       if (_isDialogShowing && Get.isDialogOpen == true) {
-        debugPrint("⏰ [AppPopupController] Auto-dismissing popup after 20 seconds");
+        debugPrint(
+          "⏰ [AppPopupController] Auto-dismissing popup after 20 seconds",
+        );
         onDismissClicked();
       }
     });
@@ -135,15 +140,45 @@ class AppPopupController extends GetxController {
     });
   }
 
-  /// ❌ User taps "Maybe later" or (✕) or 5-6s timer expires:
+  /// ❌ User taps "Maybe later" or (✕) or 20s timer expires:
   /// [Close Modal Only] - Does NOT save in local storage, will show again on next app launch
-  Future<void> onDismissClicked() async {
+  void onDismissClicked([BuildContext? context]) {
+    cleanupAfterDismiss();
+
+    // 1. Try closing via local BuildContext first (100% reliable on Web)
+    if (context != null) {
+      try {
+        if (Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop();
+          return;
+        }
+      } catch (e) {
+        debugPrint("⚠️ [AppPopup] context pop error: $e");
+      }
+    }
+
+    // 2. Try Get.back() if Get dialog is open
+    if (Get.isDialogOpen == true) {
+      Get.back();
+      return;
+    }
+
+    // 3. Fallback to Get.context root navigator
+    if (Get.context != null) {
+      try {
+        if (Navigator.of(Get.context!, rootNavigator: true).canPop()) {
+          Navigator.of(Get.context!, rootNavigator: true).pop();
+        }
+      } catch (e) {
+        debugPrint("⚠️ [AppPopup] Get.context pop error: $e");
+      }
+    }
+  }
+
+  /// 🧹 Clean up timers and state when dialog is dismissed
+  void cleanupAfterDismiss() {
     _autoDismissTimer?.cancel();
     _autoDismissTimer = null;
-
-    if (_isDialogShowing || Get.isDialogOpen == true) {
-      Get.back();
-    }
     _isDialogShowing = false;
     activePopup.value = null;
   }
@@ -164,7 +199,9 @@ class AppPopupController extends GetxController {
 
       // 1. Save in Local Storage: popup_completed_<id> = true
       await AppSession.setPopupCompleted(popup.id);
-      debugPrint("💾 [AppPopup] Marked popup_completed_${popup.id} = true in local storage");
+      debugPrint(
+        "💾 [AppPopup] Marked popup_completed_${popup.id} = true in local storage",
+      );
 
       // 2. Call POST /:id/action-completed API with user token
       final token = AppSession.getToken();
@@ -173,8 +210,17 @@ class AppPopupController extends GetxController {
           .catchError((_) => false);
 
       // 3. Dismiss popup dialog
-      if (_isDialogShowing || Get.isDialogOpen == true) {
-        Get.back();
+      cleanupAfterDismiss();
+      try {
+        if (Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop();
+        } else if (Get.isDialogOpen == true) {
+          Get.back();
+        }
+      } catch (_) {
+        if (Get.isDialogOpen == true) {
+          Get.back();
+        }
       }
       _isDialogShowing = false;
 
@@ -206,10 +252,8 @@ class AppPopupController extends GetxController {
 
       // Search by slug from actionUrl (e.g. /movie/bablusha -> bablusha)
       if (matchedContent == null && popup.actionUrl.isNotEmpty) {
-        final slug = popup.actionUrl
-            .split('/')
-            .where((s) => s.isNotEmpty)
-            .lastOrNull ??
+        final slug =
+            popup.actionUrl.split('/').where((s) => s.isNotEmpty).lastOrNull ??
             '';
         if (slug.isNotEmpty) {
           matchedContent = contentController.allContent.firstWhereOrNull(
@@ -219,7 +263,9 @@ class AppPopupController extends GetxController {
       }
 
       // Search by title
-      if (matchedContent == null && popup.content != null && popup.content!.title.isNotEmpty) {
+      if (matchedContent == null &&
+          popup.content != null &&
+          popup.content!.title.isNotEmpty) {
         final title = popup.content!.title.trim().toLowerCase();
         matchedContent = contentController.allContent.firstWhereOrNull(
           (c) =>
@@ -232,7 +278,9 @@ class AppPopupController extends GetxController {
       if (matchedContent == null) {
         for (final list in contentController.categoryContentMap.values) {
           if (popup.contentId.isNotEmpty) {
-            matchedContent = list.firstWhereOrNull((c) => c.id == popup.contentId);
+            matchedContent = list.firstWhereOrNull(
+              (c) => c.id == popup.contentId,
+            );
             if (matchedContent != null) break;
           }
         }
@@ -240,7 +288,8 @@ class AppPopupController extends GetxController {
 
       // 5. Fallback ContentModel if not in cache so details page still opens cleanly
       final fallbackSlug = popup.actionUrl.isNotEmpty
-          ? popup.actionUrl.split('/').where((s) => s.isNotEmpty).lastOrNull ?? 'movie'
+          ? popup.actionUrl.split('/').where((s) => s.isNotEmpty).lastOrNull ??
+                'movie'
           : 'movie';
 
       final poster = popup.content?.poster.isNotEmpty == true
@@ -250,11 +299,10 @@ class AppPopupController extends GetxController {
           ? popup.content!.banner
           : (popup.imageUrl.isNotEmpty ? popup.imageUrl : poster);
 
-      final targetContent = matchedContent ??
+      final targetContent =
+          matchedContent ??
           ContentModel(
-            id: popup.contentId.isNotEmpty
-                ? popup.contentId
-                : popup.id,
+            id: popup.contentId.isNotEmpty ? popup.contentId : popup.id,
             title: popup.content?.title.isNotEmpty == true
                 ? popup.content!.title
                 : 'Featured Content',
@@ -290,4 +338,3 @@ class AppPopupController extends GetxController {
     }
   }
 }
-

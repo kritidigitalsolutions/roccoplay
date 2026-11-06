@@ -111,10 +111,11 @@ class _AppPopupDialogState extends State<AppPopupDialog>
         candidateUrls.isNotEmpty ? candidateUrls.first : '';
 
     return PopScope(
-      canPop: false,
+      canPop: true,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        controller.onDismissClicked();
+        if (didPop) {
+          controller.cleanupAfterDismiss();
+        }
       },
       child: Center(
         child: Material(
@@ -380,35 +381,41 @@ class _AppPopupDialogState extends State<AppPopupDialog>
                     ],
                   ),
 
-                  /// ❌ TOP-RIGHT CLOSE BUTTON
+                  /// ❌ TOP-RIGHT CLOSE BUTTON (Web & Mobile optimized)
                   Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: controller.onDismissClicked,
-                        borderRadius: BorderRadius.circular(20),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                            child: Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.6),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.25),
-                                  width: 1,
-                                ),
+                    top: 10,
+                    right: 10,
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          debugPrint("👆 [AppPopup] Close button clicked");
+                          controller.onDismissClicked(context);
+                        },
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.75),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.35),
+                              width: 1.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.5),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
                               ),
-                              child: const Icon(
-                                Icons.close_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                              size: 20,
                             ),
                           ),
                         ),

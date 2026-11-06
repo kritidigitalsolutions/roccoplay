@@ -74,7 +74,6 @@ class _MainHomePageState extends State<MainHomePage> {
   void dispose() {
     _exitTimer?.cancel();
     _scrollController.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -487,189 +486,200 @@ class _MainHomePageState extends State<MainHomePage> {
           child: RefreshIndicator(
             onRefresh: _performHardRefresh,
             color: AppColors.buttonColor,
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(child: const BannerAdWidget()),
-                  const SizedBox(height: 15),
+            child: Obx(() {
+              if (contentController.isLoading.value &&
+                  contentController.categories.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: CircularProgressIndicator(
+                      color: AppColors.buttonColor,
+                    ),
+                  ),
+                );
+              }
 
-                  Obx(() {
-                    if (contentController.isLoading.value &&
-                        contentController.categories.isEmpty) {
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20.0),
-                          child: CircularProgressIndicator(
-                            color: AppColors.buttonColor,
-                          ),
-                        ),
-                      );
+              // Use precomputed category content map instead of filtering in build()
+              final catMap = contentController.categoryContentMap;
+
+              final visibleCategories = contentController.categories
+                  .where((cat) => cat.slug != 'trending')
+                  .where((cat) {
+                    final cleanSlug = cat.slug
+                        .toLowerCase()
+                        .replaceAll(RegExp(r'[-_\s]'), '');
+                    final isComingSoon =
+                        cleanSlug.contains('coming') ||
+                        cleanSlug.contains('comming');
+                    if (isComingSoon) {
+                      final items = catMap[cat.slug];
+                      return (items != null && items.isNotEmpty) ||
+                          contentController.comingSoonContent.isNotEmpty;
                     }
+                    final items = catMap[cat.slug];
+                    return items != null && items.isNotEmpty;
+                  })
+                  .toList();
 
-                    // Use precomputed category content map instead of filtering in build()
-                    final catMap = contentController.categoryContentMap;
+              bool nextIsHorizontal =
+                  false; // Alternates: 1st vertical, 2nd horizontal, 3rd vertical...
+              final List<Widget> categoryWidgets = [];
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              for (int i = 0; i < visibleCategories.length; i++) {
+                final category = visibleCategories[i];
+
+                final cleanSlug = category.slug
+                    .toLowerCase()
+                    .replaceAll(RegExp(r'[-_\s]'), '');
+                final cleanName = category.name
+                    .toLowerCase()
+                    .replaceAll(RegExp(r'[-_\s]'), '');
+                final isTop10 =
+                    cleanSlug == 'top10' ||
+                    cleanName == 'top10' ||
+                    category.layout == 'top10';
+
+                final isComingSoon =
+                    cleanSlug.contains('coming') ||
+                    cleanSlug.contains('comming');
+
+                Widget categoryWidget;
+                if (isTop10) {
+                  final categoryContent = catMap[category.slug]!;
+                  final bool isHorizontal = true;
+                  nextIsHorizontal = false;
+
+                  categoryWidget = RepaintBoundary(
+                    child: Column(
                       children: [
-                        /// 1. 🔥 TOP SLIDER (Trending)
-                        if (contentController.trendingContent.isNotEmpty)
-                          RepaintBoundary(
-                            child: Column(
-                              children: [
-                                AutoSlider(
-                                  content: contentController.trendingContent,
-                                  isSignedIn: authController.isLoggedIn.value,
-                                ),
-                                const SizedBox(height: 25),
-                              ],
-                            ),
-                          ),
-
-                        /// 2. 🔹 ALL CATEGORIES SORTED BY PRIORITY (Including Top 10 & Coming Soon)
-                        ...() {
-                          final visibleCategories = contentController.categories
-                              .where((cat) => cat.slug != 'trending')
-                              .where((cat) {
-                                final cleanSlug = cat.slug
-                                    .toLowerCase()
-                                    .replaceAll(RegExp(r'[-_\s]'), '');
-                                final isComingSoon =
-                                    cleanSlug.contains('coming') ||
-                                    cleanSlug.contains('comming');
-                                if (isComingSoon) {
-                                  final items = catMap[cat.slug];
-                                  return (items != null && items.isNotEmpty) ||
-                                      contentController
-                                          .comingSoonContent
-                                          .isNotEmpty;
-                                }
-                                final items = catMap[cat.slug];
-                                return items != null && items.isNotEmpty;
-                              })
-                              .toList();
-
-                          bool nextIsHorizontal =
-                              false; // Alternates: 1st vertical, 2nd horizontal, 3rd vertical...
-                          final List<Widget> categoryWidgets = [];
-
-                          for (int i = 0; i < visibleCategories.length; i++) {
-                            final category = visibleCategories[i];
-
-                            final cleanSlug = category.slug
-                                .toLowerCase()
-                                .replaceAll(RegExp(r'[-_\s]'), '');
-                            final cleanName = category.name
-                                .toLowerCase()
-                                .replaceAll(RegExp(r'[-_\s]'), '');
-                            final isTop10 =
-                                cleanSlug == 'top10' ||
-                                cleanName == 'top10' ||
-                                category.layout == 'top10';
-
-                            final isComingSoon =
-                                cleanSlug.contains('coming') ||
-                                cleanSlug.contains('comming');
-
-                            Widget categoryWidget;
-                            if (isTop10) {
-                              final categoryContent = catMap[category.slug]!;
-                              // Top 10 is always Horizontal Cards with Big Digits
-                              final bool isHorizontal = true;
-                              nextIsHorizontal =
-                                  false; // Next alternates to Vertical
-
-                              categoryWidget = RepaintBoundary(
-                                child: Column(
-                                  children: [
-                                    Top10List(
-                                      title: category.name.isNotEmpty
-                                          ? category.name
-                                          : "Top 10",
-                                      content: categoryContent,
-                                      isSignedIn:
-                                          authController.isLoggedIn.value,
-                                      isHorizontal: isHorizontal,
-                                    ),
-                                    const SizedBox(height: 15),
-                                  ],
-                                ),
-                              );
-                            } else if (isComingSoon) {
-                              final categoryContent = catMap[category.slug];
-                              final comingSoonItems =
-                                  (categoryContent != null &&
-                                      categoryContent.isNotEmpty)
-                                  ? categoryContent
-                                  : contentController.comingSoonContent;
-
-                              categoryWidget = RepaintBoundary(
-                                child: Column(
-                                  children: [
-                                    ComingSoonSection(
-                                      content: comingSoonItems,
-                                      isSignedIn:
-                                          authController.isLoggedIn.value,
-                                    ),
-                                    const SizedBox(height: 15),
-                                  ],
-                                ),
-                              );
-                            } else {
-                              final categoryContent = catMap[category.slug]!;
-                              // Dynamically alternate layout
-                              final bool isHorizontal = nextIsHorizontal;
-                              nextIsHorizontal = !nextIsHorizontal;
-
-                              categoryWidget = RepaintBoundary(
-                                child: Column(
-                                  children: [
-                                    HomeSliderSection(
-                                      title: category.name,
-                                      content: categoryContent,
-                                      isSignedIn:
-                                          authController.isLoggedIn.value,
-                                      isHorizontal: isHorizontal,
-                                    ),
-                                    const SizedBox(height: 15),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            categoryWidgets.add(categoryWidget);
-
-                            // 🔥 Har 2 categories ke baad ek Banner Ad
-                            if ((i + 1) % 2 == 0) {
-                              categoryWidgets.add(
-                                Center(
-                                  child: BannerAdWidget(
-                                    key: ValueKey('home_category_ad_$i'),
-                                  ),
-                                ),
-                              );
-                              categoryWidgets.add(const SizedBox(height: 15));
-                            }
-                          }
-
-                          return categoryWidgets;
-                        }(),
+                        Top10List(
+                          title: category.name.isNotEmpty
+                              ? category.name
+                              : "Top 10",
+                          content: categoryContent,
+                          isSignedIn: authController.isLoggedIn.value,
+                          isHorizontal: isHorizontal,
+                        ),
+                        const SizedBox(height: 15),
                       ],
-                    );
-                  }),
+                    ),
+                  );
+                } else if (isComingSoon) {
+                  final categoryContent = catMap[category.slug];
+                  final comingSoonItems =
+                      (categoryContent != null && categoryContent.isNotEmpty)
+                          ? categoryContent
+                          : contentController.comingSoonContent;
 
+                  categoryWidget = RepaintBoundary(
+                    child: Column(
+                      children: [
+                        ComingSoonSection(
+                          content: comingSoonItems,
+                          isSignedIn: authController.isLoggedIn.value,
+                        ),
+                        const SizedBox(height: 15),
+                      ],
+                    ),
+                  );
+                } else {
+                  final categoryContent = catMap[category.slug]!;
+                  final bool isHorizontal = nextIsHorizontal;
+                  nextIsHorizontal = !nextIsHorizontal;
+
+                  categoryWidget = RepaintBoundary(
+                    child: Column(
+                      children: [
+                        HomeSliderSection(
+                          title: category.name,
+                          content: categoryContent,
+                          isSignedIn: authController.isLoggedIn.value,
+                          isHorizontal: isHorizontal,
+                        ),
+                        const SizedBox(height: 15),
+                      ],
+                    ),
+                  );
+                }
+
+                categoryWidgets.add(categoryWidget);
+
+                // 🔥 Har 2 categories ke baad ek Banner Ad
+                if ((i + 1) % 2 == 0) {
+                  categoryWidgets.add(
+                    Center(
+                      child: BannerAdWidget(
+                        key: ValueKey('home_category_ad_$i'),
+                      ),
+                    ),
+                  );
+                  categoryWidgets.add(const SizedBox(height: 15));
+                }
+              }
+
+              // 🔥 Check if running on web (desktop or mobile browser)
+              final bool useListView = isWeb || kIsWeb;
+
+              if (useListView) {
+                // 🚀 WEB ONLY: Viewport-virtualized ListView.builder for high-performance 60 FPS scrolling
+                final List<Widget> webItems = [
+                  const Center(child: BannerAdWidget()),
+                  const SizedBox(height: 15),
+                  if (contentController.trendingContent.isNotEmpty)
+                    RepaintBoundary(
+                      child: Column(
+                        children: [
+                          AutoSlider(
+                            content: contentController.trendingContent,
+                            isSignedIn: authController.isLoggedIn.value,
+                          ),
+                          const SizedBox(height: 25),
+                        ],
+                      ),
+                    ),
+                  ...categoryWidgets,
                   const SizedBox(height: 40),
-
-                  /// 🔹 COMPANY INFO & STORE LINKS (Footer)
                   _buildFooter(controller),
-
                   SizedBox(height: isWeb ? 100 : 120),
-                ],
-              ),
-            ),
+                ];
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: webItems.length,
+                  itemBuilder: (context, index) => webItems[index],
+                );
+              }
+
+              // 📱 MOBILE ONLY: Original SingleChildScrollView with Column
+              return SingleChildScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Center(child: BannerAdWidget()),
+                    const SizedBox(height: 15),
+                    if (contentController.trendingContent.isNotEmpty)
+                      RepaintBoundary(
+                        child: Column(
+                          children: [
+                            AutoSlider(
+                              content: contentController.trendingContent,
+                              isSignedIn: authController.isLoggedIn.value,
+                            ),
+                            const SizedBox(height: 25),
+                          ],
+                        ),
+                      ),
+                    ...categoryWidgets,
+                    const SizedBox(height: 40),
+                    _buildFooter(controller),
+                    SizedBox(height: isWeb ? 100 : 120),
+                  ],
+                ),
+              );
+            }),
           ),
         ),
       ],

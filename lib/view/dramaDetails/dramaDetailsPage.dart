@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:roccoplay/utils/service/meta_event_service.dart';
@@ -78,6 +79,14 @@ class _DramaDetailsPageState extends State<DramaDetailsPage> {
       }
       // InterstitialAdHelper.loadAd();
     });
+  }
+
+  @override
+  void dispose() {
+    if (kIsWeb) {
+      Get.delete<DramaDetailsController>(force: true);
+    }
+    super.dispose();
   }
 
   @override
@@ -507,6 +516,8 @@ class _DramaDetailsPageState extends State<DramaDetailsPage> {
                                       width: isWeb ? 150 : 100,
                                       height: isWeb ? 90 : 60,
                                       fit: BoxFit.fill,
+                                      cacheWidth: isWeb ? 250 : null,
+                                      cacheHeight: isWeb ? 150 : null,
                                       errorBuilder: (c, e, s) => Image.asset("assets/images/farzi.jpg", width: isWeb ? 150 : 100, height: isWeb ? 90 : 60, fit: BoxFit.fill),
                                     ),
                                   ),
@@ -637,7 +648,11 @@ class _DramaDetailsPageState extends State<DramaDetailsPage> {
                                         decoration: BoxDecoration(
                                           borderRadius: BorderRadius.circular(12),
                                           image: DecorationImage(
-                                            image: (actor.image.isNotEmpty) ? NetworkImage(actor.image) : const AssetImage("assets/images/farzi.jpg") as ImageProvider,
+                                            image: (actor.image.isNotEmpty)
+                                                ? (isWeb
+                                                    ? ResizeImage(NetworkImage(actor.image), width: 180, height: 220)
+                                                    : NetworkImage(actor.image))
+                                                : const AssetImage("assets/images/farzi.jpg") as ImageProvider,
                                             fit: BoxFit.cover,
                                           ),
                                         ),

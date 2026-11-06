@@ -54,10 +54,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   if (kIsWeb) {
     usePathUrlStrategy();
+    // 🧠 Web Memory Optimization: Restrict image cache so CanvasKit doesn't balloon heap
+    PaintingBinding.instance.imageCache.maximumSize = 60;
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 25 << 20; // 25 MB
   }
-  WidgetsFlutterBinding.ensureInitialized();
 
   if (!kIsWeb) {
     try {
