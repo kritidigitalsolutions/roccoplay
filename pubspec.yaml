@@ -2,7 +2,7 @@ name: roccoplay
 description: "RoccoPlay - Watch Movies, Web Series, Dramas & Short Films Online."
 publish_to: 'none'
 
-version: 1.0.0+14
+version: 1.0.0+15
 
 environment:
   sdk: ^3.11.0
